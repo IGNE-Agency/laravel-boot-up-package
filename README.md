@@ -1,414 +1,190 @@
 # Laravel Bootstrap
 
-A comprehensive Laravel application bootstrap package for local development with
-automatic dependency management, database setup, and multi-server support.
+Boot a Laravel project on any machine — even a blank one — with two commands:
 
-## Features
+```bash
+composer install
+php artisan app:serve
+```
 
-- **Multi-Server Support**: Herd, Sail, or Laravel built-in server
-- **Automatic Dependency Installation**: Auto-installs missing tools (bun,
-  composer, node, etc.)
-- **Smart Version Management**: Support for specific versions or 'latest' for
-  safe updates
-- **Database Auto-Setup**: Interactive database creation and credential
-  management
-- **Queue Management**: Automatic queue worker in separate terminal
-- **Migration Auto-Run**: Runs migrations automatically when available
-- **Interactive Prompts**: User-friendly setup experience
-- **Configurable Package Managers**: Choose between bun (default), yarn, or npm
-- **DRY, SOLID, KISS**: Clean, maintainable codebase following best practices
+`app:serve` installs or updates the tools you're missing (Homebrew, PHP, Node,
+Composer, Docker, Herd, bun/yarn/npm), creates your `.env`, sets up the database
+(prompting for credentials when they're missing), runs pending migrations,
+installs dependencies, builds or watches assets, starts a queue worker when your
+project needs one, and serves the app via **Herd**, **Sail**, or
+**`php artisan serve`**. `app:down` cleanly stops everything it started — and
+nothing it didn't.
+
+> Development only. Requires PHP 8.3+, Laravel 13, macOS or Linux.
 
 ## Installation
-
-Install as a development dependency:
 
 ```bash
 composer require igne-agency/laravel-bootstrap --dev
 ```
 
-The package will auto-register via Laravel's package discovery.
+The package auto-registers via Laravel's package discovery. Always use `--dev`;
+this package has no business in production.
 
-> **Important:** Always use the `--dev` flag to ensure this package is only
-> installed in development environments and excluded from production
-> deployments.
-
-## Quick Start
+## Usage
 
 ```bash
-# Start your application (will prompt for server if not specified)
-php artisan app:serve
+php artisan app:serve            # prompts for a server on first run
+php artisan app:serve herd       # or: sail | laravel
+php artisan app:serve --seed     # seed after migrating
+php artisan app:serve --update   # update dependencies instead of installing
+php artisan app:serve --no-migrate --without-queue --without-assets
 
-# Or specify a server directly
-php artisan app:serve herd
-php artisan app:serve sail
-php artisan app:serve laravel
-
-# With options
-php artisan app:serve herd --seed --update
-
-# Stop your application
-php artisan app:down
+php artisan app:deploy           # dependencies + project commands + migrations, no server
+php artisan app:down             # stop tracked processes + the server app:serve started
 ```
 
-## Configuration
+### What `app:serve` does, in order
 
-Publish the configuration file:
+Every step is a small class; the full ordered list is published config you can
+reorder, trim, or extend (`bootstrap.serve_steps`):
+
+1. Create `.env` from `.env.example` when missing
+1. Guard against non-local environments (a fresh `.env` counts as local)
+1. Generate `APP_KEY` when empty
+1. Install missing tools / update ones that violate your version constraints
+1. Start the chosen server (Herd link+secure · Docker+Sail up ·
+   `php artisan serve`)
+1. `composer install` (or `--update`)
+1. Frontend install with bun/yarn/npm
+1. Prompt for missing `DB_*` env values and write them to `.env`
+1. Create the database when it doesn't exist, verify the connection
+1. Your project's `beforeMigrations()` commands
+1. Run migrations — only when there are pending ones
+1. Your project's `afterMigrations()` commands
+1. Optional framework caching (off by default) + finalize (`storage:link`)
+1. Start `queue:work` — only when `QUEUE_CONNECTION` is not `sync`
+1. Build or watch assets
+1. Announce the URL and open your browser
+
+Long-running processes (queue worker, asset watcher, `php artisan serve`) run
+detached in the background with their output in `storage/logs/bootstrap/` and
+their PIDs tracked in `storage/framework/bootstrap/`, so `app:down` can reap
+exactly them. Set `BOOTSTRAP_QUEUE_RUN_IN=terminal` (or
+`BOOTSTRAP_ASSETS_WATCH_IN=terminal`) to open real terminal windows instead.
+
+### Shutdown behavior
+
+- `app:down` (and Ctrl-C during `app:serve`) stops every tracked background
+  process, then asks whether to stop the server — **only the server that
+  `app:serve` itself started**. A Herd or Sail that was already running before
+  you served is left alone.
+- Re-running `app:serve` never stacks duplicate workers or watchers, and a
+  second `app:down` is a friendly no-op.
+
+## Configuration
 
 ```bash
 php artisan vendor:publish --tag=bootstrap-config
 ```
 
-This creates `config/bootstrap.php` where you can configure all aspects of the
-package.
-
-### Configuration Options
-
-#### Server Configuration
+Highlights of `config/bootstrap.php`:
 
 ```php
 'server' => [
-    'default' => env('BOOTSTRAP_SERVER', null), // null = always prompt
-    'prompt' => env('BOOTSTRAP_PROMPT_SERVER', true),
+    'default' => env('BOOTSTRAP_SERVER'),           // 'herd' | 'sail' | 'laravel' | null = prompt
+    'drivers' => [ /* add your own Server implementations here */ ],
 ],
-```
 
-#### Package Manager
-
-```php
-'package_manager' => [
-    'default' => env('BOOTSTRAP_PACKAGE_MANAGER', 'bun'),
-    'available' => ['bun', 'yarn', 'npm'],
-],
-```
-
-#### Tool Versions
-
-```php
 'tools' => [
-    'php' => env('PHP_VERSION', 'latest'),
-    'node' => env('NODE_VERSION', 'latest'),
-    'composer' => env('COMPOSER_VERSION', 'latest'),
-    'bun' => env('BUN_VERSION', 'latest'),
-    'yarn' => env('YARN_VERSION', 'latest'),
-    'npm' => env('NPM_VERSION', 'latest'),
+    'auto_install' => true,
+    'auto_update' => true,                          // update when the constraint is violated
+    'required' => [
+        'php' => env('BOOTSTRAP_PHP_VERSION', '*'), // composer-style constraints: '^8.3', '*'
+        'node' => env('BOOTSTRAP_NODE_VERSION', '*'),
+        'composer' => env('BOOTSTRAP_COMPOSER_VERSION', '*'),
+    ],
 ],
-```
 
-Use `'latest'` for automatic safe version updates, or specify exact versions
-like `'20.11.0'`.
-
-#### Auto-Installation
-
-```php
-'auto_install' => [
-    'enabled' => env('BOOTSTRAP_AUTO_INSTALL', true),
-    'tools' => ['php', 'node', 'composer', 'bun'],
+'frontend' => [
+    'package_manager' => env('BOOTSTRAP_PACKAGE_MANAGER', 'bun'), // bun | yarn | npm
+    'assets' => env('BOOTSTRAP_ASSETS', 'watch'),                 // watch | build | skip
 ],
+
+'serve_steps' => [ /* the entire pipeline, reorderable */ ],
+'deploy_steps' => [ /* what app:deploy runs */ ],
 ```
 
-#### Database Management
+Sail extras: when serving with Sail, the package offers (once, with your
+consent) to add the `sail` alias to your shell profile, and rewrites every
+app-level command to run inside the containers
+(`./vendor/bin/sail artisan ...`).
 
-```php
-'database' => [
-    'auto_create' => env('BOOTSTRAP_AUTO_CREATE_DB', true),
-    'prompt_credentials' => env('BOOTSTRAP_PROMPT_DB_CREDENTIALS', true),
-],
+## Extending the package
+
+Four extension points, none of which require touching package code:
+
+1. **Project commands** — generators and warmers that run before/after
+   migrations. See [CUSTOM_COMMANDS.md](CUSTOM_COMMANDS.md) and
+   [examples/ProjectCommands.php](examples/ProjectCommands.php).
+1. **Custom pipeline steps** — implement `Serve\Step` and insert the class
+   anywhere in the published `serve_steps` / `deploy_steps` arrays.
+1. **Custom servers** — implement `Servers\Server` and register it under
+   `server.drivers` (e.g. `'valet' => ValetServer::class`). It becomes
+   selectable by argument, config, and prompt, and participates in state
+   tracking, shutdown, and command rewriting automatically.
+1. **Custom tools** — implement `Tools\InstallsTool` and map it under
+   `tools.installers` with a constraint under `tools.required`. Config wins on
+   key collision, so you can also replace a built-in installer (e.g. install
+   Node via nvm).
+
+## Architecture
+
+Domain-first: everything about X lives in `src/X/`.
+
+```text
+src/
+├── BootstrapServiceProvider.php   # the single provider
+├── Console/       # app:serve, app:deploy, app:down — thin commands
+├── Serve/         # pipeline context, Step contract, shutdown, browser
+├── Servers/       # Herd / Sail / Artisan drivers, selection, rewriting, state
+├── Tools/         # installers + semver-constraint version enforcement
+├── Database/      # credentials, creation, verification, pending migrations
+├── Frontend/      # package managers + assets
+├── Queue/         # queue worker lifecycle
+├── Deploy/        # composer, project commands, caching, finalize
+├── Environment/   # .env file + shell profile editing
+├── Process/       # THE one way commands run: run / silent / background / terminal
+└── Support/       # shared primitives
 ```
 
-#### Queue Configuration
+All OS interaction goes through `Process\ProcessRunner` (built on Laravel's
+`Process` facade), so the entire package is testable with `Process::fake()` —
+enforced by architecture tests.
 
-```php
-'queue' => [
-    'auto_start' => env('BOOTSTRAP_AUTO_START_QUEUE', true),
-    'separate_terminal' => env('BOOTSTRAP_QUEUE_SEPARATE_TERMINAL', true),
-    'connection' => env('QUEUE_CONNECTION', 'database'),
-],
-```
+## Upgrading from the pre-refactor package
 
-#### Shutdown Behavior
+The 2026 refactor was a clean break. `app:serve` and `app:down` behave the same
+on the surface; everything else changed:
 
-```php
-'shutdown' => [
-    'prompt_server_stop' => env('BOOTSTRAP_PROMPT_SERVER_STOP', true),
-    'default_stop_server' => env('BOOTSTRAP_DEFAULT_STOP_SERVER', false),
-],
-```
+| Before                                                         | After                                                                                |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `Contracts\ProvidesBootstrapCommands` + `BootstrapCommand` DTO | `Deploy\ProvidesProjectCommands` + `ProjectCommand` (string commands, no args array) |
+| `check:dependencies`, `check:database` hidden commands         | removed — steps in the one pipeline                                                  |
+| `app:deploy` (hidden)                                          | `app:deploy` (visible, standalone)                                                   |
+| `--no-frontend`                                                | `--without-assets`                                                                   |
+| `--migrate=true` default                                       | migrations auto-run when pending; opt out with `--no-migrate`                        |
+| Tool versions `'latest'` / pinned                              | composer-style constraints (`'^8.3'`, `'*'`) with auto-update                        |
+| Failing custom command warned and continued                    | aborts the boot (as always documented)                                               |
+| Framework caching on by default                                | off by default (`config:cache` breaks `env()` locally)                               |
+| `Providers\BootstrapServiceProvider`                           | `BootstrapServiceProvider` (root namespace)                                          |
 
-## Usage
+Run `composer update igne-agency/laravel-bootstrap`, re-publish the config, and
+re-implement your custom commands against the new contract (5-minute job — see
+the example file).
 
-### Starting Your Application
+## Testing
 
 ```bash
-php artisan app:serve {server?} {--seed} {--migrate} {--update} {--no-frontend}
+composer test          # Pest 4 suite (unit + feature + architecture tests)
+vendor/bin/pint        # code style
 ```
-
-**Arguments:**
-
-- `server` (optional): Development server - `herd`, `sail`, or `laravel`
-
-**Options:**
-
-- `--seed`: Seed the database after migrations
-- `--migrate`: Run migrations (default: true)
-- `--update`: Update dependencies before starting
-- `--no-frontend`: Skip frontend asset building
-
-**What happens:**
-
-1. Interactive server selection (if not specified)
-2. Dependency checking and auto-installation
-3. Database credential prompts (if needed)
-4. Database creation (if doesn't exist)
-5. Dependency installation (composer, npm/yarn/bun)
-6. Migration execution
-7. Queue worker startup (in separate terminal)
-8. Application boot
-
-### Stopping Your Application
-
-```bash
-php artisan app:down
-```
-
-Interactive prompt asks whether to:
-
-- Stop only running processes (default)
-- Stop the server itself (Herd/Sail)
-
-## Examples
-
-### First-Time Setup
-
-```bash
-# Clone your Laravel project
-git clone https://github.com/yourname/project.git
-cd project
-
-# Install composer dependencies
-composer install
-
-# Start the application
-php artisan app:serve
-```
-
-The package will:
-
-- Prompt for server selection
-- Check for missing tools (node, bun, etc.)
-- Install missing tools automatically
-- Prompt for database credentials if missing
-- Create database if it doesn't exist
-- Run migrations
-- Start queue workers
-- Boot your application
-
-### Using Specific Versions
-
-In your `.env`:
-
-```env
-PHP_VERSION=8.4
-NODE_VERSION=20.11.0
-BUN_VERSION=1.0.25
-COMPOSER_VERSION=2.7.0
-```
-
-Or use `latest` for automatic safe updates:
-
-```env
-PHP_VERSION=latest
-NODE_VERSION=latest
-BUN_VERSION=latest
-COMPOSER_VERSION=latest
-```
-
-### Different Servers
-
-**Laravel Herd:**
-
-```bash
-php artisan app:serve herd
-```
-
-**Laravel Sail:**
-
-```bash
-php artisan app:serve sail
-```
-
-**Laravel Built-in Server:**
-
-```bash
-php artisan app:serve laravel
-```
-
-### Server-Specific Configuration
-
-**Development (auto-install everything):**
-
-```env
-BOOTSTRAP_AUTO_INSTALL=true
-BOOTSTRAP_AUTO_CREATE_DB=true
-BOOTSTRAP_AUTO_RUN_MIGRATIONS=true
-BOOTSTRAP_AUTO_START_QUEUE=true
-```
-
-**Production-like (manual control):**
-
-```env
-BOOTSTRAP_AUTO_INSTALL=false
-BOOTSTRAP_AUTO_CREATE_DB=false
-BOOTSTRAP_PROMPT_DB_CREDENTIALS=false
-BOOTSTRAP_AUTO_START_QUEUE=false
-```
-
-## Advanced Features
-
-### Custom Bootstrap Commands
-
-You can hook into the bootstrap process to run your own commands (e.g., code
-generation, type generation). Create a class implementing
-`ProvidesBootstrapCommands` and register it in your service provider:
-
-```php
-// app/Bootstrap/CustomBootstrapCommands.php
-use Igne\LaravelBootstrap\Contracts\ProvidesBootstrapCommands;
-use Igne\LaravelBootstrap\Data\DTOs\BootstrapCommand;
-
-class CustomBootstrapCommands implements ProvidesBootstrapCommands
-{
-    public function beforeMigrations(): array
-    {
-        return [
-            BootstrapCommand::artisan('wayfinder:generate', 'Generating TypeScript routes...'),
-        ];
-    }
-
-    public function afterMigrations(): array
-    {
-        return [
-            BootstrapCommand::artisan('model:typer', 'Generating model types...'),
-        ];
-    }
-}
-
-// AppServiceProvider
-$this->app->singleton(
-    ProvidesBootstrapCommands::class,
-    CustomBootstrapCommands::class
-);
-```
-
-Commands can be Artisan, Composer, or Package Manager commands. See
-[CUSTOM_COMMANDS.md](CUSTOM_COMMANDS.md) for full documentation.
-
-### Automatic Tool Installation
-
-When enabled, the package automatically installs missing tools:
-
-- Detects missing dependencies
-- Downloads and installs them
-- Verifies versions
-- Updates to latest safe versions if configured
-
-### Smart Version Management
-
-The `'latest'` version option:
-
-- Checks for the latest stable/LTS version
-- Only updates to safe, stable releases
-- Caches version checks to avoid API rate limits
-- Falls back to sensible defaults if API unavailable
-
-### Database Auto-Creation
-
-If database doesn't exist:
-
-1. Prompts for credentials (if not in .env)
-2. Updates .env file with credentials
-3. Creates database with proper charset/collation
-4. Runs migrations automatically
-
-### Queue Worker Management
-
-Queue workers run in separate terminal windows:
-
-- **macOS**: Opens new Terminal.app window
-- **Linux**: Opens new gnome-terminal window
-- **Fallback**: Runs in background if terminal unavailable
-
-## Troubleshooting
-
-### Database Connection Issues
-
-If you see database connection errors:
-
-1. Check `.env` file has correct credentials
-2. Ensure MySQL/PostgreSQL is running
-3. Verify database exists
-4. Run `php artisan config:clear`
-
-### Tool Installation Failures
-
-If auto-installation fails:
-
-1. Check internet connection
-2. Verify system permissions
-3. Install tools manually
-4. Disable auto-install: `BOOTSTRAP_AUTO_INSTALL=false`
-
-### Queue Worker Not Starting
-
-If queue worker doesn't start:
-
-1. Check queue connection in `.env`
-2. Verify database tables exist
-3. Manually run: `php artisan queue:work`
-
-### Sail-Specific Issues
-
-For Sail users:
-
-1. Ensure Docker is installed and running
-2. Check Docker has sufficient resources
-3. Verify ports 80/3306 are available
-4. Run `sail up -d` manually if needed
-
-## Requirements
-
-- PHP 8.4+
-- Laravel 12.x
-- Composer 2.x
-
-## Production Safety
-
-This package is **automatically excluded** from production when installed with
-`--dev`. Composer will not install dev dependencies when you run:
-
-```bash
-composer install --no-dev
-```
-
-This ensures the package and its commands are never available in production.
-
-### Environment Detection
-
-The package includes safety checks to prevent accidental use in non-local
-environments. Commands will refuse to run if:
-
-- `APP_ENV` is not set to `local` or `development`
-- The system has detected as a remote server
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Credits
-
-Created by [Rick Blanksma](https://github.com/rickblanksma) at
-[IGNE](https://igne.nl)
-
-## Support
-
-For issues, questions, or contributions, please use the
-[GitHub issue tracker](https://github.com/igne/laravel-bootstrap/issues).
+MIT — see [LICENSE](LICENSE).

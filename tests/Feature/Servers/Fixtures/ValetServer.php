@@ -1,0 +1,49 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Igne\LaravelBootstrap\Tests\Feature\Servers\Fixtures;
+
+use Igne\LaravelBootstrap\Serve\ServeContext;
+use Igne\LaravelBootstrap\Servers\CommandRewrites;
+use Igne\LaravelBootstrap\Servers\Server;
+
+/**
+ * A project-registered custom driver, as the extension API allows.
+ */
+final class ValetServer implements Server
+{
+    public function key(): string
+    {
+        return 'valet';
+    }
+
+    public function label(): string
+    {
+        return 'Laravel Valet';
+    }
+
+    public function requiredTools(): array
+    {
+        return [];
+    }
+
+    public function commandRewrites(): CommandRewrites
+    {
+        return CommandRewrites::none();
+    }
+
+    public function isRunning(): bool
+    {
+        return false;
+    }
+
+    public function start(ServeContext $context): void {}
+
+    public function stop(): void {}
+
+    public function url(): string
+    {
+        return 'http://valet.test';
+    }
+}

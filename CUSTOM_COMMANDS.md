@@ -1,310 +1,86 @@
-# Custom Bootstrap Commands
+# Project commands
 
-This package provides a safe and flexible hook system that allows project
-maintainers to register custom commands that run during the bootstrap process.
+Hook your project's own commands into the boot/deploy flow — code generators,
+schema exporters, cache warmers — without touching the package.
 
-## Overview
+## How it works
 
-You can register custom commands to run at two points in the bootstrap
-lifecycle:
-
-- **Before migrations**: After dependencies are installed but before database
-  migrations
-- **After migrations**: After database migrations but before caching and queue
-  workers start
-
-## Supported Server
-
-Commands can run in three safe server:
-
-- **Artisan**: Laravel artisan commands
-- **Composer**: Composer commands
-- **Package Manager**: npm/yarn/pnpm commands
-
-## Setup
-
-### 1. Create a Bootstrap Command Provider
-
-Create a class that implements `ProvidesBootstrapCommands`:
+1. Create a class implementing
+   `Igne\LaravelBootstrap\Deploy\ProvidesProjectCommands` (see
+   [examples/ProjectCommands.php](examples/ProjectCommands.php)):
 
 ```php
-<?php
-
 namespace App\Bootstrap;
 
-use Igne\LaravelBootstrap\Contracts\ProvidesBootstrapCommands;
-use Igne\LaravelBootstrap\Data\DTOs\BootstrapCommand;
+use Igne\LaravelBootstrap\Deploy\ProjectCommand;
+use Igne\LaravelBootstrap\Deploy\ProvidesProjectCommands;
 
-final class CustomBootstrapCommands implements ProvidesBootstrapCommands
+final class ProjectCommands implements ProvidesProjectCommands
 {
     public function beforeMigrations(): array
     {
         return [
-            BootstrapCommand::artisan(
-                command: 'wayfinder:generate',
-                message: 'Generating Typescript Routes, Actions and Wayfinder...',
-                args: [
-                    '--path' => 'resources/js/wayfinder',
-                ]
-            ),
-
-            BootstrapCommand::packageManager(
-                command: 'run zodgen',
-                message: 'Generating Zod types from resources...',
-                args: []
-            ),
+            ProjectCommand::artisan('wayfinder:generate --path=resources/js/wayfinder', 'Generating routes...'),
         ];
     }
 
     public function afterMigrations(): array
     {
         return [
-            BootstrapCommand::artisan(
-                command: 'model:typer',
-                message: 'Generating Typescript types from models...',
-                args: []
-            ),
-
-            BootstrapCommand::composer(
-                command: 'dump-autoload',
-                message: 'Optimizing autoloader...',
-                args: ['--optimize' => true]
-            ),
+            ProjectCommand::artisan('model:typer', 'Generating model types...'),
+            ProjectCommand::packageManager('run zodgen', 'Generating Zod schemas...'),
         ];
     }
 }
 ```
 
-### 2. Register the Provider
-
-In your `AppServiceProvider` or a dedicated service provider:
+1. Bind it as a singleton in your `AppServiceProvider::register()`:
 
 ```php
-<?php
-
-namespace App\Providers;
-
-use App\Bootstrap\CustomBootstrapCommands;
-use Igne\LaravelBootstrap\Contracts\ProvidesBootstrapCommands;
-use Illuminate\Support\ServiceProvider;
-
-class AppServiceProvider extends ServiceProvider
-{
-    public function register(): void
-    {
-        $this->app->singleton(
-            ProvidesBootstrapCommands::class,
-            CustomBootstrapCommands::class
-        );
-    }
-}
+$this->app->singleton(
+    \Igne\LaravelBootstrap\Deploy\ProvidesProjectCommands::class,
+    \App\Bootstrap\ProjectCommands::class,
+);
 ```
 
-## Usage Examples
+That's it. `app:serve` and `app:deploy` resolve the binding lazily — no binding
+means no project commands, no error.
 
-### Artisan Commands
+## Command types
 
-```php
-BootstrapCommand::artisan(
-    command: 'cache:clear',
-    message: 'Clearing application cache...',
-    args: []
-)
+| Named constructor                                      | Runs as                                              |
+| ------------------------------------------------------ | ---------------------------------------------------- |
+| `ProjectCommand::artisan('scout:sync')`                | `php artisan scout:sync`                             |
+| `ProjectCommand::composer('dump-autoload --optimize')` | `composer dump-autoload --optimize`                  |
+| `ProjectCommand::packageManager('run build')`          | `bun run build` (or your configured package manager) |
 
-BootstrapCommand::artisan(
-    command: 'migrate',
-    message: 'Running migrations...',
-    args: [
-        '--force' => true,
-        '--seed' => true,
-    ]
-)
+The optional second argument is a human-readable message printed before the
+command runs.
 
-BootstrapCommand::artisan(
-    command: 'telescope:prune',
-    message: 'Pruning old Telescope entries...',
-    args: [
-        '--hours' => 48,
-    ]
-)
+## Execution rules
+
+- **Server-aware**: commands are rewritten for the active server — under Sail,
+  `php artisan scout:sync` runs as `./vendor/bin/sail artisan scout:sync`.
+- **Streamed**: output is streamed live to your terminal.
+- **Fail fast**: a non-zero exit code aborts the whole boot. Fix the command or
+  remove it; nothing downstream runs on a broken state.
+- **No shell**: commands execute as plain argument lists. Shell metacharacters
+  (`;`, `&&`, `|`, backticks, redirection) are rejected at construction time, as
+  are destructive words (`rm`, `sudo`, `kill`, ...). Word-boundary matching
+  means `confirm:users` is fine while `rm -rf` is not.
+
+## When they run
+
+```text
+composer install          (deploy step)
+frontend install          (deploy step)
+→ beforeMigrations()
+migrations
+→ afterMigrations()
+framework caches / finalize
+queue worker, assets, ...
 ```
 
-### Composer Commands
-
-```php
-BootstrapCommand::composer(
-    command: 'dump-autoload',
-    message: 'Regenerating autoload files...',
-    args: ['--optimize' => true]
-)
-
-BootstrapCommand::composer(
-    command: 'run post-install-cmd',
-    message: 'Running post-install scripts...',
-    args: []
-)
-```
-
-### Package Manager Commands
-
-```php
-BootstrapCommand::packageManager(
-    command: 'run build',
-    message: 'Building frontend assets...',
-    args: []
-)
-
-BootstrapCommand::packageManager(
-    command: 'run type-check',
-    message: 'Running TypeScript type checking...',
-    args: []
-)
-```
-
-## Argument Types
-
-The `args` array supports the following value types:
-
-### String/Numeric Values
-
-```php
-args: [
-    '--path' => 'resources/js',
-    '--timeout' => 30,
-]
-```
-
-### Boolean Flags
-
-```php
-args: [
-    '--force' => true,    // Includes the flag
-    '--no-cache' => false, // Excludes the flag
-]
-```
-
-### Array Values (Multiple Values for Same Key)
-
-```php
-args: [
-    '--exclude' => ['vendor', 'node_modules', 'storage'],
-]
-// Results in: --exclude=vendor --exclude=node_modules --exclude=storage
-```
-
-## Safety Features
-
-The system includes multiple safety checks to prevent dangerous operations:
-
-### Blocked Patterns
-
-- File deletion commands (`rm`, `del`)
-- System commands (`shutdown`, `reboot`, `kill`)
-- Disk operations (`dd`, `mkfs`, `format`)
-- Command chaining (`&&`, `||`, `;`)
-- Code execution (`eval`, `exec`, shell pipes)
-- Dangerous redirects (`> /dev/`)
-
-### Validation
-
-- Commands must be non-empty
-- Messages must be non-empty
-- Arguments must use allowed types only
-- No command chaining or piping allowed
-- Commands are restricted to Artisan, Composer, or Package Manager environments
-
-## Bootstrap Lifecycle
-
-The complete bootstrap process runs in this order:
-
-1. **Install Composer Dependencies**
-2. **Build Frontend Assets**
-3. **🔹 Run Custom Commands (Before Migrations)**
-4. **Run Database Migrations**
-5. **🔹 Run Custom Commands (After Migrations)**
-6. **Cache Framework Files**
-7. **Start Queue Worker**
-
-## Error Handling
-
-If any custom command fails:
-
-- The bootstrap process will stop
-- An exception will be thrown with the error details
-- No subsequent commands will run
-
-Make sure your commands are idempotent and can handle being run multiple times.
-
-## Best Practices
-
-1. **Keep commands fast**: Bootstrap should be quick
-2. **Make commands idempotent**: They may run multiple times
-3. **Use appropriate timing**:
-   - Before migrations: Code generation, type checking
-   - After migrations: Model-based generation, cache warming
-4. **Provide clear messages**: Help developers understand what's happening
-5. **Handle failures gracefully**: Ensure commands won't break on re-runs
-
-## Example: Complete Setup
-
-```php
-<?php
-
-namespace App\Bootstrap;
-
-use Igne\LaravelBootstrap\Contracts\ProvidesBootstrapCommands;
-use Igne\LaravelBootstrap\Data\DTOs\BootstrapCommand;
-
-final class CustomBootstrapCommands implements ProvidesBootstrapCommands
-{
-    public function beforeMigrations(): array
-    {
-        return [
-            // Generate TypeScript definitions before migrations
-            BootstrapCommand::artisan(
-                command: 'wayfinder:generate',
-                message: 'Generating TypeScript routes and actions...',
-                args: ['--path' => 'resources/js/wayfinder']
-            ),
-
-            // Run package manager type generation
-            BootstrapCommand::packageManager(
-                command: 'run zodgen',
-                message: 'Generating Zod schemas...',
-                args: []
-            ),
-        ];
-    }
-
-    public function afterMigrations(): array
-    {
-        return [
-            // Generate model types after migrations (needs DB schema)
-            BootstrapCommand::artisan(
-                command: 'model:typer',
-                message: 'Generating TypeScript types from models...',
-                args: []
-            ),
-
-            // Optimize autoloader
-            BootstrapCommand::composer(
-                command: 'dump-autoload',
-                message: 'Optimizing autoloader...',
-                args: ['--optimize' => true]
-            ),
-        ];
-    }
-}
-```
-
-Register in `AppServiceProvider`:
-
-```php
-public function register(): void
-{
-    $this->app->singleton(
-        \Igne\LaravelBootstrap\Contracts\ProvidesBootstrapCommands::class,
-        \App\Bootstrap\CustomBootstrapCommands::class
-    );
-}
-```
+Need a different position? The whole pipeline is published config — implement
+`Igne\LaravelBootstrap\Serve\Step` and insert your own step class anywhere in
+`bootstrap.serve_steps` / `bootstrap.deploy_steps` instead.
