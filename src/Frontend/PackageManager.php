@@ -11,6 +11,7 @@ enum PackageManager: string
     case BUN = 'bun';
     case YARN = 'yarn';
     case NPM = 'npm';
+    case PNPM = 'pnpm';
 
     public function binary(): string
     {
@@ -23,6 +24,7 @@ enum PackageManager: string
             self::BUN => 'bun.lock',
             self::YARN => 'yarn.lock',
             self::NPM => 'package-lock.json',
+            self::PNPM => 'pnpm-lock.yaml',
         };
     }
 
@@ -53,12 +55,28 @@ enum PackageManager: string
         return [$this->value, 'run', $script];
     }
 
+    /**
+     * The lockfile-strict install line for GENERATED deployment scripts,
+     * falling back to a plain install (shell `||` syntax — never executed
+     * locally by this package).
+     */
+    public function ciInstallLine(): string
+    {
+        return match ($this) {
+            self::NPM => 'npm ci || npm install',
+            self::PNPM => 'pnpm install --frozen-lockfile || pnpm install',
+            self::YARN => 'yarn install --frozen-lockfile || yarn install',
+            self::BUN => 'bun install --frozen-lockfile || bun install',
+        };
+    }
+
     public function tool(): Tool
     {
         return match ($this) {
             self::BUN => Tool::BUN,
             self::YARN => Tool::YARN,
             self::NPM => Tool::NPM,
+            self::PNPM => Tool::PNPM,
         };
     }
 }

@@ -12,7 +12,7 @@ use Igne\LaravelBootstrap\Tools\ToolInspector;
 use Igne\LaravelBootstrap\Tools\VersionConstraint;
 
 /**
- * One installer for the frontend package managers (bun, yarn, npm).
+ * One installer for the frontend package managers (bun, yarn, npm, pnpm).
  * Instances are produced by ToolRegistry with the concrete Tool case.
  */
 final class PackageManagerInstaller implements InstallsTool
@@ -61,7 +61,7 @@ final class PackageManagerInstaller implements InstallsTool
 
     /**
      * npm rides along with Node, so both install and update mean
-     * "npm install -g npm"; bun and yarn are plain brew formulae.
+     * "npm install -g npm"; bun, yarn and pnpm are plain brew formulae.
      */
     private function installOrUpdate(bool $update): void
     {

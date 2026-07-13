@@ -60,6 +60,7 @@ test('resolves the built-in installer for each known tool id', function (string 
     'bun' => ['bun', PackageManagerInstaller::class],
     'yarn' => ['yarn', PackageManagerInstaller::class],
     'npm' => ['npm', PackageManagerInstaller::class],
+    'pnpm' => ['pnpm', PackageManagerInstaller::class],
 ]);
 
 test('a configured installer wins over the built-in for the same id', function (): void {

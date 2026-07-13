@@ -84,3 +84,9 @@ queue worker, assets, ...
 Need a different position? The whole pipeline is published config — implement
 `Igne\LaravelBootstrap\Serve\Step` and insert your own step class anywhere in
 `bootstrap.serve_steps` / `bootstrap.deploy_steps` instead.
+
+## In exported deployment scripts
+
+`php artisan app:deploy-script` embeds your project commands into the generated
+Forge / Fortrabbit scripts at the same before/after-migrations positions, with
+each description rendered as a `#` comment above its command.

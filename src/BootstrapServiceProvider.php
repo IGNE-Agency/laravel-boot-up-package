@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Igne\LaravelBootstrap;
 
 use Igne\LaravelBootstrap\Console\DeployCommand;
+use Igne\LaravelBootstrap\Console\DeployScriptCommand;
 use Igne\LaravelBootstrap\Console\DownCommand;
 use Igne\LaravelBootstrap\Console\ServeCommand;
 use Igne\LaravelBootstrap\Database\DatabaseConfig;
@@ -101,6 +102,7 @@ final class BootstrapServiceProvider extends ServiceProvider
         $this->commands([
             ServeCommand::class,
             DeployCommand::class,
+            DeployScriptCommand::class,
             DownCommand::class,
         ]);
     }

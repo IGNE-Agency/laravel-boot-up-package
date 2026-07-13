@@ -15,6 +15,7 @@ enum Tool: string
     case BUN = 'bun';
     case YARN = 'yarn';
     case NPM = 'npm';
+    case PNPM = 'pnpm';
 
     public function binary(): string
     {
@@ -36,6 +37,7 @@ enum Tool: string
             self::BUN => 'Bun',
             self::YARN => 'Yarn',
             self::NPM => 'npm',
+            self::PNPM => 'pnpm',
         };
     }
 

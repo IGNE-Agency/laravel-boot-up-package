@@ -8,11 +8,11 @@ php artisan app:serve
 ```
 
 `app:serve` installs or updates the tools you're missing (Homebrew, PHP, Node,
-Composer, Docker, Herd, bun/yarn/npm), creates your `.env`, sets up the database
-(prompting for credentials when they're missing), runs pending migrations,
-installs dependencies, builds or watches assets, starts a queue worker when your
-project needs one, and serves the app via **Herd**, **Sail**, or
-**`php artisan serve`**. `app:down` cleanly stops everything it started — and
+Composer, Docker, Herd, bun/yarn/npm/pnpm), creates your `.env`, sets up the
+database (prompting for credentials when they're missing), runs pending
+migrations, installs dependencies, builds or watches assets, starts a queue
+worker when your project needs one, and serves the app via **Herd**, **Sail**,
+or **`php artisan serve`**. `app:down` cleanly stops everything it started — and
 nothing it didn't.
 
 > Development only. Requires PHP 8.3+, Laravel 13, macOS or Linux.
@@ -37,6 +37,9 @@ php artisan app:serve --no-migrate --without-queue --without-assets
 
 php artisan app:deploy           # dependencies + project commands + migrations, no server
 php artisan app:down             # stop tracked processes + the server app:serve started
+
+php artisan app:deploy-script forge production        # export a hosting deployment script
+php artisan app:deploy-script fortrabbit staging      # (see "Exporting a deployment script")
 ```
 
 ### What `app:serve` does, in order
@@ -51,7 +54,7 @@ reorder, trim, or extend (`bootstrap.serve_steps`):
 1. Start the chosen server (Herd link+secure · Docker+Sail up ·
    `php artisan serve`)
 1. `composer install` (or `--update`)
-1. Frontend install with bun/yarn/npm
+1. Frontend install with bun/yarn/npm/pnpm
 1. Prompt for missing `DB_*` env values and write them to `.env`
 1. Create the database when it doesn't exist, verify the connection
 1. Your project's `beforeMigrations()` commands
@@ -102,7 +105,7 @@ Highlights of `config/bootstrap.php`:
 ],
 
 'frontend' => [
-    'package_manager' => env('BOOTSTRAP_PACKAGE_MANAGER', 'bun'), // bun | yarn | npm
+    'package_manager' => env('BOOTSTRAP_PACKAGE_MANAGER', 'bun'), // bun | yarn | npm | pnpm
     'assets' => env('BOOTSTRAP_ASSETS', 'watch'),                 // watch | build | skip
 ],
 
@@ -114,6 +117,35 @@ Sail extras: when serving with Sail, the package offers (once, with your
 consent) to add the `sail` alias to your shell profile, and rewrites every
 app-level command to run inside the containers
 (`./vendor/bin/sail artisan ...`).
+
+## Exporting a deployment script
+
+`app:deploy-script` turns this package's config (package manager, migrations,
+finalize commands, queue usage, and your bound project commands) into a
+paste-ready deployment script for your hosting platform:
+
+```bash
+php artisan app:deploy-script forge production        # zero-downtime release script (Forge's default)
+php artisan app:deploy-script forge production --classic   # for older sites without zero-downtime deployments
+php artisan app:deploy-script fortrabbit staging      # "Build commands" + "Post deploy commands" sections
+php artisan app:deploy-script                         # prompts for platform + environment
+php artisan app:deploy-script forge production --output=deploy.sh
+```
+
+- **Forge** — the zero-downtime script uses Forge's release macros
+  (`$CREATE_RELEASE()`, `$ACTIVATE_RELEASE()`, `$RESTART_QUEUES()`); paste it
+  into your site's deployment script. The `--classic` variant (git pull +
+  PHP-FPM reload) is for sites created without zero-downtime deployments — the
+  two styles cannot be mixed.
+- **Fortrabbit** — outputs the two command lists the fortrabbit dashboard
+  expects per environment: _Build commands_ (composer + frontend build; the
+  package manager is `npm i -g`-bootstrapped when it isn't npm) and _Post deploy
+  commands_ (migrations, optimize, finalize, queue restart).
+- The **environment** argument tunes the script: `development` keeps dev
+  dependencies and skips `artisan optimize`; `staging`/`production` add
+  `--no-dev` and framework caching.
+- Your `ProvidesProjectCommands` binding is embedded at the right positions
+  (before/after migrations), with descriptions as comments.
 
 ## Extending the package
 
@@ -132,6 +164,10 @@ Four extension points, none of which require touching package code:
    `tools.installers` with a constraint under `tools.required`. Config wins on
    key collision, so you can also replace a built-in installer (e.g. install
    Node via nvm).
+1. **Custom deployment platforms** — implement `Deploy\Scripts\ScriptGenerator`
+   and register it under `deploy.script_generators` (e.g.
+   `'envoyer' => EnvoyerScriptGenerator::class`); it becomes selectable in
+   `app:deploy-script` alongside Forge and Fortrabbit.
 
 ## Architecture
 
@@ -140,14 +176,14 @@ Domain-first: everything about X lives in `src/X/`.
 ```text
 src/
 ├── BootstrapServiceProvider.php   # the single provider
-├── Console/       # app:serve, app:deploy, app:down — thin commands
+├── Console/       # app:serve, app:deploy, app:deploy-script, app:down — thin commands
 ├── Serve/         # pipeline context, Step contract, shutdown, browser
 ├── Servers/       # Herd / Sail / Artisan drivers, selection, rewriting, state
 ├── Tools/         # installers + semver-constraint version enforcement
 ├── Database/      # credentials, creation, verification, pending migrations
 ├── Frontend/      # package managers + assets
 ├── Queue/         # queue worker lifecycle
-├── Deploy/        # composer, project commands, caching, finalize
+├── Deploy/        # composer, project commands, caching, finalize, script export
 ├── Environment/   # .env file + shell profile editing
 ├── Process/       # THE one way commands run: run / silent / background / terminal
 └── Support/       # shared primitives
@@ -156,27 +192,6 @@ src/
 All OS interaction goes through `Process\ProcessRunner` (built on Laravel's
 `Process` facade), so the entire package is testable with `Process::fake()` —
 enforced by architecture tests.
-
-## Upgrading from the pre-refactor package
-
-The 2026 refactor was a clean break. `app:serve` and `app:down` behave the same
-on the surface; everything else changed:
-
-| Before                                                         | After                                                                                |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `Contracts\ProvidesBootstrapCommands` + `BootstrapCommand` DTO | `Deploy\ProvidesProjectCommands` + `ProjectCommand` (string commands, no args array) |
-| `check:dependencies`, `check:database` hidden commands         | removed — steps in the one pipeline                                                  |
-| `app:deploy` (hidden)                                          | `app:deploy` (visible, standalone)                                                   |
-| `--no-frontend`                                                | `--without-assets`                                                                   |
-| `--migrate=true` default                                       | migrations auto-run when pending; opt out with `--no-migrate`                        |
-| Tool versions `'latest'` / pinned                              | composer-style constraints (`'^8.3'`, `'*'`) with auto-update                        |
-| Failing custom command warned and continued                    | aborts the boot (as always documented)                                               |
-| Framework caching on by default                                | off by default (`config:cache` breaks `env()` locally)                               |
-| `Providers\BootstrapServiceProvider`                           | `BootstrapServiceProvider` (root namespace)                                          |
-
-Run `composer update igne-agency/laravel-bootstrap`, re-publish the config, and
-re-implement your custom commands against the new contract (5-minute job — see
-the example file).
 
 ## Testing
 

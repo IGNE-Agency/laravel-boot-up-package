@@ -39,7 +39,8 @@ final class ToolRegistry
             Tool::HERD => $this->container->make(HerdInstaller::class),
             Tool::BUN,
             Tool::YARN,
-            Tool::NPM => $this->container->make(PackageManagerInstaller::class, ['tool' => Tool::from($id)]),
+            Tool::NPM,
+            Tool::PNPM => $this->container->make(PackageManagerInstaller::class, ['tool' => Tool::from($id)]),
             default => throw ToolException::unknownTool($id),
         };
     }

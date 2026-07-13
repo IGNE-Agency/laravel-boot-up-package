@@ -178,6 +178,6 @@ test('identity, tools and rewrites', function (): void {
         ->and($server->label())->toBe('Laravel Sail')
         ->and($server->requiredTools())->toBe([Tool::DOCKER])
         ->and($rewrites->replaces)->toBe(['php artisan' => 'artisan'])
-        ->and($rewrites->prefixes)->toBe(['php', 'composer', 'yarn', 'npm', 'bun', 'artisan', 'node'])
+        ->and($rewrites->prefixes)->toBe(['php', 'composer', 'yarn', 'npm', 'bun', 'pnpm', 'artisan', 'node'])
         ->and($rewrites->prefix)->toBe('./vendor/bin/sail');
 });

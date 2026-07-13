@@ -44,7 +44,7 @@ final class SailServer implements Server
     {
         return new CommandRewrites(
             replaces: ['php artisan' => 'artisan'],
-            prefixes: ['php', 'composer', 'yarn', 'npm', 'bun', 'artisan', 'node'],
+            prefixes: ['php', 'composer', 'yarn', 'npm', 'bun', 'pnpm', 'artisan', 'node'],
             prefix: './vendor/bin/sail',
         );
     }

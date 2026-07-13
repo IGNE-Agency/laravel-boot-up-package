@@ -82,7 +82,7 @@ return [
     ],
 
     'frontend' => [
-        'package_manager' => env('BOOTSTRAP_PACKAGE_MANAGER', 'bun'),
+        'package_manager' => env('BOOTSTRAP_PACKAGE_MANAGER', 'bun'), // bun | yarn | npm | pnpm
         'assets' => env('BOOTSTRAP_ASSETS', 'watch'), // watch | build | skip
         'watch_in' => env('BOOTSTRAP_ASSETS_WATCH_IN', 'background'), // background | terminal
     ],
@@ -105,6 +105,9 @@ return [
         'cache_framework_files' => env('BOOTSTRAP_CACHE', false),
         // Artisan commands run at the end of every boot/deploy.
         'finalize' => ['storage:link'],
+        // Extension point for app:deploy-script: 'platform' => class implementing
+        // Igne\LaravelBootstrap\Deploy\Scripts\ScriptGenerator (wins over built-ins).
+        'script_generators' => [],
     ],
 
     'browser' => [
