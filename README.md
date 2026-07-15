@@ -40,6 +40,9 @@ php artisan app:down             # stop tracked processes + the server app:serve
 
 php artisan app:deploy-script forge production        # export a hosting deployment script
 php artisan app:deploy-script fortrabbit staging      # (see "Exporting a deployment script")
+
+php artisan app:pipeline github                       # generate a CI/CD pipeline + .env.pipeline
+php artisan app:pipeline bitbucket                    # (see "Generating a CI/CD pipeline")
 ```
 
 ### What `app:serve` does, in order
@@ -147,6 +150,41 @@ php artisan app:deploy-script forge production --output=deploy.sh
 - Your `ProvidesProjectCommands` binding is embedded at the right positions
   (before/after migrations), with descriptions as comments.
 
+## Generating a CI/CD pipeline
+
+`app:pipeline` writes a ready-to-commit pipeline for your git provider plus a
+`.env.pipeline` test environment, both at their canonical paths:
+
+```bash
+php artisan app:pipeline github       # .github/workflows/ci.yml + .env.pipeline
+php artisan app:pipeline bitbucket    # bitbucket-pipelines.yml + .env.pipeline
+php artisan app:pipeline              # prompts for the provider
+php artisan app:pipeline github --force   # overwrite existing files without asking
+```
+
+Both providers run the **identical command sequence** (generated from one shared
+source): composer install with caching, `cp .env.pipeline .env`, Nova publish
+(only when `laravel/nova` is in your `composer.json` — composer auth comes from
+a `COMPOSER_AUTH` secret), lockfile-strict frontend install + build (driven by
+your `frontend.package_manager` config), finalize commands, project commands,
+`migrate --force`, and `php artisan test`.
+
+- **Tests** run on every pull request and on pushes to the deploy branches,
+  against in-memory SQLite (`.env.pipeline` carries the config — commit it; the
+  generated `APP_KEY` is only ever used in CI).
+- **Deploys** are webhook-based: after a green push, the pipeline curls the hook
+  named in `bootstrap.pipeline.branches` (defaults: `develop` → `DEV_DEPLOY`,
+  `staging` → `STAGING_DEPLOY`, `master` → `PROD_DEPLOY`). Point each secret at
+  your host's deploy trigger URL (e.g. Forge's "Deployment trigger URL"). An
+  unset hook skips that deploy with a notice instead of failing the run. On a
+  `main` repo, remap `bootstrap.pipeline.branches` and regenerate.
+- **PHP version** comes from your `composer.json` `require.php` (setup-php on
+  GitHub, the `laravelsail/php{XY}-composer` image on Bitbucket).
+- After generating, the command prints exactly which secrets/variables to create
+  and where (GitHub → Actions secrets; Bitbucket → secured repository
+  variables + enabling Pipelines once). Nothing else needs to change in the git
+  provider.
+
 ## Extending the package
 
 Four extension points, none of which require touching package code:
@@ -168,6 +206,10 @@ Four extension points, none of which require touching package code:
    and register it under `deploy.script_generators` (e.g.
    `'envoyer' => EnvoyerScriptGenerator::class`); it becomes selectable in
    `app:deploy-script` alongside Forge and Fortrabbit.
+1. **Custom git providers** — implement `Pipelines\PipelineGenerator` and
+   register it under `pipeline.generators` (e.g.
+   `'gitlab' => GitlabPipelineGenerator::class`); it becomes selectable in
+   `app:pipeline` alongside GitHub and Bitbucket.
 
 ## Architecture
 
@@ -176,7 +218,7 @@ Domain-first: everything about X lives in `src/X/`.
 ```text
 src/
 ├── BootstrapServiceProvider.php   # the single provider
-├── Console/       # app:serve, app:deploy, app:deploy-script, app:down — thin commands
+├── Console/       # app:serve, app:deploy, app:deploy-script, app:pipeline, app:down — thin commands
 ├── Serve/         # pipeline context, Step contract, shutdown, browser
 ├── Servers/       # Herd / Sail / Artisan drivers, selection, rewriting, state
 ├── Tools/         # installers + semver-constraint version enforcement
@@ -184,6 +226,7 @@ src/
 ├── Frontend/      # package managers + assets
 ├── Queue/         # queue worker lifecycle
 ├── Deploy/        # composer, project commands, caching, finalize, script export
+├── Pipelines/     # app:pipeline — CI/CD generators for GitHub Actions & Bitbucket
 ├── Environment/   # .env file + shell profile editing
 ├── Process/       # THE one way commands run: run / silent / background / terminal
 └── Support/       # shared primitives

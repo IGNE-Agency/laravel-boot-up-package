@@ -46,7 +46,6 @@ arch('legacy namespaces are gone for good')
         'Igne\LaravelBootstrap\Managers',
         'Igne\LaravelBootstrap\Executors',
         'Igne\LaravelBootstrap\Resolvers',
-        'Igne\LaravelBootstrap\Pipelines',
         'Igne\LaravelBootstrap\Providers',
         'Igne\LaravelBootstrap\Repositories',
         'Igne\LaravelBootstrap\Verifiers',

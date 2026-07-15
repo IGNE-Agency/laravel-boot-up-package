@@ -7,6 +7,7 @@ namespace Igne\LaravelBootstrap;
 use Igne\LaravelBootstrap\Console\DeployCommand;
 use Igne\LaravelBootstrap\Console\DeployScriptCommand;
 use Igne\LaravelBootstrap\Console\DownCommand;
+use Igne\LaravelBootstrap\Console\PipelineCommand;
 use Igne\LaravelBootstrap\Console\ServeCommand;
 use Igne\LaravelBootstrap\Database\DatabaseConfig;
 use Igne\LaravelBootstrap\Environment\EnvFile;
@@ -14,6 +15,7 @@ use Igne\LaravelBootstrap\Environment\EnvironmentConfig;
 use Igne\LaravelBootstrap\Environment\ShellProfile;
 use Igne\LaravelBootstrap\Frontend\FrontendConfig;
 use Igne\LaravelBootstrap\Frontend\PackageJson;
+use Igne\LaravelBootstrap\Pipelines\ComposerJson;
 use Igne\LaravelBootstrap\Process\ProcessLedger;
 use Igne\LaravelBootstrap\Process\ProcessRunner;
 use Igne\LaravelBootstrap\Process\Terminal\LinuxTerminal;
@@ -42,6 +44,7 @@ final class BootstrapServiceProvider extends ServiceProvider
         QueueConfig::class,
         EnvironmentConfig::class,
         Deploy\DeployConfig::class,
+        Pipelines\PipelineConfig::class,
     ];
 
     public function register(): void
@@ -86,6 +89,10 @@ final class BootstrapServiceProvider extends ServiceProvider
             $app->basePath('package.json'),
         ));
 
+        $this->app->singleton(ComposerJson::class, fn (Application $app) => new ComposerJson(
+            $app->basePath('composer.json'),
+        ));
+
         $this->app->singleton(ShutdownRunner::class);
     }
 
@@ -103,6 +110,7 @@ final class BootstrapServiceProvider extends ServiceProvider
             ServeCommand::class,
             DeployCommand::class,
             DeployScriptCommand::class,
+            PipelineCommand::class,
             DownCommand::class,
         ]);
     }

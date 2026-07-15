@@ -110,6 +110,25 @@ return [
         'script_generators' => [],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | CI/CD pipelines
+    |--------------------------------------------------------------------------
+    | app:pipeline generates a provider pipeline plus .env.pipeline. 'branches'
+    | maps a git branch to the deploy-hook secret/variable the pipeline curls
+    | after a green push (an unset secret skips that deploy gracefully).
+    | Extension point: 'generators' maps a provider key to a class implementing
+    | Igne\LaravelBootstrap\Pipelines\PipelineGenerator (wins over built-ins).
+    */
+    'pipeline' => [
+        'branches' => [
+            'develop' => 'DEV_DEPLOY',
+            'staging' => 'STAGING_DEPLOY',
+            'master' => 'PROD_DEPLOY',
+        ],
+        'generators' => [],
+    ],
+
     'browser' => [
         'open' => env('BOOTSTRAP_OPEN_BROWSER', true),
     ],
