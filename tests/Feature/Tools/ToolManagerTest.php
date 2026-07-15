@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Tools\InstallsTool;
-use Igne\LaravelBootstrap\Tools\ToolException;
-use Igne\LaravelBootstrap\Tools\ToolManager;
-use Igne\LaravelBootstrap\Tools\ToolsConfig;
-use Igne\LaravelBootstrap\Tools\VersionConstraint;
+use Igne\LaravelBootUp\Tools\InstallsTool;
+use Igne\LaravelBootUp\Tools\ToolException;
+use Igne\LaravelBootUp\Tools\ToolManager;
+use Igne\LaravelBootUp\Tools\ToolsConfig;
+use Igne\LaravelBootUp\Tools\VersionConstraint;
 use Laravel\Prompts\Key;
 use Laravel\Prompts\Prompt;
 
@@ -166,5 +166,5 @@ test('warns without updating when auto-update is disabled', function (): void {
     toolManagerWith(autoUpdate: false)->ensure($tool, VersionConstraint::of('^8.3'));
 
     expect($tool->updates)->toBe(0);
-    Prompt::assertStrippedOutputContains('bootstrap.tools.auto_update');
+    Prompt::assertStrippedOutputContains('boot-up.tools.auto_update');
 });

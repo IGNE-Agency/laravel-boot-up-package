@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Environment\EnvironmentConfig;
+use Igne\LaravelBootUp\Environment\EnvironmentConfig;
 use Illuminate\Config\Repository;
 
 test('defaults allow local and development and manage the sail alias', function (): void {
@@ -12,9 +12,9 @@ test('defaults allow local and development and manage the sail alias', function 
         ->and($config->manageSailAlias)->toBeTrue();
 });
 
-test('fromRepository reads the bootstrap environment keys', function (): void {
+test('fromRepository reads the boot-up environment keys', function (): void {
     $config = EnvironmentConfig::fromRepository(new Repository([
-        'bootstrap' => [
+        'boot-up' => [
             'environments' => ['local', 'staging'],
             'environment' => ['manage_sail_alias' => false],
         ],

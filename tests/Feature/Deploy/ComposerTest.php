@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Deploy\Composer;
-use Igne\LaravelBootstrap\Deploy\DeployException;
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\Terminal\NullTerminal;
-use Igne\LaravelBootstrap\Support\LockfileConflictDetector;
-use Igne\LaravelBootstrap\Support\Poller;
+use Igne\LaravelBootUp\Deploy\Composer;
+use Igne\LaravelBootUp\Deploy\DeployException;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Support\LockfileConflictDetector;
+use Igne\LaravelBootUp\Support\Poller;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
 
 beforeEach(function (): void {
-    $this->dir = sys_get_temp_dir().'/bootstrap-composer-'.bin2hex(random_bytes(4));
+    $this->dir = sys_get_temp_dir().'/boot-up-composer-'.bin2hex(random_bytes(4));
     mkdir($this->dir, 0755, true);
     Prompt::fake();
 });

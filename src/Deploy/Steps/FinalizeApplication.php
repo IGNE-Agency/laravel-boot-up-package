@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Deploy\Steps;
+namespace Igne\LaravelBootUp\Deploy\Steps;
 
 use Closure;
-use Igne\LaravelBootstrap\Deploy\DeployConfig;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\ShellCommand;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\Step;
+use Igne\LaravelBootUp\Deploy\DeployConfig;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\ShellCommand;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\Step;
 
 use function Laravel\Prompts\info;
 
 /**
- * Runs the configured bootstrap.deploy.finalize artisan commands host-side
+ * Runs the configured boot-up.deploy.finalize artisan commands host-side
  * (default: storage:link).
  */
 final class FinalizeApplication implements Step

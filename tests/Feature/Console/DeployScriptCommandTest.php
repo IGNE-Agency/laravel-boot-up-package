@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Deploy\ProjectCommand;
-use Igne\LaravelBootstrap\Deploy\ProvidesProjectCommands;
-use Igne\LaravelBootstrap\Tests\Feature\Console\Fixtures\StaticScriptGenerator;
+use Igne\LaravelBootUp\Deploy\ProjectCommand;
+use Igne\LaravelBootUp\Deploy\ProvidesProjectCommands;
+use Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\StaticScriptGenerator;
 
 test('exports a forge production script from the package config', function (): void {
-    config()->set('bootstrap.frontend.package_manager', 'pnpm');
+    config()->set('boot-up.frontend.package_manager', 'pnpm');
 
     $this->artisan('app:deploy-script', ['platform' => 'forge', 'environment' => 'production'])
         ->expectsOutputToContain('$CREATE_RELEASE()')
@@ -53,7 +53,7 @@ test('the classic flag renders the non-zero-downtime forge variant', function ()
 });
 
 test('writes the script to a file with --output', function (): void {
-    $file = sys_get_temp_dir().'/bootstrap-deploy-script-'.bin2hex(random_bytes(4)).'.sh';
+    $file = sys_get_temp_dir().'/boot-up-deploy-script-'.bin2hex(random_bytes(4)).'.sh';
 
     $this->artisan('app:deploy-script', [
         'platform' => 'forge',
@@ -82,7 +82,7 @@ test('rejects an unknown platform', function (): void {
 });
 
 test('a custom generator registered in config is selectable', function (): void {
-    config()->set('bootstrap.deploy.script_generators', ['static' => StaticScriptGenerator::class]);
+    config()->set('boot-up.deploy.script_generators', ['static' => StaticScriptGenerator::class]);
 
     $this->artisan('app:deploy-script', ['platform' => 'static', 'environment' => 'production'])
         ->expectsOutputToContain('static-script for production')

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Tests\Feature\Servers\Fixtures;
+namespace Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures;
 
 use Closure;
 use Illuminate\Process\PendingProcess;

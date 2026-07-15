@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessRecord;
-use Igne\LaravelBootstrap\Serve\ShutdownRunner;
-use Igne\LaravelBootstrap\Servers\ActiveServer;
-use Igne\LaravelBootstrap\Servers\ActiveServerStore;
-use Igne\LaravelBootstrap\Tests\Feature\Serve\Fixtures\RecordingServer;
-use Igne\LaravelBootstrap\Tests\Feature\Servers\Fixtures\ProcessFaker;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessRecord;
+use Igne\LaravelBootUp\Serve\ShutdownRunner;
+use Igne\LaravelBootUp\Servers\ActiveServer;
+use Igne\LaravelBootUp\Servers\ActiveServerStore;
+use Igne\LaravelBootUp\Tests\Feature\Serve\Fixtures\RecordingServer;
+use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Support\Facades\Process;
 
 beforeEach(function (): void {
-    $this->workDir = sys_get_temp_dir().'/bootstrap-down-cmd-'.bin2hex(random_bytes(4));
+    $this->workDir = sys_get_temp_dir().'/boot-up-down-cmd-'.bin2hex(random_bytes(4));
     mkdir($this->workDir, 0755, true);
 
     $this->ledger = new ProcessLedger($this->workDir.'/processes.json');
@@ -23,9 +23,9 @@ beforeEach(function (): void {
     app()->instance(ActiveServerStore::class, $this->store);
     app()->instance(RecordingServer::class, $this->server);
 
-    config()->set('bootstrap.server.drivers', ['double' => RecordingServer::class]);
-    config()->set('bootstrap.shutdown.prompt_stop_server', false);
-    config()->set('bootstrap.shutdown.stop_server_by_default', true);
+    config()->set('boot-up.server.drivers', ['double' => RecordingServer::class]);
+    config()->set('boot-up.shutdown.prompt_stop_server', false);
+    config()->set('boot-up.shutdown.stop_server_by_default', true);
 });
 
 afterEach(function (): void {

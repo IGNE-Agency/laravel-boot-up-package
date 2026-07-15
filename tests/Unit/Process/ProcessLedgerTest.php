@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessRecord;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessRecord;
 
 beforeEach(function (): void {
-    $this->path = sys_get_temp_dir().'/bootstrap-ledger-test-'.bin2hex(random_bytes(4)).'/processes.json';
+    $this->path = sys_get_temp_dir().'/boot-up-ledger-test-'.bin2hex(random_bytes(4)).'/processes.json';
     $this->ledger = new ProcessLedger($this->path);
 });
 

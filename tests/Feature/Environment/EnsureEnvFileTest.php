@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Environment\EnvFile;
-use Igne\LaravelBootstrap\Environment\EnvironmentException;
-use Igne\LaravelBootstrap\Environment\Steps\EnsureEnvFile;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\ServeOptions;
+use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Environment\EnvironmentException;
+use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\ServeOptions;
 use Laravel\Prompts\Prompt;
 
 beforeEach(function (): void {
-    $this->dir = sys_get_temp_dir().'/bootstrap-env-step-'.bin2hex(random_bytes(4));
+    $this->dir = sys_get_temp_dir().'/boot-up-env-step-'.bin2hex(random_bytes(4));
     mkdir($this->dir, 0755, true);
 
     $this->envPath = $this->dir.'/.env';

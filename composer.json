@@ -1,16 +1,23 @@
 {
-  "name": "igne-agency/laravel-bootstrap",
-  "description": "A comprehensive Laravel application bootstrap package for local development with automatic dependency management, database setup, and multi-server support (Herd, Sail, Laravel). Development only - not for production use.",
+  "name": "igne-agency/laravel-boot-up",
+  "description": "Boot a Laravel project on any machine with one command: app:serve installs missing tools (PHP, Node, Composer, Herd, Docker), creates .env, sets up the database, runs migrations, builds assets, starts a queue worker and serves via Herd, Sail or artisan serve; app:down cleanly stops everything it started. Also exports deployment scripts for Laravel Forge and fortrabbit (app:deploy-script) and generates CI/CD pipelines with linting, tests and webhook deploys for GitHub Actions and Bitbucket Pipelines (app:pipeline). Development only - not for production use.",
   "type": "library",
   "license": "MIT",
   "keywords": [
     "laravel",
-    "bootstrap",
+    "boot-up",
     "development",
     "local-development",
+    "onboarding",
     "herd",
     "sail",
-    "dev-tools"
+    "dev-tools",
+    "deployment",
+    "forge",
+    "fortrabbit",
+    "ci-cd",
+    "github-actions",
+    "bitbucket-pipelines"
   ],
   "authors": [
     {
@@ -37,18 +44,18 @@
   },
   "autoload": {
     "psr-4": {
-      "Igne\\LaravelBootstrap\\": "src/"
+      "Igne\\LaravelBootUp\\": "src/"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "Igne\\LaravelBootstrap\\Tests\\": "tests/"
+      "Igne\\LaravelBootUp\\Tests\\": "tests/"
     }
   },
   "extra": {
     "laravel": {
       "providers": [
-        "Igne\\LaravelBootstrap\\BootstrapServiceProvider"
+        "Igne\\LaravelBootUp\\BootUpServiceProvider"
       ]
     }
   },

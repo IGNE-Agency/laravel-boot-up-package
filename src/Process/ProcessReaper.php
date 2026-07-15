@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Process;
+namespace Igne\LaravelBootUp\Process;
 
-use Igne\LaravelBootstrap\Support\Poller;
+use Igne\LaravelBootUp\Support\Poller;
 use Illuminate\Process\Factory;
 
 /**

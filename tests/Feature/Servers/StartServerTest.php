@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\ServeOptions;
-use Igne\LaravelBootstrap\Servers\ActiveServer;
-use Igne\LaravelBootstrap\Servers\ActiveServerStore;
-use Igne\LaravelBootstrap\Servers\CommandRewrites;
-use Igne\LaravelBootstrap\Servers\Server;
-use Igne\LaravelBootstrap\Servers\Steps\StartServer;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Servers\ActiveServer;
+use Igne\LaravelBootUp\Servers\ActiveServerStore;
+use Igne\LaravelBootUp\Servers\CommandRewrites;
+use Igne\LaravelBootUp\Servers\Server;
+use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Laravel\Prompts\Prompt;
 
 beforeEach(function (): void {
     Prompt::fake();
-    $this->workDir = sys_get_temp_dir().'/bootstrap-start-server-'.bin2hex(random_bytes(4));
+    $this->workDir = sys_get_temp_dir().'/boot-up-start-server-'.bin2hex(random_bytes(4));
     mkdir($this->workDir, 0755, true);
     $this->store = new ActiveServerStore($this->workDir.'/active-server.json');
 });

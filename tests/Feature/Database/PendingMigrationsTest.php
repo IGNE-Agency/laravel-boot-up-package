@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Database\PendingMigrations;
+use Igne\LaravelBootUp\Database\PendingMigrations;
 
 beforeEach(function (): void {
-    $this->dir = sys_get_temp_dir().'/bootstrap-pending-migrations-'.bin2hex(random_bytes(4));
+    $this->dir = sys_get_temp_dir().'/boot-up-pending-migrations-'.bin2hex(random_bytes(4));
     mkdir($this->dir, 0755, true);
 
     $stub = <<<'PHP'

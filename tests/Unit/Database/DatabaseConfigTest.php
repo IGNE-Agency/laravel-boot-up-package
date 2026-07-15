@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Database\DatabaseConfig;
+use Igne\LaravelBootUp\Database\DatabaseConfig;
 use Illuminate\Config\Repository;
 
-test('fromRepository reads the bootstrap.database and bootstrap.migrations schema', function (): void {
+test('fromRepository reads the boot-up.database and boot-up.migrations schema', function (): void {
     $config = new Repository([
-        'bootstrap' => [
+        'boot-up' => [
             'database' => [
                 'create' => false,
                 'prompt_missing_credentials' => false,

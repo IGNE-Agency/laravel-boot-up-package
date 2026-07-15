@@ -2,38 +2,38 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap;
+namespace Igne\LaravelBootUp;
 
-use Igne\LaravelBootstrap\Console\DeployCommand;
-use Igne\LaravelBootstrap\Console\DeployScriptCommand;
-use Igne\LaravelBootstrap\Console\DownCommand;
-use Igne\LaravelBootstrap\Console\PipelineCommand;
-use Igne\LaravelBootstrap\Console\ServeCommand;
-use Igne\LaravelBootstrap\Database\DatabaseConfig;
-use Igne\LaravelBootstrap\Environment\EnvFile;
-use Igne\LaravelBootstrap\Environment\EnvironmentConfig;
-use Igne\LaravelBootstrap\Environment\ShellProfile;
-use Igne\LaravelBootstrap\Frontend\FrontendConfig;
-use Igne\LaravelBootstrap\Frontend\PackageJson;
-use Igne\LaravelBootstrap\Pipelines\ComposerJson;
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\Terminal\LinuxTerminal;
-use Igne\LaravelBootstrap\Process\Terminal\MacTerminal;
-use Igne\LaravelBootstrap\Process\Terminal\NullTerminal;
-use Igne\LaravelBootstrap\Process\Terminal\TerminalLauncher;
-use Igne\LaravelBootstrap\Queue\QueueConfig;
-use Igne\LaravelBootstrap\Serve\ServeConfig;
-use Igne\LaravelBootstrap\Serve\ShutdownRunner;
-use Igne\LaravelBootstrap\Servers\ActiveServerStore;
-use Igne\LaravelBootstrap\Servers\ServersConfig;
-use Igne\LaravelBootstrap\Support\Poller;
-use Igne\LaravelBootstrap\Tools\ToolsConfig;
+use Igne\LaravelBootUp\Console\DeployCommand;
+use Igne\LaravelBootUp\Console\DeployScriptCommand;
+use Igne\LaravelBootUp\Console\DownCommand;
+use Igne\LaravelBootUp\Console\PipelineCommand;
+use Igne\LaravelBootUp\Console\ServeCommand;
+use Igne\LaravelBootUp\Database\DatabaseConfig;
+use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Environment\EnvironmentConfig;
+use Igne\LaravelBootUp\Environment\ShellProfile;
+use Igne\LaravelBootUp\Frontend\FrontendConfig;
+use Igne\LaravelBootUp\Frontend\PackageJson;
+use Igne\LaravelBootUp\Pipelines\ComposerJson;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\Terminal\LinuxTerminal;
+use Igne\LaravelBootUp\Process\Terminal\MacTerminal;
+use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Process\Terminal\TerminalLauncher;
+use Igne\LaravelBootUp\Queue\QueueConfig;
+use Igne\LaravelBootUp\Serve\ServeConfig;
+use Igne\LaravelBootUp\Serve\ShutdownRunner;
+use Igne\LaravelBootUp\Servers\ActiveServerStore;
+use Igne\LaravelBootUp\Servers\ServersConfig;
+use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Tools\ToolsConfig;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Process\Factory;
 use Illuminate\Support\ServiceProvider;
 
-final class BootstrapServiceProvider extends ServiceProvider
+final class BootUpServiceProvider extends ServiceProvider
 {
     private const CONFIG_CLASSES = [
         ServeConfig::class,
@@ -49,18 +49,18 @@ final class BootstrapServiceProvider extends ServiceProvider
 
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/bootstrap.php', 'bootstrap');
+        $this->mergeConfigFrom(__DIR__.'/../config/boot-up.php', 'boot-up');
 
         foreach (self::CONFIG_CLASSES as $configClass) {
             $this->app->singleton($configClass, fn (Application $app) => $configClass::fromRepository($app['config']));
         }
 
         $this->app->singleton(ProcessLedger::class, fn (Application $app) => new ProcessLedger(
-            $app->storagePath('framework/bootstrap/processes.json'),
+            $app->storagePath('framework/boot-up/processes.json'),
         ));
 
         $this->app->singleton(ActiveServerStore::class, fn (Application $app) => new ActiveServerStore(
-            $app->storagePath('framework/bootstrap/active-server.json'),
+            $app->storagePath('framework/boot-up/active-server.json'),
         ));
 
         $this->app->singleton(TerminalLauncher::class, fn (Application $app) => match (PHP_OS_FAMILY) {
@@ -74,8 +74,8 @@ final class BootstrapServiceProvider extends ServiceProvider
             ledger: $app->make(ProcessLedger::class),
             terminal: $app->make(TerminalLauncher::class),
             poller: $app->make(Poller::class),
-            logDirectory: $app->storagePath('logs/bootstrap'),
-            runtimeDirectory: $app->storagePath('framework/bootstrap'),
+            logDirectory: $app->storagePath('logs/boot-up'),
+            runtimeDirectory: $app->storagePath('framework/boot-up'),
         ));
 
         $this->app->singleton(EnvFile::class, fn (Application $app) => new EnvFile(
@@ -103,8 +103,8 @@ final class BootstrapServiceProvider extends ServiceProvider
         }
 
         $this->publishes([
-            __DIR__.'/../config/bootstrap.php' => config_path('bootstrap.php'),
-        ], 'bootstrap-config');
+            __DIR__.'/../config/boot-up.php' => config_path('boot-up.php'),
+        ], 'boot-up-config');
 
         $this->commands([
             ServeCommand::class,

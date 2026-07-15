@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Servers;
+namespace Igne\LaravelBootUp\Servers;
 
 /**
  * Persists the active-server record across the app:serve / app:down
- * boundary as atomic JSON in storage/framework/bootstrap.
+ * boundary as atomic JSON in storage/framework/boot-up.
  */
 final class ActiveServerStore
 {

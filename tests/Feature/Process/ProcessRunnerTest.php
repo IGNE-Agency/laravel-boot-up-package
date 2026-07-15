@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\ShellCommand;
-use Igne\LaravelBootstrap\Process\Terminal\NullTerminal;
-use Igne\LaravelBootstrap\Support\Poller;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\ShellCommand;
+use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Support\Poller;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 
 beforeEach(function (): void {
-    $this->workDir = sys_get_temp_dir().'/bootstrap-runner-test-'.bin2hex(random_bytes(4));
+    $this->workDir = sys_get_temp_dir().'/boot-up-runner-test-'.bin2hex(random_bytes(4));
     mkdir($this->workDir, 0755, true);
     $this->ledger = new ProcessLedger($this->workDir.'/processes.json');
 });
@@ -70,7 +70,7 @@ test('start throws when no pid is echoed back', function (): void {
     Process::fake(['*' => Process::result(output: '')]);
 
     makeRunner($this->ledger, $this->workDir)->start(ShellCommand::make('php artisan serve'), 'artisan-serve');
-})->throws(Igne\LaravelBootstrap\Process\ProcessException::class);
+})->throws(Igne\LaravelBootUp\Process\ProcessException::class);
 
 test('startInTerminal degrades to a tracked background start when no terminal exists', function (): void {
     Process::fake(['*' => Process::result(output: "77\n")]);

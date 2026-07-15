@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Environment;
+namespace Igne\LaravelBootUp\Environment;
 
 use Illuminate\Contracts\Config\Repository;
 
@@ -19,8 +19,8 @@ final readonly class EnvironmentConfig
     public static function fromRepository(Repository $config): self
     {
         return new self(
-            allowedEnvironments: (array) $config->get('bootstrap.environments', ['local', 'development']),
-            manageSailAlias: (bool) $config->get('bootstrap.environment.manage_sail_alias', true),
+            allowedEnvironments: (array) $config->get('boot-up.environments', ['local', 'development']),
+            manageSailAlias: (bool) $config->get('boot-up.environment.manage_sail_alias', true),
         );
     }
 }

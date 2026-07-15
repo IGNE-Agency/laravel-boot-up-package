@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Database\Steps\EnsureDatabaseCredentials;
-use Igne\LaravelBootstrap\Database\Steps\EnsureDatabaseExists;
-use Igne\LaravelBootstrap\Database\Steps\RunPendingMigrations;
-use Igne\LaravelBootstrap\Database\Steps\VerifyDatabaseConnection;
-use Igne\LaravelBootstrap\Deploy\Steps\CacheFrameworkFiles;
-use Igne\LaravelBootstrap\Deploy\Steps\FinalizeApplication;
-use Igne\LaravelBootstrap\Deploy\Steps\InstallComposerDependencies;
-use Igne\LaravelBootstrap\Deploy\Steps\RunProjectCommands;
-use Igne\LaravelBootstrap\Environment\Steps\EnsureEnvFile;
-use Igne\LaravelBootstrap\Environment\Steps\EnsureLocalEnvironment;
-use Igne\LaravelBootstrap\Environment\Steps\GenerateAppKey;
-use Igne\LaravelBootstrap\Frontend\Steps\BuildOrWatchAssets;
-use Igne\LaravelBootstrap\Frontend\Steps\InstallFrontendDependencies;
-use Igne\LaravelBootstrap\Queue\Steps\StartQueueWorker;
-use Igne\LaravelBootstrap\Serve\Steps\AnnounceApplication;
-use Igne\LaravelBootstrap\Servers\Artisan\ArtisanServer;
-use Igne\LaravelBootstrap\Servers\Herd\HerdServer;
-use Igne\LaravelBootstrap\Servers\Sail\SailServer;
-use Igne\LaravelBootstrap\Servers\Steps\StartServer;
-use Igne\LaravelBootstrap\Tools\Steps\EnsureToolsReady;
+use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseCredentials;
+use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseExists;
+use Igne\LaravelBootUp\Database\Steps\RunPendingMigrations;
+use Igne\LaravelBootUp\Database\Steps\VerifyDatabaseConnection;
+use Igne\LaravelBootUp\Deploy\Steps\CacheFrameworkFiles;
+use Igne\LaravelBootUp\Deploy\Steps\FinalizeApplication;
+use Igne\LaravelBootUp\Deploy\Steps\InstallComposerDependencies;
+use Igne\LaravelBootUp\Deploy\Steps\RunProjectCommands;
+use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
+use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
+use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
+use Igne\LaravelBootUp\Frontend\Steps\BuildOrWatchAssets;
+use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
+use Igne\LaravelBootUp\Queue\Steps\StartQueueWorker;
+use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
+use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
+use Igne\LaravelBootUp\Servers\Herd\HerdServer;
+use Igne\LaravelBootUp\Servers\Sail\SailServer;
+use Igne\LaravelBootUp\Servers\Steps\StartServer;
+use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
 
 return [
 
@@ -39,11 +39,11 @@ return [
     | Development server
     |--------------------------------------------------------------------------
     | Extension point: add your own driver under 'drivers' with a string key
-    | and a class implementing Igne\LaravelBootstrap\Servers\Server.
+    | and a class implementing Igne\LaravelBootUp\Servers\Server.
     */
     'server' => [
-        'default' => env('BOOTSTRAP_SERVER'),
-        'prompt' => env('BOOTSTRAP_SERVER_PROMPT', true),
+        'default' => env('BOOT_UP_SERVER'),
+        'prompt' => env('BOOT_UP_SERVER_PROMPT', true),
         'drivers' => [
             'herd' => HerdServer::class,
             'sail' => SailServer::class,
@@ -62,29 +62,29 @@ return [
     | overrides built-ins on key collision.
     */
     'tools' => [
-        'auto_install' => env('BOOTSTRAP_TOOLS_AUTO_INSTALL', true),
-        'auto_update' => env('BOOTSTRAP_TOOLS_AUTO_UPDATE', true),
+        'auto_install' => env('BOOT_UP_TOOLS_AUTO_INSTALL', true),
+        'auto_update' => env('BOOT_UP_TOOLS_AUTO_UPDATE', true),
         'required' => [
-            'php' => env('BOOTSTRAP_PHP_VERSION', '*'),
-            'node' => env('BOOTSTRAP_NODE_VERSION', '*'),
-            'composer' => env('BOOTSTRAP_COMPOSER_VERSION', '*'),
+            'php' => env('BOOT_UP_PHP_VERSION', '*'),
+            'node' => env('BOOT_UP_NODE_VERSION', '*'),
+            'composer' => env('BOOT_UP_COMPOSER_VERSION', '*'),
         ],
         'installers' => [],
     ],
 
     'database' => [
-        'create' => env('BOOTSTRAP_DB_CREATE', true),
-        'prompt_missing_credentials' => env('BOOTSTRAP_DB_PROMPT', true),
+        'create' => env('BOOT_UP_DB_CREATE', true),
+        'prompt_missing_credentials' => env('BOOT_UP_DB_PROMPT', true),
     ],
 
     'migrations' => [
-        'auto' => env('BOOTSTRAP_MIGRATIONS_AUTO', true),
+        'auto' => env('BOOT_UP_MIGRATIONS_AUTO', true),
     ],
 
     'frontend' => [
-        'package_manager' => env('BOOTSTRAP_PACKAGE_MANAGER', 'bun'), // bun | yarn | npm | pnpm
-        'assets' => env('BOOTSTRAP_ASSETS', 'watch'), // watch | build | skip
-        'watch_in' => env('BOOTSTRAP_ASSETS_WATCH_IN', 'background'), // background | terminal
+        'package_manager' => env('BOOT_UP_PACKAGE_MANAGER', 'bun'), // bun | yarn | npm | pnpm
+        'assets' => env('BOOT_UP_ASSETS', 'watch'), // watch | build | skip
+        'watch_in' => env('BOOT_UP_ASSETS_WATCH_IN', 'background'), // background | terminal
     ],
 
     /*
@@ -95,18 +95,18 @@ return [
     | itself comes from the application's .env, not from this file.
     */
     'queue' => [
-        'enabled' => env('BOOTSTRAP_QUEUE', true),
-        'run_in' => env('BOOTSTRAP_QUEUE_RUN_IN', 'background'), // background | terminal
+        'enabled' => env('BOOT_UP_QUEUE', true),
+        'run_in' => env('BOOT_UP_QUEUE_RUN_IN', 'background'), // background | terminal
         'flags' => [],
     ],
 
     'deploy' => [
         // config:cache breaks env() lookups in local development — off by default.
-        'cache_framework_files' => env('BOOTSTRAP_CACHE', false),
+        'cache_framework_files' => env('BOOT_UP_CACHE', false),
         // Artisan commands run at the end of every boot/deploy.
         'finalize' => ['storage:link'],
         // Extension point for app:deploy-script: 'platform' => class implementing
-        // Igne\LaravelBootstrap\Deploy\Scripts\ScriptGenerator (wins over built-ins).
+        // Igne\LaravelBootUp\Deploy\Scripts\ScriptGenerator (wins over built-ins).
         'script_generators' => [],
     ],
 
@@ -118,7 +118,7 @@ return [
     | maps a git branch to the deploy-hook secret/variable the pipeline curls
     | after a green push (an unset secret skips that deploy gracefully).
     | Extension point: 'generators' maps a provider key to a class implementing
-    | Igne\LaravelBootstrap\Pipelines\PipelineGenerator (wins over built-ins).
+    | Igne\LaravelBootUp\Pipelines\PipelineGenerator (wins over built-ins).
     */
     'pipeline' => [
         'branches' => [
@@ -130,16 +130,16 @@ return [
     ],
 
     'browser' => [
-        'open' => env('BOOTSTRAP_OPEN_BROWSER', true),
+        'open' => env('BOOT_UP_OPEN_BROWSER', true),
     ],
 
     'shutdown' => [
-        'prompt_stop_server' => env('BOOTSTRAP_SHUTDOWN_PROMPT', true),
-        'stop_server_by_default' => env('BOOTSTRAP_SHUTDOWN_STOP_SERVER', false),
+        'prompt_stop_server' => env('BOOT_UP_SHUTDOWN_PROMPT', true),
+        'stop_server_by_default' => env('BOOT_UP_SHUTDOWN_STOP_SERVER', false),
     ],
 
     'environment' => [
-        'manage_sail_alias' => env('BOOTSTRAP_MANAGE_SAIL_ALIAS', true),
+        'manage_sail_alias' => env('BOOT_UP_MANAGE_SAIL_ALIAS', true),
     ],
 
     /*

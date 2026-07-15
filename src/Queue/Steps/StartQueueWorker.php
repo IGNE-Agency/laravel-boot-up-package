@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Queue\Steps;
+namespace Igne\LaravelBootUp\Queue\Steps;
 
 use Closure;
-use Igne\LaravelBootstrap\Environment\EnvFile;
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessReaper;
-use Igne\LaravelBootstrap\Process\ProcessRecord;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\ShellCommand;
-use Igne\LaravelBootstrap\Queue\QueueConfig;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\Step;
-use Igne\LaravelBootstrap\Servers\CommandRewriter;
+use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessReaper;
+use Igne\LaravelBootUp\Process\ProcessRecord;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\ShellCommand;
+use Igne\LaravelBootUp\Queue\QueueConfig;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\Step;
+use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Illuminate\Contracts\Config\Repository;
 
 use function Laravel\Prompts\info;
@@ -73,7 +73,7 @@ final class StartQueueWorker implements Step
             ? $this->runner->startInTerminal($command, self::LABEL)
             : $this->runner->start($command, self::LABEL);
 
-        info("Queue worker started on [{$connection}] (PID {$record->pid}) — logs: storage/logs/bootstrap/".self::LABEL.'.log');
+        info("Queue worker started on [{$connection}] (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
 
         return $next($context);
     }

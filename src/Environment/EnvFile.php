@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Environment;
+namespace Igne\LaravelBootUp\Environment;
 
 /**
  * Line-preserving reader/writer for the application's .env file.

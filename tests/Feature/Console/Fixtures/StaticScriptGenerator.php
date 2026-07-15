@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Tests\Feature\Console\Fixtures;
+namespace Igne\LaravelBootUp\Tests\Feature\Console\Fixtures;
 
-use Igne\LaravelBootstrap\Deploy\Scripts\DeploymentPlan;
-use Igne\LaravelBootstrap\Deploy\Scripts\ScriptGenerator;
+use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlan;
+use Igne\LaravelBootUp\Deploy\Scripts\ScriptGenerator;
 
 /**
  * A project-registered custom platform, as the extension API allows.

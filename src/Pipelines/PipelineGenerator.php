@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Pipelines;
+namespace Igne\LaravelBootUp\Pipelines;
 
 interface PipelineGenerator
 {

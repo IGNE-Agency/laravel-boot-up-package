@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Tests\Feature\Servers\Fixtures;
+namespace Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures;
 
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Servers\CommandRewrites;
-use Igne\LaravelBootstrap\Servers\Server;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Servers\CommandRewrites;
+use Igne\LaravelBootUp\Servers\Server;
 
 /**
  * A project-registered custom driver, as the extension API allows.

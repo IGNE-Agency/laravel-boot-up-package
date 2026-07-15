@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Pipelines;
+namespace Igne\LaravelBootUp\Pipelines;
 
-use Igne\LaravelBootstrap\Deploy\Scripts\DeploymentPlan;
+use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlan;
 
 /**
  * Everything a pipeline generator needs to render a CI/CD pipeline,
@@ -18,6 +18,7 @@ final readonly class PipelinePlan
     public function __construct(
         public DeploymentPlan $deployment,
         public bool $nova,
+        public bool $pint,
         public string $phpVersion,
         public array $branchHooks,
         public string $envFile = '.env.pipeline',

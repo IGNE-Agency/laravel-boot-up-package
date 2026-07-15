@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Environment\EnvironmentConfig;
-use Igne\LaravelBootstrap\Environment\ShellProfile;
-use Igne\LaravelBootstrap\Servers\Sail\SailAliasInstaller;
+use Igne\LaravelBootUp\Environment\EnvironmentConfig;
+use Igne\LaravelBootUp\Environment\ShellProfile;
+use Igne\LaravelBootUp\Servers\Sail\SailAliasInstaller;
 use Laravel\Prompts\Key;
 use Laravel\Prompts\Prompt;
 
 beforeEach(function (): void {
     Prompt::fake();
-    $this->home = sys_get_temp_dir().'/bootstrap-sail-alias-'.bin2hex(random_bytes(4));
+    $this->home = sys_get_temp_dir().'/boot-up-sail-alias-'.bin2hex(random_bytes(4));
     mkdir($this->home, 0755, true);
     $this->profilePath = $this->home.'/.zshrc';
 });
@@ -58,7 +58,7 @@ test('appends the alias block when the user confirms', function (): void {
     $profile = (string) file_get_contents($this->profilePath);
 
     expect($profile)->toContain("alias sail='[ -f sail ] && bash sail || bash vendor/bin/sail'")
-        ->and($profile)->toContain('# >>> laravel-bootstrap >>>')
+        ->and($profile)->toContain('# >>> laravel-boot-up >>>')
         ->and($profile)->toContain('# mine');
     Prompt::assertStrippedOutputContains('source '.$this->profilePath);
 });

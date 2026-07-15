@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Environment\EnvironmentConfig;
-use Igne\LaravelBootstrap\Environment\ShellProfile;
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\Terminal\NullTerminal;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\ServeOptions;
-use Igne\LaravelBootstrap\Servers\Sail\Docker;
-use Igne\LaravelBootstrap\Servers\Sail\Sail;
-use Igne\LaravelBootstrap\Servers\Sail\SailAliasInstaller;
-use Igne\LaravelBootstrap\Servers\Sail\SailServer;
-use Igne\LaravelBootstrap\Servers\ServerException;
-use Igne\LaravelBootstrap\Support\Poller;
-use Igne\LaravelBootstrap\Tests\Feature\Servers\Fixtures\ProcessFaker;
-use Igne\LaravelBootstrap\Tools\Tool;
+use Igne\LaravelBootUp\Environment\EnvironmentConfig;
+use Igne\LaravelBootUp\Environment\ShellProfile;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Servers\Sail\Docker;
+use Igne\LaravelBootUp\Servers\Sail\Sail;
+use Igne\LaravelBootUp\Servers\Sail\SailAliasInstaller;
+use Igne\LaravelBootUp\Servers\Sail\SailServer;
+use Igne\LaravelBootUp\Servers\ServerException;
+use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
+use Igne\LaravelBootUp\Tools\Tool;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Key;
@@ -24,7 +24,7 @@ use Laravel\Prompts\Prompt;
 
 beforeEach(function (): void {
     Prompt::fake();
-    $this->workDir = sys_get_temp_dir().'/bootstrap-sail-'.bin2hex(random_bytes(4));
+    $this->workDir = sys_get_temp_dir().'/boot-up-sail-'.bin2hex(random_bytes(4));
     $this->basePath = $this->workDir.'/app';
     mkdir($this->basePath, 0755, true);
     $this->app->setBasePath($this->basePath);

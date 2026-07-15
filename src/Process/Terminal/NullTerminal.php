@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Process\Terminal;
+namespace Igne\LaravelBootUp\Process\Terminal;
 
 use LogicException;
 

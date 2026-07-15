@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Frontend;
+namespace Igne\LaravelBootUp\Frontend;
 
 final class PackageJson
 {

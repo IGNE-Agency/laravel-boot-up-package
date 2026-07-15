@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Pipelines;
+namespace Igne\LaravelBootUp\Pipelines;
 
-use Igne\LaravelBootstrap\Deploy\ProjectCommand;
-use Igne\LaravelBootstrap\Deploy\ProjectCommandType;
-use Igne\LaravelBootstrap\Frontend\PackageManager;
+use Igne\LaravelBootUp\Deploy\ProjectCommand;
+use Igne\LaravelBootUp\Deploy\ProjectCommandType;
+use Igne\LaravelBootUp\Frontend\PackageManager;
 
 /**
  * The shell commands every pipeline runs, shared by all generators so the
@@ -105,6 +105,24 @@ final class PipelineSteps
             ...$this->novaPublish($plan),
             ...$this->frontend($plan),
             ...$this->testSuite($plan),
+        ];
+    }
+
+    /**
+     * The lint body, run as its own job in parallel with install-test.
+     * A --no-scripts install is enough for Pint — no app boot required.
+     *
+     * @return list<string>
+     */
+    public function lint(PipelinePlan $plan): array
+    {
+        if (! $plan->pint) {
+            return [];
+        }
+
+        return [
+            'composer install --no-interaction --prefer-dist --no-progress --no-scripts',
+            'vendor/bin/pint --test',
         ];
     }
 

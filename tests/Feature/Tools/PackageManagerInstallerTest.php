@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Tests\Feature\Servers\Fixtures\ProcessFaker;
-use Igne\LaravelBootstrap\Tools\Installers\PackageManagerInstaller;
-use Igne\LaravelBootstrap\Tools\Tool;
-use Igne\LaravelBootstrap\Tools\VersionConstraint;
+use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
+use Igne\LaravelBootUp\Tools\Installers\PackageManagerInstaller;
+use Igne\LaravelBootUp\Tools\Tool;
+use Igne\LaravelBootUp\Tools\VersionConstraint;
 
 function packageManagerInstaller(Tool $tool): PackageManagerInstaller
 {

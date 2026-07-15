@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Deploy\Steps;
+namespace Igne\LaravelBootUp\Deploy\Steps;
 
 use Closure;
-use Igne\LaravelBootstrap\Deploy\Composer;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\Step;
+use Igne\LaravelBootUp\Deploy\Composer;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\Step;
 
 final class InstallComposerDependencies implements Step
 {

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Tests\Feature\Serve\Fixtures;
+namespace Igne\LaravelBootUp\Tests\Feature\Serve\Fixtures;
 
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Servers\CommandRewrites;
-use Igne\LaravelBootstrap\Servers\Server;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Servers\CommandRewrites;
+use Igne\LaravelBootUp\Servers\Server;
 
 /**
  * A controllable driver double for shutdown/console tests. Register the

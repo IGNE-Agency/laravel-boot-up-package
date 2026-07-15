@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Pipelines\ComposerJson;
+use Igne\LaravelBootUp\Pipelines\ComposerJson;
 
 function composerJsonFixture(array $data): string
 {
-    $path = sys_get_temp_dir().'/bootstrap-composer-'.bin2hex(random_bytes(4)).'.json';
+    $path = sys_get_temp_dir().'/boot-up-composer-'.bin2hex(random_bytes(4)).'.json';
 
     file_put_contents($path, json_encode($data));
 
@@ -14,7 +14,7 @@ function composerJsonFixture(array $data): string
 }
 
 test('a missing composer.json yields the documented defaults', function (): void {
-    $composer = new ComposerJson(sys_get_temp_dir().'/bootstrap-missing-'.bin2hex(random_bytes(4)).'.json');
+    $composer = new ComposerJson(sys_get_temp_dir().'/boot-up-missing-'.bin2hex(random_bytes(4)).'.json');
 
     expect($composer->exists())->toBeFalse()
         ->and($composer->read())->toBe([])
@@ -61,6 +61,20 @@ test('requires sees production dependencies but not dev dependencies', function 
 
     expect($composer->requires('laravel/nova'))->toBeTrue()
         ->and($composer->requires('pestphp/pest'))->toBeFalse();
+
+    @unlink($path);
+});
+
+test('requiresDev sees dev dependencies but not production dependencies', function (): void {
+    $path = composerJsonFixture([
+        'require' => ['laravel/nova' => '^5.0'],
+        'require-dev' => ['laravel/pint' => '^1.27'],
+    ]);
+
+    $composer = new ComposerJson($path);
+
+    expect($composer->requiresDev('laravel/pint'))->toBeTrue()
+        ->and($composer->requiresDev('laravel/nova'))->toBeFalse();
 
     @unlink($path);
 });

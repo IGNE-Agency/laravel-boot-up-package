@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Database\DatabaseConfig;
-use Igne\LaravelBootstrap\Database\Steps\EnsureDatabaseCredentials;
-use Igne\LaravelBootstrap\Environment\EnvFile;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\ServeOptions;
-use Igne\LaravelBootstrap\Servers\CommandRewrites;
-use Igne\LaravelBootstrap\Servers\Server;
+use Igne\LaravelBootUp\Database\DatabaseConfig;
+use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseCredentials;
+use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Servers\CommandRewrites;
+use Igne\LaravelBootUp\Servers\Server;
 use Illuminate\Support\Str;
 use Laravel\Prompts\Key;
 use Laravel\Prompts\Prompt;
 
 beforeEach(function (): void {
-    $this->dir = sys_get_temp_dir().'/bootstrap-db-credentials-'.bin2hex(random_bytes(4));
+    $this->dir = sys_get_temp_dir().'/boot-up-db-credentials-'.bin2hex(random_bytes(4));
     mkdir($this->dir, 0755, true);
 
     $this->envFile = new EnvFile($this->dir.'/.env', $this->dir.'/.env.example');

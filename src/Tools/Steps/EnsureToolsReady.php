@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Tools\Steps;
+namespace Igne\LaravelBootUp\Tools\Steps;
 
 use Closure;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\Step;
-use Igne\LaravelBootstrap\Tools\Tool;
-use Igne\LaravelBootstrap\Tools\ToolManager;
-use Igne\LaravelBootstrap\Tools\ToolRegistry;
-use Igne\LaravelBootstrap\Tools\ToolsConfig;
-use Igne\LaravelBootstrap\Tools\VersionConstraint;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\Step;
+use Igne\LaravelBootUp\Tools\Tool;
+use Igne\LaravelBootUp\Tools\ToolManager;
+use Igne\LaravelBootUp\Tools\ToolRegistry;
+use Igne\LaravelBootUp\Tools\ToolsConfig;
+use Igne\LaravelBootUp\Tools\VersionConstraint;
 
 /**
  * Ensures every configured tool — plus whatever the selected server needs —

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Queue\QueueConfig;
+use Igne\LaravelBootUp\Queue\QueueConfig;
 use Illuminate\Config\Repository;
 
-test('fromRepository reads the bootstrap.queue schema', function (): void {
+test('fromRepository reads the boot-up.queue schema', function (): void {
     $config = new Repository([
-        'bootstrap' => [
+        'boot-up' => [
             'queue' => [
                 'enabled' => false,
                 'run_in' => 'terminal',

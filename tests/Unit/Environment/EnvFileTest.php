@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Environment\EnvFile;
-use Igne\LaravelBootstrap\Environment\EnvironmentException;
+use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Environment\EnvironmentException;
 
 beforeEach(function (): void {
-    $this->dir = sys_get_temp_dir().'/bootstrap-envfile-'.bin2hex(random_bytes(4));
+    $this->dir = sys_get_temp_dir().'/boot-up-envfile-'.bin2hex(random_bytes(4));
     mkdir($this->dir, 0755, true);
 
     $this->envPath = $this->dir.'/.env';

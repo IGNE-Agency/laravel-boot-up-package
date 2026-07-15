@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Database;
+namespace Igne\LaravelBootUp\Database;
 
 use Illuminate\Contracts\Config\Repository;
 
@@ -17,9 +17,9 @@ final readonly class DatabaseConfig
     public static function fromRepository(Repository $config): self
     {
         return new self(
-            create: (bool) $config->get('bootstrap.database.create', true),
-            promptMissingCredentials: (bool) $config->get('bootstrap.database.prompt_missing_credentials', true),
-            migrationsAuto: (bool) $config->get('bootstrap.migrations.auto', true),
+            create: (bool) $config->get('boot-up.database.create', true),
+            promptMissingCredentials: (bool) $config->get('boot-up.database.prompt_missing_credentials', true),
+            migrationsAuto: (bool) $config->get('boot-up.migrations.auto', true),
         );
     }
 }

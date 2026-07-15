@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Frontend\PackageManager;
-use Igne\LaravelBootstrap\Tools\Tool;
+use Igne\LaravelBootUp\Frontend\PackageManager;
+use Igne\LaravelBootUp\Tools\Tool;
 
 test('every package manager knows its binary, lockfile, commands and tool', function (
     PackageManager $manager,
@@ -23,10 +23,10 @@ test('every package manager knows its binary, lockfile, commands and tool', func
 ]);
 
 test('the please-use engines sentinel resolves pnpm', function (): void {
-    $file = sys_get_temp_dir().'/bootstrap-pkg-'.bin2hex(random_bytes(4)).'.json';
+    $file = sys_get_temp_dir().'/boot-up-pkg-'.bin2hex(random_bytes(4)).'.json';
     file_put_contents($file, json_encode(['engines' => ['node' => 'please-use-pnpm']]));
 
-    expect((new Igne\LaravelBootstrap\Frontend\PackageJson($file))->demandedPackageManager())
+    expect((new Igne\LaravelBootUp\Frontend\PackageJson($file))->demandedPackageManager())
         ->toBe(PackageManager::PNPM);
 
     @unlink($file);

@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Frontend\Steps;
+namespace Igne\LaravelBootUp\Frontend\Steps;
 
 use Closure;
-use Igne\LaravelBootstrap\Frontend\FrontendException;
-use Igne\LaravelBootstrap\Frontend\PackageJson;
-use Igne\LaravelBootstrap\Frontend\PackageManagerSelector;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\ShellCommand;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\Step;
-use Igne\LaravelBootstrap\Servers\CommandRewriter;
-use Igne\LaravelBootstrap\Support\LockfileConflictDetector;
+use Igne\LaravelBootUp\Frontend\FrontendException;
+use Igne\LaravelBootUp\Frontend\PackageJson;
+use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\ShellCommand;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\Step;
+use Igne\LaravelBootUp\Servers\CommandRewriter;
+use Igne\LaravelBootUp\Support\LockfileConflictDetector;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 
 use function Laravel\Prompts\info;

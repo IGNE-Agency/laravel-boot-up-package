@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Deploy;
+namespace Igne\LaravelBootUp\Deploy;
 
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\ShellCommand;
-use Igne\LaravelBootstrap\Support\LockfileConflictDetector;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\ShellCommand;
+use Igne\LaravelBootUp\Support\LockfileConflictDetector;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 
 use function Laravel\Prompts\info;

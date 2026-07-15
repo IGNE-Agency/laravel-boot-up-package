@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Frontend;
+namespace Igne\LaravelBootUp\Frontend;
 
-use Igne\LaravelBootstrap\Support\BootstrapException;
+use Igne\LaravelBootUp\Support\BootUpException;
 
-final class FrontendException extends BootstrapException
+final class FrontendException extends BootUpException
 {
     public static function installFailed(string $manager, string $reason): self
     {

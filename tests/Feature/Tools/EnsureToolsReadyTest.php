@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\ServeOptions;
-use Igne\LaravelBootstrap\Servers\CommandRewrites;
-use Igne\LaravelBootstrap\Servers\Server;
-use Igne\LaravelBootstrap\Tests\Feature\Tools\Fixtures\AlphaToolSpy;
-use Igne\LaravelBootstrap\Tests\Feature\Tools\Fixtures\DockerToolSpy;
-use Igne\LaravelBootstrap\Tests\Feature\Tools\Fixtures\EnsureToolsReadySpy;
-use Igne\LaravelBootstrap\Tools\Steps\EnsureToolsReady;
-use Igne\LaravelBootstrap\Tools\Tool;
-use Igne\LaravelBootstrap\Tools\ToolsConfig;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Servers\CommandRewrites;
+use Igne\LaravelBootUp\Servers\Server;
+use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\AlphaToolSpy;
+use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\DockerToolSpy;
+use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\EnsureToolsReadySpy;
+use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
+use Igne\LaravelBootUp\Tools\Tool;
+use Igne\LaravelBootUp\Tools\ToolsConfig;
 use Laravel\Prompts\Prompt;
 
 function ensureToolsServer(array $tools): Server
@@ -58,8 +58,8 @@ function ensureToolsServer(array $tools): Server
 
 function bindToolsConfig(array $required, array $installers): void
 {
-    config()->set('bootstrap.tools.required', $required);
-    config()->set('bootstrap.tools.installers', $installers);
+    config()->set('boot-up.tools.required', $required);
+    config()->set('boot-up.tools.installers', $installers);
 
     app()->instance(ToolsConfig::class, ToolsConfig::fromRepository(config()));
 }

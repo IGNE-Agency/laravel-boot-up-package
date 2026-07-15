@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Console;
+namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootstrap\Serve\ShutdownRunner;
+use Igne\LaravelBootUp\Serve\ShutdownRunner;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Isolatable;
 

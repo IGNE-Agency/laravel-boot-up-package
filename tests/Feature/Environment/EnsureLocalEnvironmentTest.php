@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Environment\EnvFile;
-use Igne\LaravelBootstrap\Environment\EnvironmentConfig;
-use Igne\LaravelBootstrap\Environment\EnvironmentException;
-use Igne\LaravelBootstrap\Environment\Steps\EnsureLocalEnvironment;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\ServeOptions;
+use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Environment\EnvironmentConfig;
+use Igne\LaravelBootUp\Environment\EnvironmentException;
+use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\ServeOptions;
 
 beforeEach(function (): void {
-    $this->dir = sys_get_temp_dir().'/bootstrap-local-env-'.bin2hex(random_bytes(4));
+    $this->dir = sys_get_temp_dir().'/boot-up-local-env-'.bin2hex(random_bytes(4));
     mkdir($this->dir, 0755, true);
 
     $this->envFile = new EnvFile($this->dir.'/.env', $this->dir.'/.env.example');

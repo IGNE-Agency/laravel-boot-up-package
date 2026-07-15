@@ -1,4 +1,4 @@
-# Laravel Bootstrap
+# Laravel Boot-Up
 
 Boot a Laravel project on any machine — even a blank one — with two commands:
 
@@ -20,7 +20,7 @@ nothing it didn't.
 ## Installation
 
 ```bash
-composer require igne-agency/laravel-bootstrap --dev
+composer require igne-agency/laravel-boot-up --dev
 ```
 
 The package auto-registers via Laravel's package discovery. Always use `--dev`;
@@ -48,7 +48,7 @@ php artisan app:pipeline bitbucket                    # (see "Generating a CI/CD
 ### What `app:serve` does, in order
 
 Every step is a small class; the full ordered list is published config you can
-reorder, trim, or extend (`bootstrap.serve_steps`):
+reorder, trim, or extend (`boot-up.serve_steps`):
 
 1. Create `.env` from `.env.example` when missing
 1. Guard against non-local environments (a fresh `.env` counts as local)
@@ -69,10 +69,10 @@ reorder, trim, or extend (`bootstrap.serve_steps`):
 1. Announce the URL and open your browser
 
 Long-running processes (queue worker, asset watcher, `php artisan serve`) run
-detached in the background with their output in `storage/logs/bootstrap/` and
-their PIDs tracked in `storage/framework/bootstrap/`, so `app:down` can reap
-exactly them. Set `BOOTSTRAP_QUEUE_RUN_IN=terminal` (or
-`BOOTSTRAP_ASSETS_WATCH_IN=terminal`) to open real terminal windows instead.
+detached in the background with their output in `storage/logs/boot-up/` and
+their PIDs tracked in `storage/framework/boot-up/`, so `app:down` can reap
+exactly them. Set `BOOT_UP_QUEUE_RUN_IN=terminal` (or
+`BOOT_UP_ASSETS_WATCH_IN=terminal`) to open real terminal windows instead.
 
 ### Shutdown behavior
 
@@ -86,14 +86,14 @@ exactly them. Set `BOOTSTRAP_QUEUE_RUN_IN=terminal` (or
 ## Configuration
 
 ```bash
-php artisan vendor:publish --tag=bootstrap-config
+php artisan vendor:publish --tag=boot-up-config
 ```
 
-Highlights of `config/bootstrap.php`:
+Highlights of `config/boot-up.php`:
 
 ```php
 'server' => [
-    'default' => env('BOOTSTRAP_SERVER'),           // 'herd' | 'sail' | 'laravel' | null = prompt
+    'default' => env('BOOT_UP_SERVER'),           // 'herd' | 'sail' | 'laravel' | null = prompt
     'drivers' => [ /* add your own Server implementations here */ ],
 ],
 
@@ -101,15 +101,15 @@ Highlights of `config/bootstrap.php`:
     'auto_install' => true,
     'auto_update' => true,                          // update when the constraint is violated
     'required' => [
-        'php' => env('BOOTSTRAP_PHP_VERSION', '*'), // composer-style constraints: '^8.3', '*'
-        'node' => env('BOOTSTRAP_NODE_VERSION', '*'),
-        'composer' => env('BOOTSTRAP_COMPOSER_VERSION', '*'),
+        'php' => env('BOOT_UP_PHP_VERSION', '*'), // composer-style constraints: '^8.3', '*'
+        'node' => env('BOOT_UP_NODE_VERSION', '*'),
+        'composer' => env('BOOT_UP_COMPOSER_VERSION', '*'),
     ],
 ],
 
 'frontend' => [
-    'package_manager' => env('BOOTSTRAP_PACKAGE_MANAGER', 'bun'), // bun | yarn | npm | pnpm
-    'assets' => env('BOOTSTRAP_ASSETS', 'watch'),                 // watch | build | skip
+    'package_manager' => env('BOOT_UP_PACKAGE_MANAGER', 'bun'), // bun | yarn | npm | pnpm
+    'assets' => env('BOOT_UP_ASSETS', 'watch'),                 // watch | build | skip
 ],
 
 'serve_steps' => [ /* the entire pipeline, reorderable */ ],
@@ -142,7 +142,7 @@ php artisan app:deploy-script forge production --output=deploy.sh
   two styles cannot be mixed.
 - **Fortrabbit** — outputs the two command lists the fortrabbit dashboard
   expects per environment: _Build commands_ (composer + frontend build; the
-  package manager is `npm i -g`-bootstrapped when it isn't npm) and _Post deploy
+  package manager is `npm i -g`-installed when it isn't npm) and _Post deploy
   commands_ (migrations, optimize, finalize, queue restart).
 - The **environment** argument tunes the script: `development` keeps dev
   dependencies and skips `artisan optimize`; `staging`/`production` add
@@ -167,17 +167,19 @@ source): composer install with caching, `cp .env.pipeline .env`, Nova publish
 (only when `laravel/nova` is in your `composer.json` — composer auth comes from
 a `COMPOSER_AUTH` secret), lockfile-strict frontend install + build (driven by
 your `frontend.package_manager` config), finalize commands, project commands,
-`migrate --force`, and `php artisan test`.
+`migrate --force`, and `php artisan test`. When `laravel/pint` is installed, a
+**lint job** (`pint --test`) runs in parallel with the tests on both providers,
+and deploys wait for both to pass.
 
 - **Tests** run on every pull request and on pushes to the deploy branches,
   against in-memory SQLite (`.env.pipeline` carries the config — commit it; the
   generated `APP_KEY` is only ever used in CI).
 - **Deploys** are webhook-based: after a green push, the pipeline curls the hook
-  named in `bootstrap.pipeline.branches` (defaults: `develop` → `DEV_DEPLOY`,
+  named in `boot-up.pipeline.branches` (defaults: `develop` → `DEV_DEPLOY`,
   `staging` → `STAGING_DEPLOY`, `master` → `PROD_DEPLOY`). Point each secret at
   your host's deploy trigger URL (e.g. Forge's "Deployment trigger URL"). An
   unset hook skips that deploy with a notice instead of failing the run. On a
-  `main` repo, remap `bootstrap.pipeline.branches` and regenerate.
+  `main` repo, remap `boot-up.pipeline.branches` and regenerate.
 - **PHP version** comes from your `composer.json` `require.php` (setup-php on
   GitHub, the `laravelsail/php{XY}-composer` image on Bitbucket).
 - After generating, the command prints exactly which secrets/variables to create
@@ -210,31 +212,6 @@ Four extension points, none of which require touching package code:
    register it under `pipeline.generators` (e.g.
    `'gitlab' => GitlabPipelineGenerator::class`); it becomes selectable in
    `app:pipeline` alongside GitHub and Bitbucket.
-
-## Architecture
-
-Domain-first: everything about X lives in `src/X/`.
-
-```text
-src/
-├── BootstrapServiceProvider.php   # the single provider
-├── Console/       # app:serve, app:deploy, app:deploy-script, app:pipeline, app:down — thin commands
-├── Serve/         # pipeline context, Step contract, shutdown, browser
-├── Servers/       # Herd / Sail / Artisan drivers, selection, rewriting, state
-├── Tools/         # installers + semver-constraint version enforcement
-├── Database/      # credentials, creation, verification, pending migrations
-├── Frontend/      # package managers + assets
-├── Queue/         # queue worker lifecycle
-├── Deploy/        # composer, project commands, caching, finalize, script export
-├── Pipelines/     # app:pipeline — CI/CD generators for GitHub Actions & Bitbucket
-├── Environment/   # .env file + shell profile editing
-├── Process/       # THE one way commands run: run / silent / background / terminal
-└── Support/       # shared primitives
-```
-
-All OS interaction goes through `Process\ProcessRunner` (built on Laravel's
-`Process` facade), so the entire package is testable with `Process::fake()` —
-enforced by architecture tests.
 
 ## Testing
 

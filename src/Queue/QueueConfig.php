@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Queue;
+namespace Igne\LaravelBootUp\Queue;
 
 use Illuminate\Contracts\Config\Repository;
 
@@ -20,9 +20,9 @@ final readonly class QueueConfig
     public static function fromRepository(Repository $config): self
     {
         return new self(
-            enabled: (bool) $config->get('bootstrap.queue.enabled', true),
-            runIn: (string) $config->get('bootstrap.queue.run_in', 'background'),
-            flags: (array) $config->get('bootstrap.queue.flags', []),
+            enabled: (bool) $config->get('boot-up.queue.enabled', true),
+            runIn: (string) $config->get('boot-up.queue.run_in', 'background'),
+            flags: (array) $config->get('boot-up.queue.flags', []),
         );
     }
 }

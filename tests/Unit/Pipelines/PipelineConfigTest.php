@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Pipelines\PipelineConfig;
+use Igne\LaravelBootUp\Pipelines\PipelineConfig;
 use Illuminate\Config\Repository;
 
-test('fromRepository reads the bootstrap.pipeline schema', function (): void {
+test('fromRepository reads the boot-up.pipeline schema', function (): void {
     $config = new Repository([
-        'bootstrap' => [
+        'boot-up' => [
             'pipeline' => [
                 'branches' => ['main' => 'PROD_DEPLOY'],
                 'generators' => ['gitlab' => 'App\Pipelines\GitlabGenerator'],

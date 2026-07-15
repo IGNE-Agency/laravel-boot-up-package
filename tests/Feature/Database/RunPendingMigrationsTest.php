@@ -2,24 +2,24 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Database\DatabaseConfig;
-use Igne\LaravelBootstrap\Database\PendingMigrations;
-use Igne\LaravelBootstrap\Database\Steps\RunPendingMigrations;
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\Terminal\NullTerminal;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\ServeOptions;
-use Igne\LaravelBootstrap\Servers\CommandRewriter;
-use Igne\LaravelBootstrap\Servers\CommandRewrites;
-use Igne\LaravelBootstrap\Servers\Server;
-use Igne\LaravelBootstrap\Support\Poller;
+use Igne\LaravelBootUp\Database\DatabaseConfig;
+use Igne\LaravelBootUp\Database\PendingMigrations;
+use Igne\LaravelBootUp\Database\Steps\RunPendingMigrations;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Servers\CommandRewriter;
+use Igne\LaravelBootUp\Servers\CommandRewrites;
+use Igne\LaravelBootUp\Servers\Server;
+use Igne\LaravelBootUp\Support\Poller;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
 
 beforeEach(function (): void {
-    $this->dir = sys_get_temp_dir().'/bootstrap-run-migrations-'.bin2hex(random_bytes(4));
+    $this->dir = sys_get_temp_dir().'/boot-up-run-migrations-'.bin2hex(random_bytes(4));
     mkdir($this->dir, 0755, true);
 
     Prompt::fake();

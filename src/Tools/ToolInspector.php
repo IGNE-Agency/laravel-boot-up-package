@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Tools;
+namespace Igne\LaravelBootUp\Tools;
 
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\ShellCommand;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\ShellCommand;
 
 /**
  * Answers "is this tool on the machine, and which version?" for the

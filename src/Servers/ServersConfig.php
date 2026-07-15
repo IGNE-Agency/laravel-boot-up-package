@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Servers;
+namespace Igne\LaravelBootUp\Servers;
 
-use Igne\LaravelBootstrap\Servers\Artisan\ArtisanServer;
-use Igne\LaravelBootstrap\Servers\Herd\HerdServer;
-use Igne\LaravelBootstrap\Servers\Sail\SailServer;
+use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
+use Igne\LaravelBootUp\Servers\Herd\HerdServer;
+use Igne\LaravelBootUp\Servers\Sail\SailServer;
 use Illuminate\Contracts\Config\Repository;
 
 final readonly class ServersConfig
@@ -30,14 +30,14 @@ final readonly class ServersConfig
 
     public static function fromRepository(Repository $config): self
     {
-        $default = $config->get('bootstrap.server.default');
+        $default = $config->get('boot-up.server.default');
 
         return new self(
             default: $default === null ? null : (string) $default,
-            prompt: (bool) $config->get('bootstrap.server.prompt', true),
-            drivers: array_merge(self::BUILT_IN_DRIVERS, (array) $config->get('bootstrap.server.drivers', [])),
-            promptStopServer: (bool) $config->get('bootstrap.shutdown.prompt_stop_server', true),
-            stopServerByDefault: (bool) $config->get('bootstrap.shutdown.stop_server_by_default', false),
+            prompt: (bool) $config->get('boot-up.server.prompt', true),
+            drivers: array_merge(self::BUILT_IN_DRIVERS, (array) $config->get('boot-up.server.drivers', [])),
+            promptStopServer: (bool) $config->get('boot-up.shutdown.prompt_stop_server', true),
+            stopServerByDefault: (bool) $config->get('boot-up.shutdown.stop_server_by_default', false),
         );
     }
 }

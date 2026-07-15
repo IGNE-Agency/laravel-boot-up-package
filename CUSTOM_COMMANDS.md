@@ -6,14 +6,14 @@ schema exporters, cache warmers — without touching the package.
 ## How it works
 
 1. Create a class implementing
-   `Igne\LaravelBootstrap\Deploy\ProvidesProjectCommands` (see
+   `Igne\LaravelBootUp\Deploy\ProvidesProjectCommands` (see
    [examples/ProjectCommands.php](examples/ProjectCommands.php)):
 
 ```php
-namespace App\Bootstrap;
+namespace App\BootUp;
 
-use Igne\LaravelBootstrap\Deploy\ProjectCommand;
-use Igne\LaravelBootstrap\Deploy\ProvidesProjectCommands;
+use Igne\LaravelBootUp\Deploy\ProjectCommand;
+use Igne\LaravelBootUp\Deploy\ProvidesProjectCommands;
 
 final class ProjectCommands implements ProvidesProjectCommands
 {
@@ -38,8 +38,8 @@ final class ProjectCommands implements ProvidesProjectCommands
 
 ```php
 $this->app->singleton(
-    \Igne\LaravelBootstrap\Deploy\ProvidesProjectCommands::class,
-    \App\Bootstrap\ProjectCommands::class,
+    \Igne\LaravelBootUp\Deploy\ProvidesProjectCommands::class,
+    \App\BootUp\ProjectCommands::class,
 );
 ```
 
@@ -82,8 +82,8 @@ queue worker, assets, ...
 ```
 
 Need a different position? The whole pipeline is published config — implement
-`Igne\LaravelBootstrap\Serve\Step` and insert your own step class anywhere in
-`bootstrap.serve_steps` / `bootstrap.deploy_steps` instead.
+`Igne\LaravelBootUp\Serve\Step` and insert your own step class anywhere in
+`boot-up.serve_steps` / `boot-up.deploy_steps` instead.
 
 ## In exported deployment scripts
 

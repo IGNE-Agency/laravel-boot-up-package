@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Serve;
+namespace Igne\LaravelBootUp\Serve;
 
-use Igne\LaravelBootstrap\Servers\Server;
+use Igne\LaravelBootUp\Servers\Server;
 
 /**
  * The single passable travelling through the serve/deploy pipelines.

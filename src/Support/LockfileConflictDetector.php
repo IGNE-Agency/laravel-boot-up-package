@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Support;
+namespace Igne\LaravelBootUp\Support;
 
 final class LockfileConflictDetector
 {

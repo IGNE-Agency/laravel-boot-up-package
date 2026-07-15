@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Pipelines\ComposerJson;
-use Igne\LaravelBootstrap\Tests\Feature\Console\Fixtures\StaticPipelineGenerator;
+use Igne\LaravelBootUp\Pipelines\ComposerJson;
+use Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\StaticPipelineGenerator;
 use Illuminate\Support\Facades\File;
 
 afterEach(function (): void {
@@ -76,7 +76,7 @@ test('--force overwrites existing files without asking', function (): void {
 });
 
 test('a nova project gets composer auth, nova publish and its composer.json php version', function (): void {
-    $fixture = sys_get_temp_dir().'/bootstrap-nova-composer-'.bin2hex(random_bytes(4)).'.json';
+    $fixture = sys_get_temp_dir().'/boot-up-nova-composer-'.bin2hex(random_bytes(4)).'.json';
     file_put_contents($fixture, json_encode([
         'require' => ['php' => '^8.3', 'laravel/nova' => '^5.0'],
     ]));
@@ -94,8 +94,30 @@ test('a nova project gets composer auth, nova publish and its composer.json php 
     @unlink($fixture);
 });
 
+test('a project with pint gets a lint step on both providers', function (): void {
+    $fixture = sys_get_temp_dir().'/boot-up-pint-composer-'.bin2hex(random_bytes(4)).'.json';
+    file_put_contents($fixture, json_encode([
+        'require-dev' => ['laravel/pint' => '^1.27'],
+    ]));
+
+    app()->singleton(ComposerJson::class, fn () => new ComposerJson($fixture));
+
+    $this->artisan('app:pipeline', ['provider' => 'github', '--force' => true])->assertSuccessful();
+    $this->artisan('app:pipeline', ['provider' => 'bitbucket', '--force' => true])->assertSuccessful();
+
+    $workflow = (string) file_get_contents(base_path('.github/workflows/ci.yml'));
+    $pipeline = (string) file_get_contents(base_path('bitbucket-pipelines.yml'));
+
+    expect($workflow)->toContain('vendor/bin/pint --test')
+        ->and($workflow)->toContain('needs: [lint, install-test]')
+        ->and($pipeline)->toContain('vendor/bin/pint --test')
+        ->and($pipeline)->toContain('- parallel:');
+
+    @unlink($fixture);
+});
+
 test('a custom generator registered in config is selectable and its path is honored', function (): void {
-    config()->set('bootstrap.pipeline.generators', ['static' => StaticPipelineGenerator::class]);
+    config()->set('boot-up.pipeline.generators', ['static' => StaticPipelineGenerator::class]);
 
     $this->artisan('app:pipeline', ['provider' => 'static'])->assertSuccessful();
 
@@ -103,7 +125,7 @@ test('a custom generator registered in config is selectable and its path is hono
 });
 
 test('remapped branches flow from config into the generated pipeline', function (): void {
-    config()->set('bootstrap.pipeline.branches', ['main' => 'PROD_DEPLOY']);
+    config()->set('boot-up.pipeline.branches', ['main' => 'PROD_DEPLOY']);
 
     $this->artisan('app:pipeline', ['provider' => 'github'])->assertSuccessful();
 

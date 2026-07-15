@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Deploy;
+namespace Igne\LaravelBootUp\Deploy;
 
 enum ProjectCommandType: string
 {

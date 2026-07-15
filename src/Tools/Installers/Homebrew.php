@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Tools\Installers;
+namespace Igne\LaravelBootUp\Tools\Installers;
 
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\ShellCommand;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\ShellCommand;
 
 use function Laravel\Prompts\info;
 
 /**
- * The single Homebrew seam: bootstraps brew itself when missing and runs
+ * The single Homebrew seam: installs brew itself when missing and runs
  * formula installs/upgrades for the built-in installers.
  */
 final class Homebrew

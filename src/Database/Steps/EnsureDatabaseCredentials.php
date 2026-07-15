@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Database\Steps;
+namespace Igne\LaravelBootUp\Database\Steps;
 
 use Closure;
-use Igne\LaravelBootstrap\Database\DatabaseConfig;
-use Igne\LaravelBootstrap\Environment\EnvFile;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\Step;
+use Igne\LaravelBootUp\Database\DatabaseConfig;
+use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\Step;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;

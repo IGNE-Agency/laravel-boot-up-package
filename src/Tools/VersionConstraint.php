@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Tools;
+namespace Igne\LaravelBootUp\Tools;
 
 use Composer\Semver\Semver;
 use Throwable;

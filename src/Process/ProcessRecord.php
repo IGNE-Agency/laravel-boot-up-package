@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Process;
+namespace Igne\LaravelBootUp\Process;
 
 final readonly class ProcessRecord
 {

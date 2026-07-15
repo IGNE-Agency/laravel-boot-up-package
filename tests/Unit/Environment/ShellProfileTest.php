@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Environment\ShellProfile;
+use Igne\LaravelBootUp\Environment\ShellProfile;
 
 beforeEach(function (): void {
-    $this->home = sys_get_temp_dir().'/bootstrap-profile-'.bin2hex(random_bytes(4));
+    $this->home = sys_get_temp_dir().'/boot-up-profile-'.bin2hex(random_bytes(4));
     mkdir($this->home, 0755, true);
 });
 
@@ -92,7 +92,7 @@ test('appendBlock creates the profile with marker lines when missing', function 
     $content = (string) file_get_contents($this->home.'/.zshrc');
 
     expect($content)->toBe(
-        "# >>> laravel-bootstrap >>>\nalias sail='./vendor/bin/sail'\n# <<< laravel-bootstrap <<<\n",
+        "# >>> laravel-boot-up >>>\nalias sail='./vendor/bin/sail'\n# <<< laravel-boot-up <<<\n",
     )->and($profile->definesAlias('sail'))->toBeTrue();
 });
 
@@ -104,9 +104,9 @@ test('appendBlock preserves existing content, even without a trailing newline', 
     expect((string) file_get_contents($this->home.'/.zshrc'))->toBe(implode("\n", [
         'export EDITOR=vim',
         '',
-        '# >>> laravel-bootstrap >>>',
+        '# >>> laravel-boot-up >>>',
         "alias sail='./vendor/bin/sail'",
-        '# <<< laravel-bootstrap <<<',
+        '# <<< laravel-boot-up <<<',
     ])."\n");
 });
 

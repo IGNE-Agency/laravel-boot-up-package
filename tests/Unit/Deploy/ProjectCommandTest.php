@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Deploy\ProjectCommand;
-use Igne\LaravelBootstrap\Deploy\ProjectCommandType;
+use Igne\LaravelBootUp\Deploy\ProjectCommand;
+use Igne\LaravelBootUp\Deploy\ProjectCommandType;
 
 test('named constructors set the command type', function (): void {
     expect(ProjectCommand::artisan('db:seed')->type)->toBe(ProjectCommandType::ARTISAN)

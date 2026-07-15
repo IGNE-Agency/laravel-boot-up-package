@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Database\DatabaseConfig;
-use Igne\LaravelBootstrap\Database\DatabaseCreator;
-use Igne\LaravelBootstrap\Database\Steps\EnsureDatabaseExists;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\ServeOptions;
-use Igne\LaravelBootstrap\Servers\CommandRewrites;
-use Igne\LaravelBootstrap\Servers\Server;
+use Igne\LaravelBootUp\Database\DatabaseConfig;
+use Igne\LaravelBootUp\Database\DatabaseCreator;
+use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseExists;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Servers\CommandRewrites;
+use Igne\LaravelBootUp\Servers\Server;
 use Laravel\Prompts\Prompt;
 
 beforeEach(function (): void {
-    $this->dir = sys_get_temp_dir().'/bootstrap-db-exists-'.bin2hex(random_bytes(4));
+    $this->dir = sys_get_temp_dir().'/boot-up-db-exists-'.bin2hex(random_bytes(4));
     mkdir($this->dir, 0755, true);
 
     Prompt::fake();

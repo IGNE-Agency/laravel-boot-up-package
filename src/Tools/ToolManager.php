@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Tools;
+namespace Igne\LaravelBootUp\Tools;
 
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\info;
@@ -70,7 +70,7 @@ final class ToolManager
         }
 
         if (! $this->config->autoUpdate) {
-            warning("{$tool->label()} {$version} does not satisfy '{$constraint->value}'. Update it manually or enable bootstrap.tools.auto_update.");
+            warning("{$tool->label()} {$version} does not satisfy '{$constraint->value}'. Update it manually or enable boot-up.tools.auto_update.");
 
             return;
         }

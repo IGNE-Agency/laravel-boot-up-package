@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Pipelines;
+namespace Igne\LaravelBootUp\Pipelines;
 
 use Illuminate\Contracts\Config\Repository;
 
@@ -26,8 +26,8 @@ final readonly class PipelineConfig
     public static function fromRepository(Repository $config): self
     {
         return new self(
-            branchHooks: (array) $config->get('bootstrap.pipeline.branches', self::DEFAULT_BRANCH_HOOKS),
-            generators: (array) $config->get('bootstrap.pipeline.generators', []),
+            branchHooks: (array) $config->get('boot-up.pipeline.branches', self::DEFAULT_BRANCH_HOOKS),
+            generators: (array) $config->get('boot-up.pipeline.generators', []),
         );
     }
 }

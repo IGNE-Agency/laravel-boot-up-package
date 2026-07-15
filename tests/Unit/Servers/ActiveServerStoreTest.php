@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Servers\ActiveServer;
-use Igne\LaravelBootstrap\Servers\ActiveServerStore;
+use Igne\LaravelBootUp\Servers\ActiveServer;
+use Igne\LaravelBootUp\Servers\ActiveServerStore;
 
 beforeEach(function (): void {
-    $this->dir = sys_get_temp_dir().'/bootstrap-active-server-'.bin2hex(random_bytes(4));
+    $this->dir = sys_get_temp_dir().'/boot-up-active-server-'.bin2hex(random_bytes(4));
     $this->path = $this->dir.'/active-server.json';
     $this->store = new ActiveServerStore($this->path);
 });

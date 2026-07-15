@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Deploy;
+namespace Igne\LaravelBootUp\Deploy;
 
-use Igne\LaravelBootstrap\Frontend\PackageManagerSelector;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\ShellCommand;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Servers\CommandRewriter;
+use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\ShellCommand;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 use InvalidArgumentException;

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Pipelines;
+namespace Igne\LaravelBootUp\Pipelines;
 
-use Igne\LaravelBootstrap\Deploy\Scripts\DeploymentEnvironment;
-use Igne\LaravelBootstrap\Deploy\Scripts\DeploymentPlanner;
+use Igne\LaravelBootUp\Deploy\Scripts\DeploymentEnvironment;
+use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlanner;
 
 /**
  * Distils the package config and the host project's composer.json into a
@@ -26,6 +26,7 @@ final class PipelinePlanner
             // `artisan optimize` — exactly the DEVELOPMENT plan semantics.
             deployment: $this->deployments->plan(environment: DeploymentEnvironment::DEVELOPMENT),
             nova: $this->composerJson->requires('laravel/nova'),
+            pint: $this->composerJson->requires('laravel/pint') || $this->composerJson->requiresDev('laravel/pint'),
             phpVersion: $this->composerJson->phpVersion(),
             branchHooks: $this->config->branchHooks,
         );

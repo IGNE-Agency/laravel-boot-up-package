@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Frontend;
+namespace Igne\LaravelBootUp\Frontend;
 
-use Igne\LaravelBootstrap\Tools\Tool;
+use Igne\LaravelBootUp\Tools\Tool;
 
 enum PackageManager: string
 {

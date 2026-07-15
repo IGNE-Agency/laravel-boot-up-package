@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Deploy\Scripts;
+namespace Igne\LaravelBootUp\Deploy\Scripts;
 
-use Igne\LaravelBootstrap\Deploy\ProjectCommand;
-use Igne\LaravelBootstrap\Frontend\PackageManager;
+use Igne\LaravelBootUp\Deploy\ProjectCommand;
+use Igne\LaravelBootUp\Frontend\PackageManager;
 
 /**
  * Everything a script generator needs to render a deployment script,

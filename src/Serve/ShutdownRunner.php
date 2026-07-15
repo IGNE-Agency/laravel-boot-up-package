@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Serve;
+namespace Igne\LaravelBootUp\Serve;
 
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessReaper;
-use Igne\LaravelBootstrap\Process\ProcessRecord;
-use Igne\LaravelBootstrap\Servers\ActiveServerStore;
-use Igne\LaravelBootstrap\Servers\ServerSelector;
-use Igne\LaravelBootstrap\Servers\StopServerPrompt;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessReaper;
+use Igne\LaravelBootUp\Process\ProcessRecord;
+use Igne\LaravelBootUp\Servers\ActiveServerStore;
+use Igne\LaravelBootUp\Servers\ServerSelector;
+use Igne\LaravelBootUp\Servers\StopServerPrompt;
 
 use function Laravel\Prompts\info;
 use function Laravel\Prompts\note;

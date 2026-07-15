@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Environment\Steps;
+namespace Igne\LaravelBootUp\Environment\Steps;
 
 use Closure;
-use Igne\LaravelBootstrap\Environment\EnvFile;
-use Igne\LaravelBootstrap\Environment\EnvironmentConfig;
-use Igne\LaravelBootstrap\Environment\EnvironmentException;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\Step;
+use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Environment\EnvironmentConfig;
+use Igne\LaravelBootUp\Environment\EnvironmentException;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\Step;
 
 final class EnsureLocalEnvironment implements Step
 {

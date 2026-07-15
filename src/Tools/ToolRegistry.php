@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Tools;
+namespace Igne\LaravelBootUp\Tools;
 
-use Igne\LaravelBootstrap\Tools\Installers\ComposerInstaller;
-use Igne\LaravelBootstrap\Tools\Installers\DockerInstaller;
-use Igne\LaravelBootstrap\Tools\Installers\HerdInstaller;
-use Igne\LaravelBootstrap\Tools\Installers\NodeInstaller;
-use Igne\LaravelBootstrap\Tools\Installers\PackageManagerInstaller;
-use Igne\LaravelBootstrap\Tools\Installers\PhpInstaller;
+use Igne\LaravelBootUp\Tools\Installers\ComposerInstaller;
+use Igne\LaravelBootUp\Tools\Installers\DockerInstaller;
+use Igne\LaravelBootUp\Tools\Installers\HerdInstaller;
+use Igne\LaravelBootUp\Tools\Installers\NodeInstaller;
+use Igne\LaravelBootUp\Tools\Installers\PackageManagerInstaller;
+use Igne\LaravelBootUp\Tools\Installers\PhpInstaller;
 use Illuminate\Contracts\Container\Container;
 
 /**
  * Maps a tool id to its installer. Project overrides from
- * config('bootstrap.tools.installers') win over the built-ins.
+ * config('boot-up.tools.installers') win over the built-ins.
  */
 final class ToolRegistry
 {

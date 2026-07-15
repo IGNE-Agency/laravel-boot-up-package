@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Database\Steps;
+namespace Igne\LaravelBootUp\Database\Steps;
 
 use Closure;
-use Igne\LaravelBootstrap\Database\DatabaseConfig;
-use Igne\LaravelBootstrap\Database\PendingMigrations;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\ShellCommand;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\Step;
-use Igne\LaravelBootstrap\Servers\CommandRewriter;
+use Igne\LaravelBootUp\Database\DatabaseConfig;
+use Igne\LaravelBootUp\Database\PendingMigrations;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\ShellCommand;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\Step;
+use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Illuminate\Support\Str;
 
 use function Laravel\Prompts\info;

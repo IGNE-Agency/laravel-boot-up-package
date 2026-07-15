@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Tools;
+namespace Igne\LaravelBootUp\Tools;
 
 /**
  * A self-contained tool: it knows how to detect, install, and update itself.
  * Consuming projects can register their own implementations under
- * config('bootstrap.tools.installers') — config wins over the built-ins.
+ * config('boot-up.tools.installers') — config wins over the built-ins.
  */
 interface InstallsTool
 {

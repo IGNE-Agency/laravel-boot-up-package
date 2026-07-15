@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Deploy\DeployConfig;
+use Igne\LaravelBootUp\Deploy\DeployConfig;
 use Illuminate\Config\Repository;
 
-test('fromRepository reads the bootstrap.deploy schema', function (): void {
+test('fromRepository reads the boot-up.deploy schema', function (): void {
     $config = new Repository([
-        'bootstrap' => [
+        'boot-up' => [
             'deploy' => [
                 'cache_framework_files' => true,
                 'finalize' => ['storage:link', 'auth:clear-resets'],

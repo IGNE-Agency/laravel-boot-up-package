@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Database;
+namespace Igne\LaravelBootUp\Database;
 
-use Igne\LaravelBootstrap\Support\BootstrapException;
+use Igne\LaravelBootUp\Support\BootUpException;
 
-final class DatabaseException extends BootstrapException
+final class DatabaseException extends BootUpException
 {
     public static function connectionFailed(string $driver, string $reason): self
     {

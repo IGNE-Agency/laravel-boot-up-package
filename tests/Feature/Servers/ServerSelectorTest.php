@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\Terminal\NullTerminal;
-use Igne\LaravelBootstrap\Servers\Artisan\ArtisanServer;
-use Igne\LaravelBootstrap\Servers\Herd\HerdServer;
-use Igne\LaravelBootstrap\Servers\Sail\SailServer;
-use Igne\LaravelBootstrap\Servers\ServerException;
-use Igne\LaravelBootstrap\Servers\ServersConfig;
-use Igne\LaravelBootstrap\Servers\ServerSelector;
-use Igne\LaravelBootstrap\Support\Poller;
-use Igne\LaravelBootstrap\Tests\Feature\Servers\Fixtures\ValetServer;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
+use Igne\LaravelBootUp\Servers\Herd\HerdServer;
+use Igne\LaravelBootUp\Servers\Sail\SailServer;
+use Igne\LaravelBootUp\Servers\ServerException;
+use Igne\LaravelBootUp\Servers\ServersConfig;
+use Igne\LaravelBootUp\Servers\ServerSelector;
+use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ValetServer;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Key;
@@ -21,7 +21,7 @@ use Laravel\Prompts\Prompt;
 beforeEach(function (): void {
     Process::fake();
 
-    $this->workDir = sys_get_temp_dir().'/bootstrap-selector-'.bin2hex(random_bytes(4));
+    $this->workDir = sys_get_temp_dir().'/boot-up-selector-'.bin2hex(random_bytes(4));
     mkdir($this->workDir, 0755, true);
 
     app()->singleton(ProcessLedger::class, fn (): ProcessLedger => new ProcessLedger($this->workDir.'/processes.json'));
@@ -82,7 +82,7 @@ test('prompts a select over the driver labels when nothing is preconfigured', fu
 });
 
 test('driver resolves project-registered drivers from config', function (): void {
-    config()->set('bootstrap.server.drivers', ['valet' => ValetServer::class]);
+    config()->set('boot-up.server.drivers', ['valet' => ValetServer::class]);
 
     $selector = new ServerSelector(app(), ServersConfig::fromRepository(config()));
 

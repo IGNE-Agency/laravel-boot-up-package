@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\Terminal\NullTerminal;
-use Igne\LaravelBootstrap\Support\Poller;
-use Igne\LaravelBootstrap\Tools\Installers\Homebrew;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Tools\Installers\Homebrew;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -14,7 +14,7 @@ use Laravel\Prompts\Prompt;
 const HOMEBREW_INSTALL_SCRIPT = 'curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash';
 
 beforeEach(function (): void {
-    $this->workDir = sys_get_temp_dir().'/bootstrap-homebrew-test-'.bin2hex(random_bytes(4));
+    $this->workDir = sys_get_temp_dir().'/boot-up-homebrew-test-'.bin2hex(random_bytes(4));
     mkdir($this->workDir, 0755, true);
 });
 
@@ -39,7 +39,7 @@ function commandString(object $process): string
     return is_array($process->command) ? implode(' ', $process->command) : $process->command;
 }
 
-test('ensureInstalled bootstraps brew via the official install script when missing', function (): void {
+test('ensureInstalled installs brew via the official install script when missing', function (): void {
     Process::fake([
         '*command -v*brew*' => Process::result(exitCode: 1),
         '*' => Process::result(),

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Process\ShellCommand;
-use Igne\LaravelBootstrap\Servers\CommandRewriter;
-use Igne\LaravelBootstrap\Servers\CommandRewrites;
+use Igne\LaravelBootUp\Process\ShellCommand;
+use Igne\LaravelBootUp\Servers\CommandRewriter;
+use Igne\LaravelBootUp\Servers\CommandRewrites;
 
 function sailRewrites(): CommandRewrites
 {

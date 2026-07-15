@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Tools\VersionConstraint;
+use Igne\LaravelBootUp\Tools\VersionConstraint;
 
 test('wildcard detection', function (string $constraint, bool $isWildcard): void {
     expect(VersionConstraint::of($constraint)->isWildcard())->toBe($isWildcard);

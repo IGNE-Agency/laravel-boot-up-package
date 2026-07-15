@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Servers\Sail;
+namespace Igne\LaravelBootUp\Servers\Sail;
 
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\ShellCommand;
-use Igne\LaravelBootstrap\Servers\ServerException;
-use Igne\LaravelBootstrap\Support\Poller;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\ShellCommand;
+use Igne\LaravelBootUp\Servers\ServerException;
+use Igne\LaravelBootUp\Support\Poller;
 
 use function Laravel\Prompts\info;
 

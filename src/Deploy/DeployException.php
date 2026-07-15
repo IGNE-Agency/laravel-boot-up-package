@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Deploy;
+namespace Igne\LaravelBootUp\Deploy;
 
-use Igne\LaravelBootstrap\Support\BootstrapException;
+use Igne\LaravelBootUp\Support\BootUpException;
 
-final class DeployException extends BootstrapException
+final class DeployException extends BootUpException
 {
     public static function commandFailed(ProjectCommand $command, string $reason): self
     {

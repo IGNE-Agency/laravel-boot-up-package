@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Servers;
+namespace Igne\LaravelBootUp\Servers;
 
 /**
  * Server-specific command rewrite rules, supplied by each driver.

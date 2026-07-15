@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Tests;
+namespace Igne\LaravelBootUp\Tests;
 
 use Closure;
 use Laravel\Prompts\Prompt;
@@ -20,7 +20,7 @@ abstract class TestCase extends Orchestra
     protected function getPackageProviders($app): array
     {
         return [
-            \Igne\LaravelBootstrap\BootstrapServiceProvider::class,
+            \Igne\LaravelBootUp\BootUpServiceProvider::class,
         ];
     }
 

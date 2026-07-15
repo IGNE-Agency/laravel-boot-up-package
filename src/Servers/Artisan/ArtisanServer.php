@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Servers\Artisan;
+namespace Igne\LaravelBootUp\Servers\Artisan;
 
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessReaper;
-use Igne\LaravelBootstrap\Process\ProcessRecord;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\ShellCommand;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Servers\CommandRewrites;
-use Igne\LaravelBootstrap\Servers\Server;
-use Igne\LaravelBootstrap\Tools\Tool;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessReaper;
+use Igne\LaravelBootUp\Process\ProcessRecord;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\ShellCommand;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Servers\CommandRewrites;
+use Igne\LaravelBootUp\Servers\Server;
+use Igne\LaravelBootUp\Tools\Tool;
 use Illuminate\Contracts\Config\Repository;
 
 use function Laravel\Prompts\info;

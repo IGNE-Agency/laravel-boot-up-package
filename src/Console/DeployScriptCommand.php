@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Console;
+namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootstrap\Deploy\DeployConfig;
-use Igne\LaravelBootstrap\Deploy\Scripts\DeploymentEnvironment;
-use Igne\LaravelBootstrap\Deploy\Scripts\DeploymentPlanner;
-use Igne\LaravelBootstrap\Deploy\Scripts\ForgeScriptGenerator;
-use Igne\LaravelBootstrap\Deploy\Scripts\FortrabbitScriptGenerator;
-use Igne\LaravelBootstrap\Deploy\Scripts\ScriptGenerator;
+use Igne\LaravelBootUp\Deploy\DeployConfig;
+use Igne\LaravelBootUp\Deploy\Scripts\DeploymentEnvironment;
+use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlanner;
+use Igne\LaravelBootUp\Deploy\Scripts\ForgeScriptGenerator;
+use Igne\LaravelBootUp\Deploy\Scripts\FortrabbitScriptGenerator;
+use Igne\LaravelBootUp\Deploy\Scripts\ScriptGenerator;
 use Illuminate\Console\Command;
 
 use function Laravel\Prompts\error;

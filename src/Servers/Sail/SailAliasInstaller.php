@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Servers\Sail;
+namespace Igne\LaravelBootUp\Servers\Sail;
 
-use Igne\LaravelBootstrap\Environment\EnvironmentConfig;
-use Igne\LaravelBootstrap\Environment\ShellProfile;
+use Igne\LaravelBootUp\Environment\EnvironmentConfig;
+use Igne\LaravelBootUp\Environment\ShellProfile;
 
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\note;

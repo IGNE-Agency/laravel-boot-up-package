@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Serve;
+namespace Igne\LaravelBootUp\Serve;
 
 use Closure;
 

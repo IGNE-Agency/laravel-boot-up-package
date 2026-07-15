@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessReaper;
-use Igne\LaravelBootstrap\Process\ProcessRecord;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\Terminal\NullTerminal;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\ServeOptions;
-use Igne\LaravelBootstrap\Servers\Artisan\ArtisanServer;
-use Igne\LaravelBootstrap\Support\Poller;
-use Igne\LaravelBootstrap\Tests\Feature\Servers\Fixtures\ProcessFaker;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessReaper;
+use Igne\LaravelBootUp\Process\ProcessRecord;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
+use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
 
 beforeEach(function (): void {
     Prompt::fake();
-    $this->workDir = sys_get_temp_dir().'/bootstrap-artisan-'.bin2hex(random_bytes(4));
+    $this->workDir = sys_get_temp_dir().'/boot-up-artisan-'.bin2hex(random_bytes(4));
     mkdir($this->workDir, 0755, true);
     $this->ledger = new ProcessLedger($this->workDir.'/processes.json');
 });

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Tools\Installers;
+namespace Igne\LaravelBootUp\Tools\Installers;
 
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\ShellCommand;
-use Igne\LaravelBootstrap\Tools\InstallsTool;
-use Igne\LaravelBootstrap\Tools\Tool;
-use Igne\LaravelBootstrap\Tools\ToolInspector;
-use Igne\LaravelBootstrap\Tools\VersionConstraint;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\ShellCommand;
+use Igne\LaravelBootUp\Tools\InstallsTool;
+use Igne\LaravelBootUp\Tools\Tool;
+use Igne\LaravelBootUp\Tools\ToolInspector;
+use Igne\LaravelBootUp\Tools\VersionConstraint;
 
 final class ComposerInstaller implements InstallsTool
 {

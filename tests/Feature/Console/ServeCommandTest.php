@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\Terminal\NullTerminal;
-use Igne\LaravelBootstrap\Serve\Steps\AnnounceApplication;
-use Igne\LaravelBootstrap\Servers\ActiveServer;
-use Igne\LaravelBootstrap\Servers\ActiveServerStore;
-use Igne\LaravelBootstrap\Servers\Steps\StartServer;
-use Igne\LaravelBootstrap\Support\Poller;
-use Igne\LaravelBootstrap\Tests\Feature\Servers\Fixtures\ProcessFaker;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
+use Igne\LaravelBootUp\Servers\ActiveServer;
+use Igne\LaravelBootUp\Servers\ActiveServerStore;
+use Igne\LaravelBootUp\Servers\Steps\StartServer;
+use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 
 beforeEach(function (): void {
-    $this->workDir = sys_get_temp_dir().'/bootstrap-serve-cmd-'.bin2hex(random_bytes(4));
+    $this->workDir = sys_get_temp_dir().'/boot-up-serve-cmd-'.bin2hex(random_bytes(4));
     mkdir($this->workDir, 0755, true);
 
     $this->ledger = new ProcessLedger($this->workDir.'/processes.json');
@@ -32,11 +32,11 @@ beforeEach(function (): void {
         runtimeDirectory: $this->workDir.'/runtime',
     ));
 
-    config()->set('bootstrap.serve_steps', [
+    config()->set('boot-up.serve_steps', [
         StartServer::class,
         AnnounceApplication::class,
     ]);
-    config()->set('bootstrap.browser.open', false);
+    config()->set('boot-up.browser.open', false);
 });
 
 afterEach(function (): void {
@@ -71,7 +71,7 @@ test('does not start a second artisan serve when one is already tracked and aliv
     ]);
 
     // Seed a live artisan-serve record; the driver must self-skip.
-    $this->ledger->record(new Igne\LaravelBootstrap\Process\ProcessRecord(12345, 'artisan-serve', 'php artisan serve', date(DATE_ATOM)));
+    $this->ledger->record(new Igne\LaravelBootUp\Process\ProcessRecord(12345, 'artisan-serve', 'php artisan serve', date(DATE_ATOM)));
 
     $this->artisan('app:serve', ['server' => 'laravel'])->assertSuccessful();
 
@@ -114,4 +114,4 @@ test('rejects an unknown server argument', function (): void {
     ProcessFaker::fake();
 
     $this->artisan('app:serve', ['server' => 'nginx'])->assertFailed();
-})->throws(Igne\LaravelBootstrap\Servers\ServerException::class);
+})->throws(Igne\LaravelBootUp\Servers\ServerException::class);

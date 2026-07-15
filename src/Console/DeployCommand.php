@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Console;
+namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootstrap\Serve\ServeConfig;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\ServeOptions;
-use Igne\LaravelBootstrap\Support\BootstrapException;
+use Igne\LaravelBootUp\Serve\ServeConfig;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Support\BootUpException;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Isolatable;
 use Illuminate\Pipeline\Pipeline;
@@ -39,7 +39,7 @@ final class DeployCommand extends Command implements Isolatable
 
         try {
             $pipeline->send(new ServeContext($options))->through($config->deploySteps)->thenReturn();
-        } catch (BootstrapException|ProcessFailedException|ProcessTimedOutException $exception) {
+        } catch (BootUpException|ProcessFailedException|ProcessTimedOutException $exception) {
             error($exception->getMessage());
 
             return self::FAILURE;

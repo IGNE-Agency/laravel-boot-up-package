@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Tools\ToolsConfig;
+use Igne\LaravelBootUp\Tools\ToolsConfig;
 use Illuminate\Config\Repository;
 
-test('fromRepository reads the bootstrap.tools schema', function (): void {
+test('fromRepository reads the boot-up.tools schema', function (): void {
     $config = new Repository([
-        'bootstrap' => [
+        'boot-up' => [
             'tools' => [
                 'auto_install' => false,
                 'auto_update' => false,

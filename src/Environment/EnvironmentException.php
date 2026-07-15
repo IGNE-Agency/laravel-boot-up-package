@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Environment;
+namespace Igne\LaravelBootUp\Environment;
 
-use Igne\LaravelBootstrap\Support\BootstrapException;
+use Igne\LaravelBootUp\Support\BootUpException;
 
-final class EnvironmentException extends BootstrapException
+final class EnvironmentException extends BootUpException
 {
     public static function missingExampleFile(): self
     {
-        return new self('No .env or .env.example file found. Create one to bootstrap the application.');
+        return new self('No .env or .env.example file found. Create one to boot the application.');
     }
 
     public static function missingEnvFile(): self

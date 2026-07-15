@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Environment;
+namespace Igne\LaravelBootUp\Environment;
 
 /**
  * The user's shell profile (~/.zshrc or ~/.bashrc), used to install
@@ -10,9 +10,9 @@ namespace Igne\LaravelBootstrap\Environment;
  */
 final class ShellProfile
 {
-    private const string BLOCK_START = '# >>> laravel-bootstrap >>>';
+    private const string BLOCK_START = '# >>> laravel-boot-up >>>';
 
-    private const string BLOCK_END = '# <<< laravel-bootstrap <<<';
+    private const string BLOCK_END = '# <<< laravel-boot-up <<<';
 
     public function __construct(
         private readonly ?string $home = null,

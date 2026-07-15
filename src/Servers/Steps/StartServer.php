@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Servers\Steps;
+namespace Igne\LaravelBootUp\Servers\Steps;
 
 use Closure;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\Step;
-use Igne\LaravelBootstrap\Servers\ActiveServer;
-use Igne\LaravelBootstrap\Servers\ActiveServerStore;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\Step;
+use Igne\LaravelBootUp\Servers\ActiveServer;
+use Igne\LaravelBootUp\Servers\ActiveServerStore;
 
 use function Laravel\Prompts\info;
 

@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Environment\EnvFile;
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessReaper;
-use Igne\LaravelBootstrap\Process\ProcessRecord;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\Terminal\NullTerminal;
-use Igne\LaravelBootstrap\Queue\QueueConfig;
-use Igne\LaravelBootstrap\Queue\Steps\StartQueueWorker;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\ServeOptions;
-use Igne\LaravelBootstrap\Servers\CommandRewrites;
-use Igne\LaravelBootstrap\Servers\Server;
-use Igne\LaravelBootstrap\Support\Poller;
+use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessReaper;
+use Igne\LaravelBootUp\Process\ProcessRecord;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Queue\QueueConfig;
+use Igne\LaravelBootUp\Queue\Steps\StartQueueWorker;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Servers\CommandRewrites;
+use Igne\LaravelBootUp\Servers\Server;
+use Igne\LaravelBootUp\Support\Poller;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -87,7 +87,7 @@ function queueSailServer(): Server
 }
 
 beforeEach(function (): void {
-    $this->dir = sys_get_temp_dir().'/bootstrap-queue-worker-'.bin2hex(random_bytes(4));
+    $this->dir = sys_get_temp_dir().'/boot-up-queue-worker-'.bin2hex(random_bytes(4));
     mkdir($this->dir, 0755, true);
 
     Prompt::fake();

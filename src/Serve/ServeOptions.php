@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Serve;
+namespace Igne\LaravelBootUp\Serve;
 
 final readonly class ServeOptions
 {

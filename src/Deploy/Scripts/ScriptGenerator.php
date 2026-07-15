@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Deploy\Scripts;
+namespace Igne\LaravelBootUp\Deploy\Scripts;
 
 /**
  * Renders a deployment script for a hosting platform. Register custom
- * platforms under config('bootstrap.deploy.script_generators').
+ * platforms under config('boot-up.deploy.script_generators').
  */
 interface ScriptGenerator
 {

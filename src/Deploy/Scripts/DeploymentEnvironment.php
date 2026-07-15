@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Deploy\Scripts;
+namespace Igne\LaravelBootUp\Deploy\Scripts;
 
 enum DeploymentEnvironment: string
 {

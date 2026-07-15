@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace App\Bootstrap;
+namespace App\BootUp;
 
-use Igne\LaravelBootstrap\Deploy\ProjectCommand;
-use Igne\LaravelBootstrap\Deploy\ProvidesProjectCommands;
+use Igne\LaravelBootUp\Deploy\ProjectCommand;
+use Igne\LaravelBootUp\Deploy\ProvidesProjectCommands;
 
 /**
- * Example implementation of project-specific bootstrap commands.
+ * Example implementation of project-specific boot commands.
  *
- * Copy this file to app/Bootstrap/ProjectCommands.php and register it in
+ * Copy this file to app/BootUp/ProjectCommands.php and register it in
  * your AppServiceProvider:
  *
  *     $this->app->singleton(
- *         \Igne\LaravelBootstrap\Deploy\ProvidesProjectCommands::class,
- *         \App\Bootstrap\ProjectCommands::class,
+ *         \Igne\LaravelBootUp\Deploy\ProvidesProjectCommands::class,
+ *         \App\BootUp\ProjectCommands::class,
  *     );
  *
  * Commands run as plain argument lists (never through a shell) and are

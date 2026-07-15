@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Database;
+namespace Igne\LaravelBootUp\Database;
 
 use Illuminate\Database\Migrations\Migrator;
 

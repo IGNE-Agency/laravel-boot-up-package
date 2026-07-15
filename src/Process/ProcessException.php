@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Process;
+namespace Igne\LaravelBootUp\Process;
 
-use Igne\LaravelBootstrap\Support\BootstrapException;
+use Igne\LaravelBootUp\Support\BootUpException;
 
-final class ProcessException extends BootstrapException
+final class ProcessException extends BootUpException
 {
     public static function pidNotCaptured(string $label): self
     {

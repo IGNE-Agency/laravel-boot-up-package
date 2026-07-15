@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Deploy;
+namespace Igne\LaravelBootUp\Deploy;
 
 /**
  * Implement this in the host application and bind it as a singleton in a

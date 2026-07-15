@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Servers;
+namespace Igne\LaravelBootUp\Servers;
 
-use Igne\LaravelBootstrap\Support\BootstrapException;
+use Igne\LaravelBootUp\Support\BootUpException;
 
-final class ServerException extends BootstrapException
+final class ServerException extends BootUpException
 {
     public static function unknownServer(string $key): self
     {
-        return new self("Unknown development server [{$key}]. Register it under bootstrap.server.drivers.");
+        return new self("Unknown development server [{$key}]. Register it under boot-up.server.drivers.");
     }
 
     public static function startFailed(string $label, string $reason): self

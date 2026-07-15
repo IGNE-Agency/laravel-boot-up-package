@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Tests\Feature\Tools\Fixtures;
+namespace Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures;
 
-use Igne\LaravelBootstrap\Tools\InstallsTool;
-use Igne\LaravelBootstrap\Tools\VersionConstraint;
+use Igne\LaravelBootUp\Tools\InstallsTool;
+use Igne\LaravelBootUp\Tools\VersionConstraint;
 
 abstract class EnsureToolsReadySpy implements InstallsTool
 {

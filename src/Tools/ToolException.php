@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Tools;
+namespace Igne\LaravelBootUp\Tools;
 
-use Igne\LaravelBootstrap\Support\BootstrapException;
+use Igne\LaravelBootUp\Support\BootUpException;
 
-final class ToolException extends BootstrapException
+final class ToolException extends BootUpException
 {
     public static function notInstalled(string $label): self
     {
-        return new self("{$label} is not installed. Install it manually or enable bootstrap.tools.auto_install.");
+        return new self("{$label} is not installed. Install it manually or enable boot-up.tools.auto_install.");
     }
 
     public static function unknownTool(string $id): self
     {
-        return new self("No installer is known for tool '{$id}'. Register one under bootstrap.tools.installers.");
+        return new self("No installer is known for tool '{$id}'. Register one under boot-up.tools.installers.");
     }
 
     public static function installFailed(string $label): self

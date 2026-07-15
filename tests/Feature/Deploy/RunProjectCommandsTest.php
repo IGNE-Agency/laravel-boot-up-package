@@ -2,28 +2,28 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Deploy\ProjectCommand;
-use Igne\LaravelBootstrap\Deploy\ProjectCommandRunner;
-use Igne\LaravelBootstrap\Deploy\ProvidesProjectCommands;
-use Igne\LaravelBootstrap\Deploy\Steps\RunProjectCommands;
-use Igne\LaravelBootstrap\Frontend\FrontendConfig;
-use Igne\LaravelBootstrap\Frontend\PackageJson;
-use Igne\LaravelBootstrap\Frontend\PackageManager;
-use Igne\LaravelBootstrap\Frontend\PackageManagerSelector;
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\Terminal\NullTerminal;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\ServeOptions;
-use Igne\LaravelBootstrap\Servers\CommandRewriter;
-use Igne\LaravelBootstrap\Support\Poller;
+use Igne\LaravelBootUp\Deploy\ProjectCommand;
+use Igne\LaravelBootUp\Deploy\ProjectCommandRunner;
+use Igne\LaravelBootUp\Deploy\ProvidesProjectCommands;
+use Igne\LaravelBootUp\Deploy\Steps\RunProjectCommands;
+use Igne\LaravelBootUp\Frontend\FrontendConfig;
+use Igne\LaravelBootUp\Frontend\PackageJson;
+use Igne\LaravelBootUp\Frontend\PackageManager;
+use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Servers\CommandRewriter;
+use Igne\LaravelBootUp\Support\Poller;
 use Illuminate\Pipeline\Pipeline;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
 
 beforeEach(function (): void {
-    $this->dir = sys_get_temp_dir().'/bootstrap-run-project-commands-'.bin2hex(random_bytes(4));
+    $this->dir = sys_get_temp_dir().'/boot-up-run-project-commands-'.bin2hex(random_bytes(4));
     mkdir($this->dir, 0755, true);
     Prompt::fake();
 });

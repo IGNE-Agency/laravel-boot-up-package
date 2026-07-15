@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Process\ShellCommand;
+use Igne\LaravelBootUp\Process\ShellCommand;
 
 test('a string command is tokenized on whitespace', function (): void {
     expect(ShellCommand::make('php  artisan   serve')->tokens)->toBe(['php', 'artisan', 'serve']);

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Database\DatabaseCreator;
-use Igne\LaravelBootstrap\Database\DatabaseException;
+use Igne\LaravelBootUp\Database\DatabaseCreator;
+use Igne\LaravelBootUp\Database\DatabaseException;
 
 beforeEach(function (): void {
-    $this->dir = sys_get_temp_dir().'/bootstrap-db-creator-'.bin2hex(random_bytes(4));
+    $this->dir = sys_get_temp_dir().'/boot-up-db-creator-'.bin2hex(random_bytes(4));
     mkdir($this->dir, 0755, true);
 
     $this->creator = new DatabaseCreator;

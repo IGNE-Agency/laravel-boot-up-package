@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Tests\Feature\Tools\Fixtures;
+namespace Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures;
 
 final class AlphaToolSpy extends EnsureToolsReadySpy
 {

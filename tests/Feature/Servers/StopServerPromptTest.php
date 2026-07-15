@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Servers\CommandRewrites;
-use Igne\LaravelBootstrap\Servers\Server;
-use Igne\LaravelBootstrap\Servers\ServersConfig;
-use Igne\LaravelBootstrap\Servers\StopServerPrompt;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Servers\CommandRewrites;
+use Igne\LaravelBootUp\Servers\Server;
+use Igne\LaravelBootUp\Servers\ServersConfig;
+use Igne\LaravelBootUp\Servers\StopServerPrompt;
 use Laravel\Prompts\Key;
 use Laravel\Prompts\Prompt;
 

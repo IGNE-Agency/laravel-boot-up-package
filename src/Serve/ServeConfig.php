@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Serve;
+namespace Igne\LaravelBootUp\Serve;
 
 use Illuminate\Contracts\Config\Repository;
 
@@ -21,9 +21,9 @@ final readonly class ServeConfig
     public static function fromRepository(Repository $config): self
     {
         return new self(
-            serveSteps: (array) $config->get('bootstrap.serve_steps', []),
-            deploySteps: (array) $config->get('bootstrap.deploy_steps', []),
-            openBrowser: (bool) $config->get('bootstrap.browser.open', true),
+            serveSteps: (array) $config->get('boot-up.serve_steps', []),
+            deploySteps: (array) $config->get('boot-up.deploy_steps', []),
+            openBrowser: (bool) $config->get('boot-up.browser.open', true),
         );
     }
 }

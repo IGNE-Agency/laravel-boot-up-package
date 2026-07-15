@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Servers;
+namespace Igne\LaravelBootUp\Servers;
 
 /**
  * The persisted record of the server an app:serve run is using, written

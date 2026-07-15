@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Frontend\FrontendConfig;
-use Igne\LaravelBootstrap\Frontend\FrontendException;
-use Igne\LaravelBootstrap\Frontend\PackageJson;
-use Igne\LaravelBootstrap\Frontend\PackageManager;
-use Igne\LaravelBootstrap\Frontend\Steps\InstallFrontendDependencies;
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\Terminal\NullTerminal;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\ServeOptions;
-use Igne\LaravelBootstrap\Servers\CommandRewrites;
-use Igne\LaravelBootstrap\Servers\Server;
-use Igne\LaravelBootstrap\Support\Poller;
+use Igne\LaravelBootUp\Frontend\FrontendConfig;
+use Igne\LaravelBootUp\Frontend\FrontendException;
+use Igne\LaravelBootUp\Frontend\PackageJson;
+use Igne\LaravelBootUp\Frontend\PackageManager;
+use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Servers\CommandRewrites;
+use Igne\LaravelBootUp\Servers\Server;
+use Igne\LaravelBootUp\Support\Poller;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -81,7 +81,7 @@ function frontendSailServer(): Server
 }
 
 beforeEach(function (): void {
-    $this->dir = sys_get_temp_dir().'/bootstrap-frontend-install-'.bin2hex(random_bytes(4));
+    $this->dir = sys_get_temp_dir().'/boot-up-frontend-install-'.bin2hex(random_bytes(4));
     mkdir($this->dir, 0755, true);
 
     Prompt::fake();

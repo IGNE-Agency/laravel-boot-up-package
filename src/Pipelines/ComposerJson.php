@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Pipelines;
+namespace Igne\LaravelBootUp\Pipelines;
 
 final class ComposerJson
 {
@@ -32,9 +32,15 @@ final class ComposerJson
      */
     public function requires(string $package): bool
     {
-        $require = $this->read()['require'] ?? [];
+        return $this->listed('require', $package);
+    }
 
-        return \is_array($require) && \array_key_exists($package, $require);
+    /**
+     * Whether the package is a dev dependency (require-dev).
+     */
+    public function requiresDev(string $package): bool
+    {
+        return $this->listed('require-dev', $package);
     }
 
     /**
@@ -50,5 +56,12 @@ final class ComposerJson
         }
 
         return $default;
+    }
+
+    private function listed(string $section, string $package): bool
+    {
+        $dependencies = $this->read()[$section] ?? [];
+
+        return \is_array($dependencies) && \array_key_exists($package, $dependencies);
     }
 }

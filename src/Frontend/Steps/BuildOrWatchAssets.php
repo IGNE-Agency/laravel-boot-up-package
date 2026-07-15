@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Frontend\Steps;
+namespace Igne\LaravelBootUp\Frontend\Steps;
 
 use Closure;
-use Igne\LaravelBootstrap\Frontend\FrontendConfig;
-use Igne\LaravelBootstrap\Frontend\PackageJson;
-use Igne\LaravelBootstrap\Frontend\PackageManager;
-use Igne\LaravelBootstrap\Frontend\PackageManagerSelector;
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessReaper;
-use Igne\LaravelBootstrap\Process\ProcessRecord;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\ShellCommand;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\Step;
-use Igne\LaravelBootstrap\Servers\CommandRewriter;
+use Igne\LaravelBootUp\Frontend\FrontendConfig;
+use Igne\LaravelBootUp\Frontend\PackageJson;
+use Igne\LaravelBootUp\Frontend\PackageManager;
+use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessReaper;
+use Igne\LaravelBootUp\Process\ProcessRecord;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\ShellCommand;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\Step;
+use Igne\LaravelBootUp\Servers\CommandRewriter;
 
 use function Laravel\Prompts\info;
 use function Laravel\Prompts\note;
@@ -97,7 +97,7 @@ final class BuildOrWatchAssets implements Step
             ? $this->runner->startInTerminal($command, self::LABEL)
             : $this->runner->start($command, self::LABEL);
 
-        info("Asset watcher started (PID {$record->pid}) — logs: storage/logs/bootstrap/".self::LABEL.'.log');
+        info("Asset watcher started (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
     }
 
     private function watcherIsRunning(): bool

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Servers\Sail;
+namespace Igne\LaravelBootUp\Servers\Sail;
 
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Servers\CommandRewrites;
-use Igne\LaravelBootstrap\Servers\Server;
-use Igne\LaravelBootstrap\Servers\ServerException;
-use Igne\LaravelBootstrap\Support\Poller;
-use Igne\LaravelBootstrap\Tools\Tool;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Servers\CommandRewrites;
+use Igne\LaravelBootUp\Servers\Server;
+use Igne\LaravelBootUp\Servers\ServerException;
+use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Tools\Tool;
 use Illuminate\Contracts\Config\Repository;
 
 use function Laravel\Prompts\info;

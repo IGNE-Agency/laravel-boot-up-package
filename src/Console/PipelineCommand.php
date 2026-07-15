@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Console;
+namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootstrap\Pipelines\BitbucketPipelinesGenerator;
-use Igne\LaravelBootstrap\Pipelines\GitHubActionsGenerator;
-use Igne\LaravelBootstrap\Pipelines\PipelineConfig;
-use Igne\LaravelBootstrap\Pipelines\PipelineEnvFile;
-use Igne\LaravelBootstrap\Pipelines\PipelineGenerator;
-use Igne\LaravelBootstrap\Pipelines\PipelinePlan;
-use Igne\LaravelBootstrap\Pipelines\PipelinePlanner;
+use Igne\LaravelBootUp\Pipelines\BitbucketPipelinesGenerator;
+use Igne\LaravelBootUp\Pipelines\GitHubActionsGenerator;
+use Igne\LaravelBootUp\Pipelines\PipelineConfig;
+use Igne\LaravelBootUp\Pipelines\PipelineEnvFile;
+use Igne\LaravelBootUp\Pipelines\PipelineGenerator;
+use Igne\LaravelBootUp\Pipelines\PipelinePlan;
+use Igne\LaravelBootUp\Pipelines\PipelinePlanner;
 use Illuminate\Console\Command;
 
 use function Laravel\Prompts\confirm;

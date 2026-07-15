@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Console;
+namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\ShellCommand;
-use Igne\LaravelBootstrap\Serve\ServeConfig;
-use Igne\LaravelBootstrap\Serve\ServeContext;
-use Igne\LaravelBootstrap\Serve\ServeOptions;
-use Igne\LaravelBootstrap\Serve\ShutdownRunner;
-use Igne\LaravelBootstrap\Servers\ActiveServerStore;
-use Igne\LaravelBootstrap\Servers\ServerSelector;
-use Igne\LaravelBootstrap\Support\BootstrapException;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\ShellCommand;
+use Igne\LaravelBootUp\Serve\ServeConfig;
+use Igne\LaravelBootUp\Serve\ServeContext;
+use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Serve\ShutdownRunner;
+use Igne\LaravelBootUp\Servers\ActiveServerStore;
+use Igne\LaravelBootUp\Servers\ServerSelector;
+use Igne\LaravelBootUp\Support\BootUpException;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Isolatable;
 use Illuminate\Pipeline\Pipeline;
@@ -59,7 +59,7 @@ final class ServeCommand extends Command implements Isolatable
 
         try {
             $pipeline->send($context)->through($config->serveSteps)->thenReturn();
-        } catch (BootstrapException|ProcessFailedException|ProcessTimedOutException $exception) {
+        } catch (BootUpException|ProcessFailedException|ProcessTimedOutException $exception) {
             error($exception->getMessage());
 
             return self::FAILURE;

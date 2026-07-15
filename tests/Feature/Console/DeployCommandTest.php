@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootstrap\Deploy\Steps\FinalizeApplication;
-use Igne\LaravelBootstrap\Process\ProcessLedger;
-use Igne\LaravelBootstrap\Process\ProcessRunner;
-use Igne\LaravelBootstrap\Process\Terminal\NullTerminal;
-use Igne\LaravelBootstrap\Servers\ActiveServerStore;
-use Igne\LaravelBootstrap\Support\Poller;
-use Igne\LaravelBootstrap\Tests\Feature\Servers\Fixtures\ProcessFaker;
+use Igne\LaravelBootUp\Deploy\Steps\FinalizeApplication;
+use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Servers\ActiveServerStore;
+use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 
 beforeEach(function (): void {
-    $this->workDir = sys_get_temp_dir().'/bootstrap-deploy-cmd-'.bin2hex(random_bytes(4));
+    $this->workDir = sys_get_temp_dir().'/boot-up-deploy-cmd-'.bin2hex(random_bytes(4));
     mkdir($this->workDir, 0755, true);
 
     $this->store = new ActiveServerStore($this->workDir.'/active-server.json');
@@ -27,7 +27,7 @@ beforeEach(function (): void {
         runtimeDirectory: $this->workDir.'/runtime',
     ));
 
-    config()->set('bootstrap.deploy_steps', [FinalizeApplication::class]);
+    config()->set('boot-up.deploy_steps', [FinalizeApplication::class]);
 });
 
 afterEach(function (): void {

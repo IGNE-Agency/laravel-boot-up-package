@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootstrap\Process;
+namespace Igne\LaravelBootUp\Process;
 
-use Igne\LaravelBootstrap\Process\Terminal\TerminalLauncher;
-use Igne\LaravelBootstrap\Support\Poller;
+use Igne\LaravelBootUp\Process\Terminal\TerminalLauncher;
+use Igne\LaravelBootUp\Support\Poller;
 use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Process\Factory;
 use Illuminate\Process\PendingProcess;
@@ -46,7 +46,7 @@ final class ProcessRunner
 
     /**
      * Start a detached background process that survives this PHP process.
-     * Output is appended to storage/logs/bootstrap/{label}.log.
+     * Output is appended to storage/logs/boot-up/{label}.log.
      */
     public function start(ShellCommand $command, string $label): ProcessRecord
     {
