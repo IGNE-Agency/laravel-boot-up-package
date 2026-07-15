@@ -20,13 +20,14 @@ test('defaults map the built-in drivers and prompt behaviour', function (): void
             'laravel' => ArtisanServer::class,
         ])
         ->and($config->promptStopServer)->toBeTrue()
-        ->and($config->stopServerByDefault)->toBeFalse();
+        ->and($config->stopServerByDefault)->toBeFalse()
+        ->and($config->herdSite)->toBeNull();
 });
 
 test('fromRepository reads the server and shutdown keys', function (): void {
     $config = ServersConfig::fromRepository(new Repository([
         'boot-up' => [
-            'server' => ['default' => 'sail', 'prompt' => false],
+            'server' => ['default' => 'sail', 'prompt' => false, 'herd' => ['site' => 'dashboard']],
             'shutdown' => ['prompt_stop_server' => false, 'stop_server_by_default' => true],
         ],
     ]));
@@ -34,7 +35,8 @@ test('fromRepository reads the server and shutdown keys', function (): void {
     expect($config->default)->toBe('sail')
         ->and($config->prompt)->toBeFalse()
         ->and($config->promptStopServer)->toBeFalse()
-        ->and($config->stopServerByDefault)->toBeTrue();
+        ->and($config->stopServerByDefault)->toBeTrue()
+        ->and($config->herdSite)->toBe('dashboard');
 });
 
 test('project drivers merge over the built-ins', function (): void {

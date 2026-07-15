@@ -26,6 +26,7 @@ use Igne\LaravelBootUp\Queue\QueueConfig;
 use Igne\LaravelBootUp\Serve\ServeConfig;
 use Igne\LaravelBootUp\Serve\ShutdownRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
+use Igne\LaravelBootUp\Servers\Herd\HerdSites;
 use Igne\LaravelBootUp\Servers\ServersConfig;
 use Igne\LaravelBootUp\Support\Poller;
 use Igne\LaravelBootUp\Tools\ToolsConfig;
@@ -62,6 +63,11 @@ final class BootUpServiceProvider extends ServiceProvider
         $this->app->singleton(ActiveServerStore::class, fn (Application $app) => new ActiveServerStore(
             $app->storagePath('framework/boot-up/active-server.json'),
         ));
+
+        $this->app->singleton(HerdSites::class, fn () => new HerdSites(match (PHP_OS_FAMILY) {
+            'Darwin' => ($_SERVER['HOME'] ?? '').'/Library/Application Support/Herd/config/valet/Sites',
+            default => ($_SERVER['HOME'] ?? '').'/.config/valet/Sites',
+        }));
 
         $this->app->singleton(TerminalLauncher::class, fn (Application $app) => match (PHP_OS_FAMILY) {
             'Darwin' => $app->make(MacTerminal::class),

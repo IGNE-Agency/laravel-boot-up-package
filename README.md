@@ -95,6 +95,9 @@ Highlights of `config/boot-up.php`:
 'server' => [
     'default' => env('BOOT_UP_SERVER'),           // 'herd' | 'sail' | 'laravel' | null = prompt
     'drivers' => [ /* add your own Server implementations here */ ],
+    'herd' => [
+        'site' => env('BOOT_UP_HERD_SITE'),       // https://{site}.test; null = prompt (folder name as default)
+    ],
 ],
 
 'tools' => [
@@ -120,6 +123,13 @@ Sail extras: when serving with Sail, the package offers (once, with your
 consent) to add the `sail` alias to your shell profile, and rewrites every
 app-level command to run inside the containers
 (`./vendor/bin/sail artisan ...`).
+
+Herd extras: `app:serve herd` verifies Herd's site registry against the actual
+project path. A link pointing at a moved project (the classic
+"folder-was-relocated 404") is replaced automatically; a name owned by another
+live project is only taken over after you confirm. On first link you choose the
+site name — the folder name is the default, so `https://{name}.test` can differ
+from the directory. Pin it with `BOOT_UP_HERD_SITE` to skip the prompt.
 
 ## Exporting a deployment script
 

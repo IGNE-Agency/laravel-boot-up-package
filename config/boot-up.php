@@ -49,6 +49,11 @@ return [
             'sail' => SailServer::class,
             'laravel' => ArtisanServer::class,
         ],
+        'herd' => [
+            // Fixed Herd site name (served at https://{name}.test). null
+            // prompts on first link, defaulting to the project folder name.
+            'site' => env('BOOT_UP_HERD_SITE'),
+        ],
     ],
 
     /*
