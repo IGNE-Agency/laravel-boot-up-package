@@ -19,7 +19,12 @@ final class RecordingServer implements Server
 
     public int $stops = 0;
 
-    public function __construct(public bool $running = true) {}
+    public function __construct(
+        public bool $running = true,
+        public bool $providesDatabase = false,
+        public bool $databaseReachableFromHost = true,
+        public ?string $stopImpact = null,
+    ) {}
 
     public function key(): string
     {
@@ -39,6 +44,21 @@ final class RecordingServer implements Server
     public function commandRewrites(): CommandRewrites
     {
         return CommandRewrites::none();
+    }
+
+    public function providesDatabase(): bool
+    {
+        return $this->providesDatabase;
+    }
+
+    public function databaseReachableFromHost(): bool
+    {
+        return $this->databaseReachableFromHost;
+    }
+
+    public function stopImpact(): ?string
+    {
+        return $this->stopImpact;
     }
 
     public function isRunning(): bool

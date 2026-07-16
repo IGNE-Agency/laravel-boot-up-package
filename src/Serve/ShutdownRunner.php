@@ -51,8 +51,11 @@ final class ShutdownRunner
             note("Stopping {$record->label} (pid {$record->pid})...");
         });
 
-        $this->reaper->reapAll();
-        $this->ledger->clear();
+        // reap() already forgets confirmed-dead entries; only remove the
+        // ledger file itself when nothing survived the signals.
+        if ($this->reaper->reapAll()) {
+            $this->ledger->clear();
+        }
 
         if ($active !== null) {
             $this->stopServer($active->key, $active->startedByUs);

@@ -51,6 +51,14 @@ test('get returns null when the env file itself is missing', function (): void {
     expect($this->envFile->get('APP_ENV'))->toBeNull();
 });
 
+test('valueOr prefers the .env value and falls back when absent or empty', function (): void {
+    file_put_contents($this->envPath, "DB_CONNECTION=pgsql\nQUEUE_CONNECTION=\n");
+
+    expect($this->envFile->valueOr('DB_CONNECTION', 'mysql'))->toBe('pgsql')
+        ->and($this->envFile->valueOr('QUEUE_CONNECTION', 'sync'))->toBe('sync')
+        ->and($this->envFile->valueOr('MISSING', 'fallback'))->toBe('fallback');
+});
+
 test('get unquotes double- and single-quoted values', function (): void {
     file_put_contents($this->envPath, implode("\n", [
         'APP_NAME="My App"',

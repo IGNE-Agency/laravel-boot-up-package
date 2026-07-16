@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Queue\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Pipelines\ComposerJson;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRecord;
@@ -15,6 +16,7 @@ use Igne\LaravelBootUp\Queue\QueueConfig;
 use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
+use Igne\LaravelBootUp\Services\ServicesConfig;
 use Illuminate\Contracts\Config\Repository;
 
 use function Laravel\Prompts\info;
@@ -32,6 +34,8 @@ final class StartQueueWorker implements Step
         private readonly CommandRewriter $rewriter,
         private readonly ProcessLedger $ledger,
         private readonly ProcessReaper $reaper,
+        private readonly ServicesConfig $services,
+        private readonly ComposerJson $composerJson,
     ) {}
 
     public function handle(ServeContext $context, Closure $next): mixed
@@ -44,6 +48,12 @@ final class StartQueueWorker implements Step
 
         if (! $this->config->enabled) {
             note('Queue worker disabled in configuration.');
+
+            return $next($context);
+        }
+
+        if ($this->services->horizonEnabled && $this->composerJson->requires('laravel/horizon')) {
+            note('laravel/horizon manages the queue — skipping queue:work.');
 
             return $next($context);
         }
@@ -78,17 +88,9 @@ final class StartQueueWorker implements Step
         return $next($context);
     }
 
-    /**
-     * The .env file wins over loaded config: when .env was created during
-     * this very boot, config('queue.default') still carries the stale value.
-     */
     private function connection(): string
     {
-        $fromEnv = $this->envFile->get('QUEUE_CONNECTION');
-
-        return $fromEnv !== null && $fromEnv !== ''
-            ? $fromEnv
-            : (string) $this->laravelConfig->get('queue.default');
+        return $this->envFile->valueOr('QUEUE_CONNECTION', (string) $this->laravelConfig->get('queue.default'));
     }
 
     private function workerIsRunning(): bool

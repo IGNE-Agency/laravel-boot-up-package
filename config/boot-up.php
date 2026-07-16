@@ -21,6 +21,9 @@ use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
 use Igne\LaravelBootUp\Servers\Herd\HerdServer;
 use Igne\LaravelBootUp\Servers\Sail\SailServer;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
+use Igne\LaravelBootUp\Services\Steps\StartHorizon;
+use Igne\LaravelBootUp\Services\Steps\StartReverb;
+use Igne\LaravelBootUp\Services\Steps\StartScheduler;
 use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
 
 return [
@@ -53,6 +56,11 @@ return [
             // Fixed Herd site name (served at https://{name}.test). null
             // prompts on first link, defaulting to the project folder name.
             'site' => env('BOOT_UP_HERD_SITE'),
+        ],
+        'artisan' => [
+            // Where `php artisan serve` binds; also drives the announced URL.
+            'host' => env('BOOT_UP_ARTISAN_HOST', '127.0.0.1'),
+            'port' => (int) env('BOOT_UP_ARTISAN_PORT', 8000),
         ],
     ],
 
@@ -103,6 +111,28 @@ return [
         'enabled' => env('BOOT_UP_QUEUE', true),
         'run_in' => env('BOOT_UP_QUEUE_RUN_IN', 'background'), // background | terminal
         'flags' => [],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Long-running services
+    |--------------------------------------------------------------------------
+    | Horizon and Reverb start automatically when the matching Laravel
+    | package is installed (and replace/extend the queue worker where it
+    | applies). The scheduler is opt-in: schedule:work on a project with
+    | no scheduled tasks is pure noise.
+    */
+    'services' => [
+        'scheduler' => [
+            'enabled' => env('BOOT_UP_SCHEDULER', false),
+            'run_in' => env('BOOT_UP_SCHEDULER_RUN_IN', 'background'), // background | terminal
+        ],
+        'horizon' => [
+            'enabled' => env('BOOT_UP_HORIZON', true),
+        ],
+        'reverb' => [
+            'enabled' => env('BOOT_UP_REVERB', true),
+        ],
     ],
 
     'deploy' => [
@@ -171,6 +201,9 @@ return [
         CacheFrameworkFiles::class,
         FinalizeApplication::class,
         StartQueueWorker::class,
+        StartHorizon::class,
+        StartReverb::class,
+        StartScheduler::class,
         BuildOrWatchAssets::class,
         AnnounceApplication::class,
     ],

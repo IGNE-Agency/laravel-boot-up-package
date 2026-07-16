@@ -15,6 +15,7 @@ use Igne\LaravelBootUp\Serve\ServeOptions;
 use Igne\LaravelBootUp\Servers\CommandRewrites;
 use Igne\LaravelBootUp\Servers\Server;
 use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -40,6 +41,8 @@ function frontendSailServer(): Server
 {
     return new class implements Server
     {
+        use DefaultServerCapabilities;
+
         public function key(): string
         {
             return 'sail';

@@ -127,20 +127,31 @@ test('a failing herd command aborts the start instead of pretending success', fu
         ->toThrow(ServerException::class, 'no herd here');
 });
 
-test('isRunning is true when nginx is up', function (): void {
-    ProcessFaker::fake(['pgrep -x nginx' => Process::result()]);
+test('isRunning is true when Herd nginx is up', function (): void {
+    ProcessFaker::fake(['pgrep -f Herd[^ ]*nginx' => Process::result()]);
 
     expect(herdServer($this->workDir)->isRunning())->toBeTrue();
-    ProcessFaker::assertDidntRun('pgrep -x php-fpm');
+    ProcessFaker::assertDidntRun('pgrep -f Herd[^ ]*php-fpm');
 });
 
-test('isRunning is true when only php-fpm is up', function (): void {
+test('isRunning is true when only Herd php-fpm is up', function (): void {
     ProcessFaker::fake([
-        'pgrep -x nginx' => Process::result(exitCode: 1),
-        'pgrep -x php-fpm' => Process::result(),
+        'pgrep -f Herd[^ ]*nginx' => Process::result(exitCode: 1),
+        'pgrep -f Herd[^ ]*php-fpm' => Process::result(),
     ]);
 
     expect(herdServer($this->workDir)->isRunning())->toBeTrue();
+});
+
+test('the health probe is scoped to Herd paths, never bare service names', function (): void {
+    ProcessFaker::fake(['pgrep*' => Process::result(exitCode: 1)]);
+
+    herdServer($this->workDir)->isRunning();
+
+    ProcessFaker::assertDidntRun('pgrep -x nginx');
+    ProcessFaker::assertDidntRun('pgrep -x php-fpm');
+    ProcessFaker::assertRan('pgrep -f Herd*nginx');
+    ProcessFaker::assertRan('pgrep -f Herd*php-fpm');
 });
 
 test('isRunning is false when no herd service is up', function (): void {

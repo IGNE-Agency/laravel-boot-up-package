@@ -77,6 +77,18 @@ final class ToolManager
 
         info("{$tool->label()} {$version} does not satisfy '{$constraint->value}'. Updating...");
         $tool->update($constraint);
-        info("{$tool->label()} updated.");
+
+        $updated = $tool->installedVersion();
+
+        if ($updated !== null && $constraint->isSatisfiedBy($updated)) {
+            info("{$tool->label()} updated to {$updated}.");
+
+            return;
+        }
+
+        warning(
+            "{$tool->label()} is ".($updated ?? 'an unreadable version')." after updating, which still does not satisfy '{$constraint->value}'. "
+            .'The default install cannot provide it — install a matching version yourself (e.g. a versioned Homebrew formula) or relax the constraint. Continuing.'
+        );
     }
 }

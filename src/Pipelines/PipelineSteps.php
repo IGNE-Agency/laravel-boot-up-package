@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Pipelines;
 
 use Igne\LaravelBootUp\Deploy\ProjectCommand;
-use Igne\LaravelBootUp\Deploy\ProjectCommandType;
-use Igne\LaravelBootUp\Frontend\PackageManager;
 
 /**
  * The shell commands every pipeline runs, shared by all generators so the
@@ -50,18 +48,7 @@ final class PipelineSteps
             return [];
         }
 
-        $manager = $plan->deployment->packageManager;
-        $lines = [];
-
-        // Only npm is guaranteed on both providers' images.
-        if ($manager !== PackageManager::NPM) {
-            $lines[] = "npm i -g {$manager->value}";
-        }
-
-        $lines[] = $manager->ciInstallLine();
-        $lines[] = "{$manager->value} run build";
-
-        return $lines;
+        return $plan->deployment->packageManager->buildScriptLines(ensureInstalled: true);
     }
 
     /**
@@ -166,11 +153,7 @@ final class PipelineSteps
             $lines[] = 'echo "'.str_replace(['\\', '"'], ['\\\\', '\"'], $command->description).'"';
         }
 
-        $lines[] = match ($command->type) {
-            ProjectCommandType::ARTISAN => "php artisan {$command->command}",
-            ProjectCommandType::COMPOSER => "composer {$command->command}",
-            ProjectCommandType::PACKAGE_MANAGER => "{$plan->deployment->packageManager->value} {$command->command}",
-        };
+        $lines[] = $command->shellLine('php artisan', 'composer', $plan->deployment->packageManager->value);
 
         return $lines;
     }

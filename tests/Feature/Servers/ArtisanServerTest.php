@@ -10,6 +10,7 @@ use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\ServeOptions;
 use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
+use Igne\LaravelBootUp\Servers\ServersConfig;
 use Igne\LaravelBootUp\Support\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
@@ -27,7 +28,7 @@ afterEach(function (): void {
     exec('rm -rf '.escapeshellarg($this->workDir));
 });
 
-function artisanServer(ProcessLedger $ledger, string $workDir): ArtisanServer
+function artisanServer(ProcessLedger $ledger, string $workDir, ?ServersConfig $config = null): ArtisanServer
 {
     $runner = new ProcessRunner(
         processes: app(Factory::class),
@@ -42,7 +43,7 @@ function artisanServer(ProcessLedger $ledger, string $workDir): ArtisanServer
         $runner,
         $ledger,
         new ProcessReaper(app(Factory::class), $ledger, new Poller),
-        app('config'),
+        $config ?? new ServersConfig,
     );
 }
 
@@ -57,14 +58,14 @@ test('start spawns a tracked detached php artisan serve', function (): void {
 
     expect($records)->toHaveCount(1)
         ->and($records->first()->pid)->toBe(4242)
-        ->and($records->first()->command)->toBe('php artisan serve');
+        ->and($records->first()->command)->toBe('php artisan serve --host=127.0.0.1 --port=8000');
     Prompt::assertStrippedOutputContains('php artisan serve started (PID 4242).');
 });
 
 test('a second start is skipped while the tracked process is alive', function (): void {
     ProcessFaker::fake([
         'kill -0 4242' => Process::result(),
-        'ps -p 4242*' => Process::result(output: "php artisan serve\n"),
+        'ps -p 4242*' => Process::result(output: "php artisan serve --host=127.0.0.1 --port=8000\n"),
         '*' => Process::result(output: "4242\n"),
     ]);
 
@@ -119,15 +120,23 @@ test('stop terminates a live tracked process', function (): void {
     expect($this->ledger->withLabel('artisan-serve'))->toHaveCount(0);
 });
 
-test('url falls back to the artisan serve default when app.url is empty', function (): void {
+test('url derives from the configured bind address, never app.url', function (): void {
     ProcessFaker::fake();
-    $server = artisanServer($this->ledger, $this->workDir);
-
-    config()->set('app.url', '');
-    expect($server->url())->toBe('http://127.0.0.1:8000');
 
     config()->set('app.url', 'http://example.test');
-    expect($server->url())->toBe('http://example.test');
+    expect(artisanServer($this->ledger, $this->workDir)->url())->toBe('http://127.0.0.1:8000');
+
+    $custom = artisanServer($this->ledger, $this->workDir, new ServersConfig(artisanHost: '0.0.0.0', artisanPort: 8080));
+    expect($custom->url())->toBe('http://0.0.0.0:8080');
+});
+
+test('start passes the configured host and port to artisan serve', function (): void {
+    ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
+
+    artisanServer($this->ledger, $this->workDir, new ServersConfig(artisanHost: '0.0.0.0', artisanPort: 8080))
+        ->start(new ServeContext(new ServeOptions));
+
+    ProcessFaker::assertRan('*php artisan serve --host=0.0.0.0 --port=8080*');
 });
 
 test('identity, tools and rewrites', function (): void {

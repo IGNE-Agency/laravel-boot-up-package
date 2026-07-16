@@ -7,6 +7,7 @@ namespace Igne\LaravelBootUp\Servers\Sail;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Process\ShellCommand;
 use Igne\LaravelBootUp\Servers\ServerException;
+use Igne\LaravelBootUp\Support\Platform;
 use Igne\LaravelBootUp\Support\Poller;
 
 use function Laravel\Prompts\info;
@@ -16,6 +17,7 @@ final class Docker
     public function __construct(
         private readonly ProcessRunner $runner,
         private readonly Poller $poller,
+        private readonly Platform $platform,
         private readonly int $startTimeoutSeconds = 60,
     ) {}
 
@@ -32,7 +34,7 @@ final class Docker
 
         info('Starting Docker...');
 
-        PHP_OS_FAMILY === 'Darwin'
+        $this->platform->isMacos()
             ? $this->runner->runSilently(ShellCommand::make(['open', '-a', 'Docker']))
             : $this->runner->runSilently(ShellCommand::make(['systemctl', 'start', 'docker']));
 

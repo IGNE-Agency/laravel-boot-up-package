@@ -74,12 +74,8 @@ final class ProjectCommandRunner
      */
     private function tokensFor(ProjectCommand $command): array
     {
-        $parts = preg_split('/\s+/', trim($command->command)) ?: [];
+        $line = $command->shellLine('php artisan', 'composer', $this->packageManagers->selected()->binary());
 
-        return match ($command->type) {
-            ProjectCommandType::ARTISAN => ['php', 'artisan', ...$parts],
-            ProjectCommandType::COMPOSER => ['composer', ...$parts],
-            ProjectCommandType::PACKAGE_MANAGER => [$this->packageManagers->selected()->binary(), ...$parts],
-        };
+        return preg_split('/\s+/', trim($line)) ?: [];
     }
 }

@@ -46,18 +46,21 @@ test('current is null when no record was written', function (): void {
     expect($this->store->current())->toBeNull();
 });
 
-test('current is null for a corrupt file', function (): void {
+test('current is null for a corrupt file, which is quarantined', function (): void {
     mkdir($this->dir, 0755, true);
     file_put_contents($this->path, '{not json');
 
-    expect($this->store->current())->toBeNull();
+    expect($this->store->current())->toBeNull()
+        ->and(is_file($this->path))->toBeFalse()
+        ->and(file_get_contents($this->path.'.corrupt'))->toBe('{not json');
 });
 
-test('current is null when the payload misses keys', function (): void {
+test('current is null when the payload misses keys, which counts as corrupt', function (): void {
     mkdir($this->dir, 0755, true);
-    file_put_contents($this->path, json_encode(['key' => 'herd']));
+    file_put_contents($this->path, (string) json_encode(['key' => 'herd']));
 
-    expect($this->store->current())->toBeNull();
+    expect($this->store->current())->toBeNull()
+        ->and(is_file($this->path.'.corrupt'))->toBeTrue();
 });
 
 test('clear removes the record and is a no-op when already gone', function (): void {

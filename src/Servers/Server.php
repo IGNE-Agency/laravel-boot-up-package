@@ -29,6 +29,28 @@ interface Server
 
     public function commandRewrites(): CommandRewrites;
 
+    /**
+     * Whether the server provisions the configured database itself
+     * (e.g. Sail's containers create it from .env), so the boot must
+     * not try to create one.
+     */
+    public function providesDatabase(): bool;
+
+    /**
+     * Whether the host can reach the configured database directly. When
+     * false, database checks and migrations run through the server's
+     * command rewrites instead of host-side PDO.
+     */
+    public function databaseReachableFromHost(): bool;
+
+    /**
+     * A warning shown before stop() when stopping reaches beyond this
+     * project (e.g. `herd stop` halts every Herd site on the machine).
+     * Null means stopping is project-scoped. A non-null impact is never
+     * acted on without an explicit confirmation.
+     */
+    public function stopImpact(): ?string;
+
     public function isRunning(): bool;
 
     /**

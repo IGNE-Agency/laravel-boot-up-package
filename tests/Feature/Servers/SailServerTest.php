@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Environment\EnvironmentConfig;
 use Igne\LaravelBootUp\Environment\ShellProfile;
 use Igne\LaravelBootUp\Process\ProcessLedger;
@@ -14,6 +15,7 @@ use Igne\LaravelBootUp\Servers\Sail\Sail;
 use Igne\LaravelBootUp\Servers\Sail\SailAliasInstaller;
 use Igne\LaravelBootUp\Servers\Sail\SailServer;
 use Igne\LaravelBootUp\Servers\ServerException;
+use Igne\LaravelBootUp\Support\Platform;
 use Igne\LaravelBootUp\Support\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Igne\LaravelBootUp\Tools\Tool;
@@ -50,7 +52,7 @@ function sailServer(
     );
 
     return new SailServer(
-        docker: new Docker($runner, new Poller, $dockerTimeout),
+        docker: new Docker($runner, new Poller, new Platform('Darwin'), $dockerTimeout),
         sail: new Sail($runner),
         aliasInstaller: $alias ?? new SailAliasInstaller(
             new ShellProfile($workDir.'/no-home', '/bin/zsh'),
@@ -58,6 +60,7 @@ function sailServer(
         ),
         poller: new Poller,
         config: app('config'),
+        envFile: new EnvFile($workDir.'/app/.env', $workDir.'/app/.env.example'),
         readyTimeoutSeconds: $readyTimeout,
     );
 }
@@ -73,7 +76,7 @@ test('start boots docker, brings containers up and waits until they report', fun
 
     sailServer($this->workDir)->start(new ServeContext(new ServeOptions));
 
-    ProcessFaker::assertRan(PHP_OS_FAMILY === 'Darwin' ? 'open -a Docker' : 'systemctl start docker');
+    ProcessFaker::assertRan('open -a Docker');
     ProcessFaker::assertRan('./vendor/bin/sail up -d');
     ProcessFaker::assertRan('./vendor/bin/sail ps -q');
     ProcessFaker::assertDidntRun('php artisan sail:install');
@@ -162,11 +165,18 @@ test('stop runs sail down', function (): void {
     ProcessFaker::assertRan('./vendor/bin/sail down');
 });
 
-test('url reads app.url', function (): void {
+test('url prefers the .env, falls back to app.url, then to localhost', function (): void {
     ProcessFaker::fake();
-    config()->set('app.url', 'http://sail.example');
 
+    config()->set('app.url', 'http://sail.example');
     expect(sailServer($this->workDir)->url())->toBe('http://sail.example');
+
+    file_put_contents($this->basePath.'/.env', "APP_URL=http://from-env.example\n");
+    expect(sailServer($this->workDir)->url())->toBe('http://from-env.example');
+
+    unlink($this->basePath.'/.env');
+    config()->set('app.url', '');
+    expect(sailServer($this->workDir)->url())->toBe('http://localhost');
 });
 
 test('identity, tools and rewrites', function (): void {

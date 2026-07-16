@@ -73,17 +73,9 @@ final class EnsureDatabaseCredentials implements Step
         return $next($context);
     }
 
-    /**
-     * The .env file wins over loaded config: when .env was created during
-     * this very boot, config('database.default') still carries a stale value.
-     */
     private function driver(): string
     {
-        $fromEnv = $this->envFile->get('DB_CONNECTION');
-
-        return $fromEnv !== null && $fromEnv !== ''
-            ? $fromEnv
-            : (string) $this->laravelConfig->get('database.default');
+        return $this->envFile->valueOr('DB_CONNECTION', (string) $this->laravelConfig->get('database.default'));
     }
 
     /**

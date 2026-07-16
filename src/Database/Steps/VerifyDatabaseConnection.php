@@ -19,9 +19,10 @@ use function Laravel\Prompts\info;
 use Throwable;
 
 /**
- * Proves the database is reachable before anything migrates. Under Sail the
- * check runs inside the container (the host cannot reach `mysql`); otherwise
- * a host-side PDO connection is enough.
+ * Proves the database is reachable before anything migrates. When the host
+ * cannot reach the database (e.g. it lives inside Sail's containers) the
+ * check runs through the server's command rewrites; otherwise a host-side
+ * PDO connection is enough.
  */
 final class VerifyDatabaseConnection implements Step
 {
@@ -33,8 +34,8 @@ final class VerifyDatabaseConnection implements Step
 
     public function handle(ServeContext $context, Closure $next): mixed
     {
-        if ($context->server?->key() === 'sail') {
-            $this->verifyThroughSail($context);
+        if ($context->server !== null && ! $context->server->databaseReachableFromHost()) {
+            $this->verifyThroughServer($context);
         } else {
             $this->verifyFromHost();
         }
@@ -44,7 +45,7 @@ final class VerifyDatabaseConnection implements Step
         return $next($context);
     }
 
-    private function verifyThroughSail(ServeContext $context): void
+    private function verifyThroughServer(ServeContext $context): void
     {
         $result = $this->runner->runSilently($this->rewriter->rewrite(
             ShellCommand::make('php artisan migrate:status'),
@@ -52,7 +53,7 @@ final class VerifyDatabaseConnection implements Step
         ));
 
         if (! $result->successful()) {
-            throw DatabaseException::connectionFailed('sail', trim($result->errorOutput()));
+            throw DatabaseException::connectionFailed($context->server?->key() ?? 'server', trim($result->errorOutput()));
         }
     }
 

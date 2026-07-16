@@ -7,13 +7,23 @@ use Igne\LaravelBootUp\Servers\CommandRewrites;
 use Igne\LaravelBootUp\Servers\Server;
 use Igne\LaravelBootUp\Servers\ServersConfig;
 use Igne\LaravelBootUp\Servers\StopServerPrompt;
+use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Laravel\Prompts\Key;
 use Laravel\Prompts\Prompt;
 
-function stopPromptServer(): Server
+function stopPromptServer(?string $impact = null): Server
 {
-    return new class implements Server
+    return new class($impact) implements Server
     {
+        use DefaultServerCapabilities;
+
+        public function __construct(private readonly ?string $impact = null) {}
+
+        public function stopImpact(): ?string
+        {
+            return $this->impact;
+        }
+
         public function key(): string
         {
             return 'double';
@@ -75,4 +85,31 @@ test('enter accepts the configured default answer', function (): void {
     $prompt = new StopServerPrompt(new ServersConfig(promptStopServer: true, stopServerByDefault: false));
 
     expect($prompt->shouldStop(stopPromptServer()))->toBeFalse();
+});
+
+test('a server with stop impact is never stopped silently, even when configured to', function (): void {
+    Prompt::fake();
+
+    $prompt = new StopServerPrompt(new ServersConfig(promptStopServer: false, stopServerByDefault: true));
+
+    expect($prompt->shouldStop(stopPromptServer('stopping halts every site.')))->toBeFalse();
+    Prompt::assertStrippedOutputContains('Leaving Double Server running');
+    Prompt::assertStrippedOutputContains('stopping halts every site.');
+});
+
+test('the stop impact is shown as a warning before the confirm and forces a no default', function (): void {
+    Prompt::fake([Key::ENTER]);
+
+    $prompt = new StopServerPrompt(new ServersConfig(promptStopServer: true, stopServerByDefault: true));
+
+    expect($prompt->shouldStop(stopPromptServer('stopping halts every site.')))->toBeFalse();
+    Prompt::assertStrippedOutputContains('stopping halts every site.');
+});
+
+test('an explicit yes still stops a server with stop impact', function (): void {
+    Prompt::fake(['y', Key::ENTER]);
+
+    $prompt = new StopServerPrompt(new ServersConfig(promptStopServer: true, stopServerByDefault: false));
+
+    expect($prompt->shouldStop(stopPromptServer('stopping halts every site.')))->toBeTrue();
 });

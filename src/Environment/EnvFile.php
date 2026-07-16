@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Environment;
 
+use Igne\LaravelBootUp\Support\AtomicFile;
+
 /**
  * Line-preserving reader/writer for the application's .env file.
  * Writes are atomic (tmp file + rename) so a crash never leaves a
@@ -52,6 +54,18 @@ final class EnvFile
     public function has(string $key): bool
     {
         return $this->get($key) !== null;
+    }
+
+    /**
+     * The .env value when present and non-empty, the fallback otherwise.
+     * On a fresh boot the loaded configuration may predate edits to the
+     * .env file, so the file itself wins.
+     */
+    public function valueOr(string $key, string $fallback): string
+    {
+        $value = (string) $this->get($key);
+
+        return $value === '' ? $fallback : $value;
     }
 
     public function set(string $key, string $value): void
@@ -145,9 +159,6 @@ final class EnvFile
 
     private function write(string $content): void
     {
-        $temporary = $this->path.'.tmp-'.bin2hex(random_bytes(4));
-
-        file_put_contents($temporary, $content);
-        rename($temporary, $this->path);
+        AtomicFile::write($this->path, $content);
     }
 }

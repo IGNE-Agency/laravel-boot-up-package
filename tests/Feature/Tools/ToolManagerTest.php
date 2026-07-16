@@ -10,9 +10,13 @@ use Igne\LaravelBootUp\Tools\VersionConstraint;
 use Laravel\Prompts\Key;
 use Laravel\Prompts\Prompt;
 
-function toolManagerDouble(bool $installed, ?string $version = null, bool $updatesAutomatically = false): InstallsTool
-{
-    return new class($installed, $version, $updatesAutomatically) implements InstallsTool
+function toolManagerDouble(
+    bool $installed,
+    ?string $version = null,
+    bool $updatesAutomatically = false,
+    ?string $versionAfterUpdate = null,
+): InstallsTool {
+    return new class($installed, $version, $updatesAutomatically, $versionAfterUpdate) implements InstallsTool
     {
         public int $installs = 0;
 
@@ -22,8 +26,9 @@ function toolManagerDouble(bool $installed, ?string $version = null, bool $updat
 
         public function __construct(
             private readonly bool $installed,
-            private readonly ?string $version,
+            private ?string $version,
             private readonly bool $auto,
+            private readonly ?string $versionAfterUpdate = null,
         ) {}
 
         public function id(): string
@@ -56,6 +61,10 @@ function toolManagerDouble(bool $installed, ?string $version = null, bool $updat
         public function update(VersionConstraint $constraint): void
         {
             $this->updates++;
+
+            if ($this->versionAfterUpdate !== null) {
+                $this->version = $this->versionAfterUpdate;
+            }
         }
 
         public function updatesAutomatically(): bool
@@ -138,15 +147,26 @@ test('a satisfied constraint requires no action', function (): void {
     Prompt::assertStrippedOutputContains("Double 8.3.5 satisfies '^8.3'.");
 });
 
-test('updates an outdated tool when auto-update is enabled', function (): void {
+test('updates an outdated tool and reports the version it reached', function (): void {
     Prompt::fake();
-    $tool = toolManagerDouble(installed: true, version: '8.2.0');
+    $tool = toolManagerDouble(installed: true, version: '8.2.0', versionAfterUpdate: '8.3.7');
 
     toolManagerWith()->ensure($tool, VersionConstraint::of('^8.3'));
 
     expect($tool->updates)->toBe(1)
         ->and($tool->installs)->toBe(0);
     Prompt::assertStrippedOutputContains('Updating');
+    Prompt::assertStrippedOutputContains('Double updated to 8.3.7.');
+});
+
+test('an update that cannot reach the constraint warns instead of pretending success', function (): void {
+    Prompt::fake();
+    $tool = toolManagerDouble(installed: true, version: '8.2.0', versionAfterUpdate: '8.2.1');
+
+    toolManagerWith()->ensure($tool, VersionConstraint::of('^8.3'));
+
+    expect($tool->updates)->toBe(1);
+    Prompt::assertStrippedOutputContains("Double is 8.2.1 after updating, which still does not satisfy '^8.3'.");
 });
 
 test('skips updating tools that update themselves', function (): void {

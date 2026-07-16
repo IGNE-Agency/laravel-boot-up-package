@@ -52,3 +52,23 @@ test('a failing finalize command fails the deploy cleanly', function (): void {
 
     $this->artisan('app:deploy')->assertFailed();
 });
+
+test('fails fast on native Windows', function (): void {
+    ProcessFaker::fake();
+    app()->instance(Igne\LaravelBootUp\Support\Platform::class, new Igne\LaravelBootUp\Support\Platform('Windows'));
+
+    $this->artisan('app:deploy')
+        ->expectsOutputToContain('not supported on native Windows')
+        ->assertFailed();
+
+    Process::assertNothingRan();
+});
+
+test('an unexpected exception fails cleanly instead of dumping a stack trace', function (): void {
+    ProcessFaker::fake();
+    config()->set('boot-up.deploy_steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
+
+    $this->artisan('app:deploy')
+        ->expectsOutputToContain('Unexpected error: something exploded')
+        ->assertFailed();
+});

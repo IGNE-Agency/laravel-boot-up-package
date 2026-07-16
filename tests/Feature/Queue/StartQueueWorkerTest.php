@@ -15,6 +15,7 @@ use Igne\LaravelBootUp\Serve\ServeOptions;
 use Igne\LaravelBootUp\Servers\CommandRewrites;
 use Igne\LaravelBootUp\Servers\Server;
 use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -46,6 +47,8 @@ function queueSailServer(): Server
 {
     return new class implements Server
     {
+        use DefaultServerCapabilities;
+
         public function key(): string
         {
             return 'sail';
@@ -120,6 +123,18 @@ test('skips with a note when the queue is disabled in configuration', function (
 
     Process::assertNothingRan();
     Prompt::assertStrippedOutputContains('disabled in configuration');
+});
+
+test('skips with a note when horizon is installed and enabled', function (): void {
+    Process::fake();
+    bindQueueServices($this->dir);
+    file_put_contents($this->dir.'/composer.json', (string) json_encode(['require' => ['laravel/horizon' => '^6.0']]));
+    app()->instance(Igne\LaravelBootUp\Pipelines\ComposerJson::class, new Igne\LaravelBootUp\Pipelines\ComposerJson($this->dir.'/composer.json'));
+
+    app(StartQueueWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+
+    Process::assertNothingRan();
+    Prompt::assertStrippedOutputContains('laravel/horizon manages the queue');
 });
 
 test('skips with a note when the .env queue connection is sync', function (): void {

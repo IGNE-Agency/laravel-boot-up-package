@@ -15,7 +15,8 @@ worker when your project needs one, and serves the app via **Herd**, **Sail**,
 or **`php artisan serve`**. `app:down` cleanly stops everything it started — and
 nothing it didn't.
 
-> Development only. Requires PHP 8.3+, Laravel 13, macOS or Linux.
+> Development only. Requires PHP 8.3+, Laravel 13, macOS or Linux (native
+> Windows fails fast with a clear message — use WSL2).
 
 ## Installation
 
@@ -31,11 +32,13 @@ this package has no business in production.
 ```bash
 php artisan app:serve            # prompts for a server on first run
 php artisan app:serve herd       # or: sail | laravel
-php artisan app:serve --seed     # seed after migrating
+php artisan app:serve --seed     # run db:seed (always — even with nothing to migrate)
+php artisan app:serve --fresh    # migrate:fresh instead of pending migrations (asks first)
 php artisan app:serve --update   # update dependencies instead of installing
 php artisan app:serve --no-migrate --without-queue --without-assets
 
 php artisan app:deploy           # dependencies + project commands + migrations, no server
+php artisan app:status           # what is running: server, tracked processes, log paths
 php artisan app:down             # stop tracked processes + the server app:serve started
 
 php artisan app:deploy-script forge production        # export a hosting deployment script
@@ -54,6 +57,7 @@ reorder, trim, or extend (`boot-up.serve_steps`):
 1. Guard against non-local environments (a fresh `.env` counts as local)
 1. Generate `APP_KEY` when empty
 1. Install missing tools / update ones that violate your version constraints
+   (including the selected frontend package manager)
 1. Start the chosen server (Herd link+secure · Docker+Sail up ·
    `php artisan serve`)
 1. `composer install` (or `--update`)
@@ -61,10 +65,14 @@ reorder, trim, or extend (`boot-up.serve_steps`):
 1. Prompt for missing `DB_*` env values and write them to `.env`
 1. Create the database when it doesn't exist, verify the connection
 1. Your project's `beforeMigrations()` commands
-1. Run migrations — only when there are pending ones
+1. Run migrations — only when there are pending ones (`--fresh` rebuilds from
+   scratch after a confirmation; `--seed` always seeds, migrated or not)
 1. Your project's `afterMigrations()` commands
 1. Optional framework caching (off by default) + finalize (`storage:link`)
-1. Start `queue:work` — only when `QUEUE_CONNECTION` is not `sync`
+1. Start `queue:work` — only when `QUEUE_CONNECTION` is not `sync` (skipped in
+   favor of Horizon when `laravel/horizon` is installed)
+1. Start Horizon and Reverb when the project requires them, and the scheduler
+   when you opt in (`BOOT_UP_SCHEDULER=true`)
 1. Build or watch assets
 1. Announce the URL and open your browser
 
@@ -80,6 +88,12 @@ exactly them. Set `BOOT_UP_QUEUE_RUN_IN=terminal` (or
   process, then asks whether to stop the server — **only the server that
   `app:serve` itself started**. A Herd or Sail that was already running before
   you served is left alone.
+- Stopping Herd is machine-wide (`herd stop` halts _all_ Herd sites), so it only
+  ever happens after an explicit yes — never silently via
+  `shutdown.stop_server_by_default`.
+- A process that survives TERM _and_ KILL stays in the ledger with a warning
+  instead of being forgotten; `app:status` shows it and a later `app:down`
+  retries. Dead ledger entries are pruned automatically on the next `app:serve`.
 - Re-running `app:serve` never stacks duplicate workers or watchers, and a
   second `app:down` is a friendly no-op.
 
@@ -98,6 +112,10 @@ Highlights of `config/boot-up.php`:
     'herd' => [
         'site' => env('BOOT_UP_HERD_SITE'),       // https://{site}.test; null = prompt (folder name as default)
     ],
+    'artisan' => [
+        'host' => env('BOOT_UP_ARTISAN_HOST', '127.0.0.1'),  // where php artisan serve binds
+        'port' => env('BOOT_UP_ARTISAN_PORT', 8000),
+    ],
 ],
 
 'tools' => [
@@ -113,6 +131,12 @@ Highlights of `config/boot-up.php`:
 'frontend' => [
     'package_manager' => env('BOOT_UP_PACKAGE_MANAGER', 'bun'), // bun | yarn | npm | pnpm
     'assets' => env('BOOT_UP_ASSETS', 'watch'),                 // watch | build | skip
+],
+
+'services' => [
+    'scheduler' => ['enabled' => env('BOOT_UP_SCHEDULER', false)], // schedule:work, opt-in
+    'horizon' => ['enabled' => env('BOOT_UP_HORIZON', true)],      // starts when laravel/horizon is installed
+    'reverb' => ['enabled' => env('BOOT_UP_REVERB', true)],        // starts when laravel/reverb is installed
 ],
 
 'serve_steps' => [ /* the entire pipeline, reorderable */ ],
@@ -209,7 +233,12 @@ Four extension points, none of which require touching package code:
 1. **Custom servers** — implement `Servers\Server` and register it under
    `server.drivers` (e.g. `'valet' => ValetServer::class`). It becomes
    selectable by argument, config, and prompt, and participates in state
-   tracking, shutdown, and command rewriting automatically.
+   tracking, shutdown, and command rewriting automatically. Since v2 the
+   interface also declares three capability methods: `providesDatabase()` (the
+   server provisions the DB itself, so creation is skipped),
+   `databaseReachableFromHost()` (false routes DB checks and migrations through
+   your command rewrites, like Sail), and `stopImpact()` (a non-null warning
+   makes stopping require an explicit yes, like Herd's global stop).
 1. **Custom tools** — implement `Tools\InstallsTool` and map it under
    `tools.installers` with a constraint under `tools.required`. Config wins on
    key collision, so you can also replace a built-in installer (e.g. install

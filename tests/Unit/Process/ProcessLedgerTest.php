@@ -11,13 +11,7 @@ beforeEach(function (): void {
 });
 
 afterEach(function (): void {
-    if (is_file($this->path)) {
-        unlink($this->path);
-    }
-
-    if (is_dir(dirname($this->path))) {
-        rmdir(dirname($this->path));
-    }
+    exec('rm -rf '.escapeshellarg(dirname($this->path)));
 });
 
 function record(int $pid = 100, string $label = 'queue-worker'): ProcessRecord
@@ -53,12 +47,14 @@ test('withLabel filters and forget removes by pid', function (): void {
         ->and($this->ledger->all())->toHaveCount(1);
 });
 
-test('a corrupt ledger file reads as empty', function (): void {
+test('a corrupt ledger file reads as empty and is quarantined', function (): void {
     mkdir(dirname($this->path), 0755, true);
     file_put_contents($this->path, '{not json');
 
     expect($this->ledger->all())->toBeEmpty()
-        ->and($this->ledger->isEmpty())->toBeTrue();
+        ->and($this->ledger->isEmpty())->toBeTrue()
+        ->and(is_file($this->path))->toBeFalse()
+        ->and(file_get_contents($this->path.'.corrupt'))->toBe('{not json');
 });
 
 test('clear removes the file entirely', function (): void {

@@ -70,6 +70,27 @@ enum PackageManager: string
         };
     }
 
+    /**
+     * The generated-script frontend block: optionally a global install of
+     * this manager (npm is the only one preinstalled in every build
+     * environment), then the lockfile-strict install, then the build.
+     *
+     * @return list<string>
+     */
+    public function buildScriptLines(bool $ensureInstalled): array
+    {
+        $lines = [];
+
+        if ($ensureInstalled && $this !== self::NPM) {
+            $lines[] = "npm i -g {$this->value}";
+        }
+
+        $lines[] = $this->ciInstallLine();
+        $lines[] = "{$this->value} run build";
+
+        return $lines;
+    }
+
     public function tool(): Tool
     {
         return match ($this) {

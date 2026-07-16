@@ -12,8 +12,8 @@ use Igne\LaravelBootUp\Process\ShellCommand;
 use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Servers\CommandRewrites;
 use Igne\LaravelBootUp\Servers\Server;
+use Igne\LaravelBootUp\Servers\ServersConfig;
 use Igne\LaravelBootUp\Tools\Tool;
-use Illuminate\Contracts\Config\Repository;
 
 use function Laravel\Prompts\info;
 use function Laravel\Prompts\note;
@@ -30,7 +30,7 @@ final class ArtisanServer implements Server
         private readonly ProcessRunner $runner,
         private readonly ProcessLedger $ledger,
         private readonly ProcessReaper $reaper,
-        private readonly Repository $config,
+        private readonly ServersConfig $config,
     ) {}
 
     public function key(): string
@@ -56,6 +56,21 @@ final class ArtisanServer implements Server
         return CommandRewrites::none();
     }
 
+    public function providesDatabase(): bool
+    {
+        return false;
+    }
+
+    public function databaseReachableFromHost(): bool
+    {
+        return true;
+    }
+
+    public function stopImpact(): ?string
+    {
+        return null;
+    }
+
     public function start(ServeContext $context): void
     {
         if ($this->isRunning()) {
@@ -65,7 +80,11 @@ final class ArtisanServer implements Server
         }
 
         $record = $this->runner->start(
-            ShellCommand::make('php artisan serve')->withTimeout(null),
+            ShellCommand::make([
+                'php', 'artisan', 'serve',
+                "--host={$this->config->artisanHost}",
+                "--port={$this->config->artisanPort}",
+            ])->withTimeout(null),
             self::LABEL,
         );
 
@@ -84,10 +103,13 @@ final class ArtisanServer implements Server
             ->each(fn (ProcessRecord $record) => $this->reaper->reap($record));
     }
 
+    /**
+     * Derived from the configured bind address — `php artisan serve` never
+     * honors APP_URL, so consulting app.url would announce a URL the
+     * server does not actually listen on.
+     */
     public function url(): string
     {
-        $url = (string) $this->config->get('app.url');
-
-        return $url !== '' ? $url : 'http://127.0.0.1:8000';
+        return "http://{$this->config->artisanHost}:{$this->config->artisanPort}";
     }
 }
