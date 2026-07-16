@@ -14,6 +14,7 @@ use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Servers\CommandRewrites;
 use Igne\LaravelBootUp\Servers\Server;
 use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -50,6 +51,13 @@ beforeEach(function (): void {
 
     $this->sailServer = new class implements Server
     {
+        use DefaultServerCapabilities;
+
+        public function databaseReachableFromHost(): bool
+        {
+            return false;
+        }
+
         public function key(): string
         {
             return 'sail';
@@ -155,12 +163,73 @@ test('the seed option runs db:seed after migrating', function (): void {
     Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === 'php artisan db:seed');
 });
 
-test('the seed option alone does not seed an up-to-date database', function (): void {
-    Process::fake();
+test('an explicit seed runs even when the database is already up to date', function (): void {
+    Process::fake(['*' => Process::result()]);
 
     ($this->step)()->handle(new ServeContext(new ServeOptions(seed: true)), fn ($passed) => $passed);
 
+    Process::assertDidntRun(fn ($process): bool => str_contains(runMigrationsCommandOf($process), 'migrate --force'));
+    Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === 'php artisan db:seed');
+});
+
+test('--no-migrate combined with --seed seeds without migrating', function (): void {
+    Process::fake(['*' => Process::result()]);
+    ($this->addPendingMigration)();
+
+    ($this->step)()->handle(new ServeContext(new ServeOptions(seed: true, migrate: false)), fn ($passed) => $passed);
+
+    Process::assertDidntRun(fn ($process): bool => str_contains(runMigrationsCommandOf($process), 'migrate'));
+    Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === 'php artisan db:seed');
+});
+
+test('a confirmed --fresh drops and re-runs everything in one command', function (): void {
+    Prompt::fake(['y', Laravel\Prompts\Key::ENTER]);
+    Process::fake(['*' => Process::result()]);
+
+    ($this->step)()->handle(new ServeContext(new ServeOptions(fresh: true)), fn ($passed) => $passed);
+
+    Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === 'php artisan migrate:fresh --force');
+    Prompt::assertStrippedOutputContains('drops ALL tables');
+});
+
+test('--fresh with --seed folds the seed into migrate:fresh', function (): void {
+    Prompt::fake(['y', Laravel\Prompts\Key::ENTER]);
+    Process::fake(['*' => Process::result()]);
+
+    ($this->step)()->handle(new ServeContext(new ServeOptions(seed: true, fresh: true)), fn ($passed) => $passed);
+
+    Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === 'php artisan migrate:fresh --force --seed');
+    Process::assertDidntRun(fn ($process): bool => runMigrationsCommandOf($process) === 'php artisan db:seed');
+});
+
+test('a declined --fresh falls back to the normal pending-migrations flow', function (): void {
+    Prompt::fake([Laravel\Prompts\Key::ENTER]);
+    Process::fake(['*' => Process::result()]);
+    ($this->addPendingMigration)();
+
+    ($this->step)()->handle(new ServeContext(new ServeOptions(fresh: true)), fn ($passed) => $passed);
+
+    Process::assertDidntRun(fn ($process): bool => str_contains(runMigrationsCommandOf($process), 'migrate:fresh'));
+    Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === 'php artisan migrate --force');
+    Prompt::assertStrippedOutputContains('Fresh migration declined');
+});
+
+test('--no-migrate beats --fresh with a warning', function (): void {
+    Process::fake();
+
+    ($this->step)()->handle(new ServeContext(new ServeOptions(migrate: false, fresh: true)), fn ($passed) => $passed);
+
     Process::assertNothingRan();
+    Prompt::assertStrippedOutputContains('--fresh ignored');
+});
+
+test('--fresh runs through the server rewrites when the host cannot reach the database', function (): void {
+    Prompt::fake(['y', Laravel\Prompts\Key::ENTER]);
+    Process::fake(['*' => Process::result()]);
+
+    ($this->step)()->handle(new ServeContext(new ServeOptions(fresh: true), $this->sailServer), fn ($passed) => $passed);
+
+    Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === './vendor/bin/sail artisan migrate:fresh --force');
 });
 
 test('sail checks pending migrations in the container and migrates through sail', function (): void {

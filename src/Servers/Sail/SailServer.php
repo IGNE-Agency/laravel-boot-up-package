@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Sail;
 
+use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Servers\CommandRewrites;
 use Igne\LaravelBootUp\Servers\Server;
@@ -22,6 +23,7 @@ final class SailServer implements Server
         private readonly SailAliasInstaller $aliasInstaller,
         private readonly Poller $poller,
         private readonly Repository $config,
+        private readonly EnvFile $envFile,
         private readonly int $readyTimeoutSeconds = 120,
     ) {}
 
@@ -47,6 +49,21 @@ final class SailServer implements Server
             prefixes: ['php', 'composer', 'yarn', 'npm', 'bun', 'pnpm', 'artisan', 'node'],
             prefix: './vendor/bin/sail',
         );
+    }
+
+    public function providesDatabase(): bool
+    {
+        return true;
+    }
+
+    public function databaseReachableFromHost(): bool
+    {
+        return false;
+    }
+
+    public function stopImpact(): ?string
+    {
+        return null;
     }
 
     public function start(ServeContext $context): void
@@ -86,8 +103,15 @@ final class SailServer implements Server
         $this->sail->down();
     }
 
+    /**
+     * APP_URL from the .env wins (the loaded config may predate a fresh
+     * .env); http://localhost matches Sail's default port-80 binding when
+     * neither source has a value.
+     */
     public function url(): string
     {
-        return (string) $this->config->get('app.url');
+        $url = $this->envFile->valueOr('APP_URL', (string) $this->config->get('app.url'));
+
+        return $url !== '' ? $url : 'http://localhost';
     }
 }

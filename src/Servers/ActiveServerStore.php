@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers;
 
+use Igne\LaravelBootUp\Support\AtomicFile;
+
+use function Laravel\Prompts\warning;
+
 /**
  * Persists the active-server record across the app:serve / app:down
  * boundary as atomic JSON in storage/framework/boot-up.
@@ -14,15 +18,7 @@ final class ActiveServerStore
 
     public function remember(ActiveServer $server): void
     {
-        $directory = \dirname($this->path);
-
-        if (! is_dir($directory)) {
-            mkdir($directory, 0755, true);
-        }
-
-        $temporary = $this->path.'.tmp';
-        file_put_contents($temporary, json_encode($server->toArray(), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
-        rename($temporary, $this->path);
+        AtomicFile::write($this->path, (string) json_encode($server->toArray(), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
     }
 
     public function current(): ?ActiveServer
@@ -34,6 +30,8 @@ final class ActiveServerStore
         $decoded = json_decode((string) file_get_contents($this->path), true);
 
         if (! \is_array($decoded) || ! isset($decoded['key'], $decoded['started_by_us'], $decoded['serve_pid'], $decoded['started_at'])) {
+            $this->quarantine();
+
             return null;
         }
 
@@ -42,8 +40,18 @@ final class ActiveServerStore
 
     public function clear(): void
     {
-        if (is_file($this->path)) {
-            unlink($this->path);
-        }
+        AtomicFile::delete($this->path);
+    }
+
+    /**
+     * Moves an undecodable record aside (a rename inside a read path, on
+     * purpose): the evidence survives for inspection, and the warning
+     * cannot repeat because the next read finds no file.
+     */
+    private function quarantine(): void
+    {
+        rename($this->path, $this->path.'.corrupt');
+
+        warning('The boot-up active-server record was corrupt — moved to '.basename($this->path).'.corrupt and reset. A previously started server may still be running.');
     }
 }

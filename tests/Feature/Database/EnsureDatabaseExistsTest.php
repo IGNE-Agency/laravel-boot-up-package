@@ -9,6 +9,7 @@ use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\ServeOptions;
 use Igne\LaravelBootUp\Servers\CommandRewrites;
 use Igne\LaravelBootUp\Servers\Server;
+use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Laravel\Prompts\Prompt;
 
 beforeEach(function (): void {
@@ -33,6 +34,13 @@ beforeEach(function (): void {
 
     $this->sailServer = new class implements Server
     {
+        use DefaultServerCapabilities;
+
+        public function providesDatabase(): bool
+        {
+            return true;
+        }
+
         public function key(): string
         {
             return 'sail';

@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Deploy\Scripts;
 
 use Igne\LaravelBootUp\Deploy\ProjectCommand;
-use Igne\LaravelBootUp\Deploy\ProjectCommandType;
-use Igne\LaravelBootUp\Frontend\PackageManager;
 
 /**
  * Renders the two command lists Fortrabbit's dashboard expects per
@@ -61,17 +59,7 @@ final class FortrabbitScriptGenerator implements ScriptGenerator
             return [];
         }
 
-        $lines = [];
-
-        // Only npm ships with Fortrabbit's build environment.
-        if ($plan->packageManager !== PackageManager::NPM) {
-            $lines[] = "npm i -g {$plan->packageManager->value}";
-        }
-
-        $lines[] = $plan->packageManager->ciInstallLine();
-        $lines[] = "{$plan->packageManager->value} run build";
-
-        return $lines;
+        return $plan->packageManager->buildScriptLines(ensureInstalled: true);
     }
 
     /**
@@ -119,11 +107,7 @@ final class FortrabbitScriptGenerator implements ScriptGenerator
             $lines[] = "# {$command->description}";
         }
 
-        $lines[] = match ($command->type) {
-            ProjectCommandType::ARTISAN => "php artisan {$command->command}",
-            ProjectCommandType::COMPOSER => "composer {$command->command}",
-            ProjectCommandType::PACKAGE_MANAGER => "{$plan->packageManager->value} {$command->command}",
-        };
+        $lines[] = $command->shellLine('php artisan', 'composer', $plan->packageManager->value);
 
         return $lines;
     }

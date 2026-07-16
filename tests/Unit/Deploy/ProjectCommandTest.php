@@ -77,3 +77,12 @@ test('blocked words embedded in larger words are not rejected', function (string
     'evaluate contains eval' => 'evaluate-reports',
     'formatter contains format' => 'formatter:run',
 ]);
+
+test('shellLine renders each type with the caller-supplied binaries', function (): void {
+    expect(ProjectCommand::artisan('nova:publish')->shellLine('$FORGE_PHP artisan', '$FORGE_COMPOSER', 'bun'))
+        ->toBe('$FORGE_PHP artisan nova:publish')
+        ->and(ProjectCommand::composer('dump-autoload')->shellLine('php artisan', 'composer', 'bun'))
+        ->toBe('composer dump-autoload')
+        ->and(ProjectCommand::packageManager('run lint')->shellLine('php artisan', 'composer', 'pnpm'))
+        ->toBe('pnpm run lint');
+});

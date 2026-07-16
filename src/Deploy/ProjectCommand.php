@@ -41,6 +41,19 @@ final readonly class ProjectCommand
         return new self(ProjectCommandType::PACKAGE_MANAGER, $command, $description);
     }
 
+    /**
+     * Shell rendering parameterized by the caller's binaries, e.g. Forge
+     * passes '$FORGE_PHP artisan' where a plain host passes 'php artisan'.
+     */
+    public function shellLine(string $artisan, string $composer, string $packageManager): string
+    {
+        return match ($this->type) {
+            ProjectCommandType::ARTISAN => "{$artisan} {$this->command}",
+            ProjectCommandType::COMPOSER => "{$composer} {$this->command}",
+            ProjectCommandType::PACKAGE_MANAGER => "{$packageManager} {$this->command}",
+        };
+    }
+
     private function validate(): void
     {
         if (trim($this->command) === '') {

@@ -15,8 +15,8 @@ use function Laravel\Prompts\info;
 use function Laravel\Prompts\note;
 
 /**
- * Creates the configured database when it does not exist yet. Skipped under
- * Sail — the container provisions the database from .env by itself.
+ * Creates the configured database when it does not exist yet. Skipped for
+ * servers that provision the database themselves (e.g. Sail's containers).
  */
 final class EnsureDatabaseExists implements Step
 {
@@ -34,8 +34,8 @@ final class EnsureDatabaseExists implements Step
             return $next($context);
         }
 
-        if ($context->server?->key() === 'sail') {
-            note('Sail provisions the database inside its containers — skipping creation.');
+        if ($context->server?->providesDatabase() === true) {
+            note("{$context->server->label()} provisions the database itself — skipping creation.");
 
             return $next($context);
         }

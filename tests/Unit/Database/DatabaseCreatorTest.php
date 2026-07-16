@@ -63,8 +63,7 @@ test('createDatabaseIfMissing reports whether it created the sqlite database', f
 });
 
 test('an unreachable mysql server throws instead of being swallowed', function (): void {
-    // Port 1 refuses instantly; a missing pdo_mysql extension throws just as
-    // fast — either way the old return-false bug must not resurface.
+    // Port 1 refuses instantly; a missing pdo_mysql extension throws just as fast.
     $this->creator->databaseExists([
         'driver' => 'mysql',
         'host' => '127.0.0.1',

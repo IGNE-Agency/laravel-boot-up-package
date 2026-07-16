@@ -2,11 +2,14 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\ServeOptions;
 use Igne\LaravelBootUp\Servers\CommandRewrites;
 use Igne\LaravelBootUp\Servers\Server;
+use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\AlphaToolSpy;
+use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\BunToolSpy;
 use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\DockerToolSpy;
 use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\EnsureToolsReadySpy;
 use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
@@ -14,11 +17,16 @@ use Igne\LaravelBootUp\Tools\Tool;
 use Igne\LaravelBootUp\Tools\ToolsConfig;
 use Laravel\Prompts\Prompt;
 
-function ensureToolsServer(array $tools): Server
+function ensureToolsServer(array $tools, ?CommandRewrites $rewrites = null): Server
 {
-    return new class($tools) implements Server
+    return new class($tools, $rewrites) implements Server
     {
-        public function __construct(private readonly array $tools) {}
+        use DefaultServerCapabilities;
+
+        public function __construct(
+            private readonly array $tools,
+            private readonly ?CommandRewrites $rewrites = null,
+        ) {}
 
         public function key(): string
         {
@@ -37,7 +45,7 @@ function ensureToolsServer(array $tools): Server
 
         public function commandRewrites(): CommandRewrites
         {
-            return CommandRewrites::none();
+            return $this->rewrites ?? CommandRewrites::none();
         }
 
         public function isRunning(): bool
@@ -109,4 +117,68 @@ test('a null server (app:deploy) only ensures the required map', function (): vo
     app(EnsureToolsReady::class)->handle($context, fn ($passed) => $passed);
 
     expect(EnsureToolsReadySpy::$ensured)->toBe(['alpha']);
+});
+
+function bindPackageJson(bool $exists): void
+{
+    $dir = sys_get_temp_dir().'/boot-up-tools-pkg-'.bin2hex(random_bytes(4));
+    mkdir($dir, 0755, true);
+
+    if ($exists) {
+        file_put_contents($dir.'/package.json', '{}');
+    }
+
+    app()->instance(PackageJson::class, new PackageJson($dir.'/package.json'));
+}
+
+test('the selected frontend package manager is ensured when a package.json exists', function (): void {
+    bindToolsConfig(required: [], installers: ['bun' => BunToolSpy::class]);
+    bindPackageJson(exists: true);
+
+    app(EnsureToolsReady::class)->handle(new ServeContext(new ServeOptions, ensureToolsServer([])), fn ($passed) => $passed);
+
+    expect(EnsureToolsReadySpy::$ensured)->toBe(['bun']);
+});
+
+test('the package manager is not ensured twice when the required map already covers it', function (): void {
+    bindToolsConfig(required: ['bun' => '*'], installers: ['bun' => BunToolSpy::class]);
+    bindPackageJson(exists: true);
+
+    app(EnsureToolsReady::class)->handle(new ServeContext(new ServeOptions, ensureToolsServer([])), fn ($passed) => $passed);
+
+    expect(EnsureToolsReadySpy::$ensured)->toBe(['bun']);
+});
+
+test('the package manager is skipped without a package.json', function (): void {
+    bindToolsConfig(required: [], installers: ['bun' => BunToolSpy::class]);
+    bindPackageJson(exists: false);
+
+    app(EnsureToolsReady::class)->handle(new ServeContext(new ServeOptions, ensureToolsServer([])), fn ($passed) => $passed);
+
+    expect(EnsureToolsReadySpy::$ensured)->toBe([]);
+});
+
+test('the package manager is skipped with --without-assets', function (): void {
+    bindToolsConfig(required: [], installers: ['bun' => BunToolSpy::class]);
+    bindPackageJson(exists: true);
+
+    $context = new ServeContext(new ServeOptions(withAssets: false), ensureToolsServer([]));
+
+    app(EnsureToolsReady::class)->handle($context, fn ($passed) => $passed);
+
+    expect(EnsureToolsReadySpy::$ensured)->toBe([]);
+});
+
+test('the package manager is skipped when the server wraps its binary', function (): void {
+    bindToolsConfig(required: [], installers: ['bun' => BunToolSpy::class]);
+    bindPackageJson(exists: true);
+
+    $sailLike = ensureToolsServer([], new CommandRewrites(
+        prefixes: ['php', 'composer', 'bun'],
+        prefix: './vendor/bin/sail',
+    ));
+
+    app(EnsureToolsReady::class)->handle(new ServeContext(new ServeOptions, $sailLike), fn ($passed) => $passed);
+
+    expect(EnsureToolsReadySpy::$ensured)->toBe([]);
 });

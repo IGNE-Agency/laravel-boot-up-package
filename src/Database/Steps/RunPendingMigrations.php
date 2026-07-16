@@ -14,13 +14,16 @@ use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Illuminate\Support\Str;
 
+use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\info;
 use function Laravel\Prompts\note;
+use function Laravel\Prompts\warning;
 
 /**
- * Migrates only when migrations are actually pending. The pending check and
- * the migrate itself run inside the container under Sail (the host cannot
- * reach the container's database); host-side otherwise via the Migrator.
+ * Migrates only when migrations are actually pending. When the host cannot
+ * reach the database (e.g. it lives inside Sail's containers) the pending
+ * check and the migrate run through the server's command rewrites;
+ * host-side otherwise via the Migrator.
  */
 final class RunPendingMigrations implements Step
 {
@@ -36,32 +39,76 @@ final class RunPendingMigrations implements Step
         if (! $context->options->migrate) {
             note('Migrations skipped (--no-migrate).');
 
-            return $next($context);
-        }
-
-        if (! $this->config->migrationsAuto) {
+            if ($context->options->fresh) {
+                warning('--fresh ignored: --no-migrate wins as the least destructive option.');
+            }
+        } elseif (! $this->config->migrationsAuto) {
             note('Automatic migrations are disabled in configuration — skipping.');
+        } elseif ($context->options->fresh && $this->confirmFresh()) {
+            // migrate:fresh carries --seed itself, so the shared seed
+            // path below must not run a second time.
+            $this->migrateFresh($context);
 
             return $next($context);
+        } elseif ($context->server !== null && ! $context->server->databaseReachableFromHost()) {
+            $this->migrateThroughServer($context);
+        } else {
+            $this->migrateFromHost();
         }
 
-        $migrated = $context->server?->key() === 'sail'
-            ? $this->migrateThroughSail($context)
-            : $this->migrateFromHost();
-
-        if ($migrated && $context->options->seed) {
-            info('Seeding database...');
-
-            $this->runner->run($this->rewriter->rewrite(
-                ShellCommand::make('php artisan db:seed'),
-                $context->server?->commandRewrites(),
-            ));
-        }
+        // Deliberately outside every branch above: --seed also seeds when
+        // migrations were skipped or nothing was pending.
+        $this->seedIfRequested($context);
 
         return $next($context);
     }
 
-    private function migrateThroughSail(ServeContext $context): bool
+    /**
+     * A declined confirm degrades to the normal pending-migrations flow
+     * instead of aborting: the boot should still finish.
+     */
+    private function confirmFresh(): bool
+    {
+        if (confirm('--fresh drops ALL tables and re-runs every migration. Continue?', default: false)) {
+            return true;
+        }
+
+        note('Fresh migration declined — running pending migrations instead.');
+
+        return false;
+    }
+
+    private function migrateFresh(ServeContext $context): void
+    {
+        info('Dropping all tables and re-running every migration...');
+
+        $command = ['php', 'artisan', 'migrate:fresh', '--force'];
+
+        if ($context->options->seed) {
+            $command[] = '--seed';
+        }
+
+        $this->runner->run($this->rewriter->rewrite(
+            ShellCommand::make($command),
+            $context->server?->commandRewrites(),
+        ));
+    }
+
+    private function seedIfRequested(ServeContext $context): void
+    {
+        if (! $context->options->seed) {
+            return;
+        }
+
+        info('Seeding database...');
+
+        $this->runner->run($this->rewriter->rewrite(
+            ShellCommand::make('php artisan db:seed'),
+            $context->server?->commandRewrites(),
+        ));
+    }
+
+    private function migrateThroughServer(ServeContext $context): bool
     {
         $status = $this->runner->runSilently($this->rewriter->rewrite(
             ShellCommand::make('php artisan migrate:status --pending'),

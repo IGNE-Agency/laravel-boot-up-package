@@ -19,6 +19,7 @@ use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Servers\CommandRewrites;
 use Igne\LaravelBootUp\Servers\Server;
 use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Igne\LaravelBootUp\Tools\Tool;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -85,6 +86,8 @@ function projectCommandServer(CommandRewrites $rewrites): Server
 {
     return new class($rewrites) implements Server
     {
+        use DefaultServerCapabilities;
+
         public function __construct(private readonly CommandRewrites $rewrites) {}
 
         public function key(): string

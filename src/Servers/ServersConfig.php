@@ -28,6 +28,8 @@ final readonly class ServersConfig
         public bool $promptStopServer = true,
         public bool $stopServerByDefault = false,
         public ?string $herdSite = null,
+        public string $artisanHost = '127.0.0.1',
+        public int $artisanPort = 8000,
     ) {}
 
     public static function fromRepository(Repository $config): self
@@ -42,6 +44,8 @@ final readonly class ServersConfig
             promptStopServer: (bool) $config->get('boot-up.shutdown.prompt_stop_server', true),
             stopServerByDefault: (bool) $config->get('boot-up.shutdown.stop_server_by_default', false),
             herdSite: $herdSite === null ? null : (string) $herdSite,
+            artisanHost: (string) $config->get('boot-up.server.artisan.host', '127.0.0.1'),
+            artisanPort: (int) $config->get('boot-up.server.artisan.port', 8000),
         );
     }
 }

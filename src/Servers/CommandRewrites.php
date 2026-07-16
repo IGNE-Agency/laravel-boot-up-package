@@ -23,4 +23,14 @@ final readonly class CommandRewrites
     {
         return new self;
     }
+
+    /**
+     * Whether commands starting with this binary are wrapped by the
+     * server (e.g. Sail runs `bun` inside its container), so the binary
+     * does not need to exist on the host.
+     */
+    public function wraps(string $binary): bool
+    {
+        return $this->prefix !== null && \in_array($binary, $this->prefixes, true);
+    }
 }

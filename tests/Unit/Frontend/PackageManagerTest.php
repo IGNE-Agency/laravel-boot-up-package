@@ -38,3 +38,19 @@ test('update commands', function (): void {
         ->and(PackageManager::BUN->updateCommand())->toBe(['bun', 'update'])
         ->and(PackageManager::YARN->updateCommand())->toBe(['yarn', 'update']);
 });
+
+test('buildScriptLines renders the shared frontend block', function (): void {
+    expect(PackageManager::BUN->buildScriptLines(ensureInstalled: true))->toBe([
+        'npm i -g bun',
+        'bun install --frozen-lockfile || bun install',
+        'bun run build',
+    ])
+        ->and(PackageManager::NPM->buildScriptLines(ensureInstalled: true))->toBe([
+            'npm ci || npm install',
+            'npm run build',
+        ])
+        ->and(PackageManager::BUN->buildScriptLines(ensureInstalled: false))->toBe([
+            'bun install --frozen-lockfile || bun install',
+            'bun run build',
+        ]);
+});

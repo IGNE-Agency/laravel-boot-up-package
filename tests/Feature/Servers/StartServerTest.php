@@ -9,6 +9,7 @@ use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\CommandRewrites;
 use Igne\LaravelBootUp\Servers\Server;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
+use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Laravel\Prompts\Prompt;
 
 beforeEach(function (): void {
@@ -30,6 +31,8 @@ function startServerDouble(ActiveServerStore $store, bool $running): Server
 {
     return new class($store, $running) implements Server
     {
+        use DefaultServerCapabilities;
+
         public ?ActiveServer $observedAtStart = null;
 
         public int $starts = 0;

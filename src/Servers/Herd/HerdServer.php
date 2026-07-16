@@ -51,6 +51,21 @@ final class HerdServer implements Server
         );
     }
 
+    public function providesDatabase(): bool
+    {
+        return false;
+    }
+
+    public function databaseReachableFromHost(): bool
+    {
+        return true;
+    }
+
+    public function stopImpact(): ?string
+    {
+        return '`herd stop` halts ALL Herd sites on this machine, not just this project.';
+    }
+
     public function start(ServeContext $context): void
     {
         $project = $this->project();

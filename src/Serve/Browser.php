@@ -6,17 +6,18 @@ namespace Igne\LaravelBootUp\Serve;
 
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Process\ShellCommand;
+use Igne\LaravelBootUp\Support\Platform;
 
 final class Browser
 {
-    public function __construct(private readonly ProcessRunner $runner) {}
+    public function __construct(
+        private readonly ProcessRunner $runner,
+        private readonly Platform $platform,
+    ) {}
 
     public function open(string $url): void
     {
-        $binary = match (PHP_OS_FAMILY) {
-            'Darwin' => 'open',
-            default => 'xdg-open',
-        };
+        $binary = $this->platform->isMacos() ? 'open' : 'xdg-open';
 
         $this->runner->runSilently(ShellCommand::make([$binary, $url]));
     }

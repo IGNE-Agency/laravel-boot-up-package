@@ -7,6 +7,8 @@ namespace Igne\LaravelBootUp\Process;
 use Igne\LaravelBootUp\Support\Poller;
 use Illuminate\Process\Factory;
 
+use function Laravel\Prompts\warning;
+
 /**
  * Terminates ledger-tracked processes: TERM (including children), a grace
  * period, then KILL. Guards against PID reuse by comparing the running
@@ -18,6 +20,8 @@ final class ProcessReaper
         private readonly Factory $processes,
         private readonly ProcessLedger $ledger,
         private readonly Poller $poller,
+        private readonly int $termGraceSeconds = 5,
+        private readonly int $killGraceSeconds = 2,
     ) {}
 
     public function isAlive(ProcessRecord $record): bool
@@ -34,37 +38,74 @@ final class ProcessReaper
         return $running !== '' && $this->commandsMatch($running, $record->command);
     }
 
-    public function reap(ProcessRecord $record): void
+    /**
+     * Returns whether the process is confirmed gone; only then is it
+     * forgotten. A survivor stays in the ledger so a later app:down can
+     * try again.
+     */
+    public function reap(ProcessRecord $record): bool
     {
         if (! $this->isAlive($record)) {
             $this->ledger->forget($record->pid);
 
-            return;
+            return true;
         }
 
         $this->signalTree($record->pid, 'TERM');
 
         $terminated = $this->poller->until(
             fn (): bool => ! $this->isAlive($record),
-            timeoutSeconds: 5,
+            timeoutSeconds: $this->termGraceSeconds,
             intervalMs: 250,
         );
 
         if (! $terminated) {
             $this->signalTree($record->pid, 'KILL');
+
+            $terminated = $this->poller->until(
+                fn (): bool => ! $this->isAlive($record),
+                timeoutSeconds: $this->killGraceSeconds,
+                intervalMs: 250,
+            );
+        }
+
+        if (! $terminated) {
+            warning("Could not stop {$record->label} (pid {$record->pid}) — it stays in the ledger; stop it manually or re-run app:down.");
+
+            return false;
         }
 
         $this->ledger->forget($record->pid);
+
+        return true;
     }
 
-    public function reapAll(): void
+    /**
+     * Returns whether every tracked process is confirmed gone.
+     */
+    public function reapAll(): bool
     {
-        $this->ledger->all()->each(fn (ProcessRecord $record) => $this->reap($record));
+        return $this->ledger->all()
+            ->map(fn (ProcessRecord $record): bool => $this->reap($record))
+            ->every(fn (bool $reaped): bool => $reaped);
+    }
+
+    /**
+     * Drop ledger entries whose process is no longer alive, without
+     * signalling anything.
+     */
+    public function prune(): void
+    {
+        $this->ledger->all()
+            ->reject(fn (ProcessRecord $record): bool => $this->isAlive($record))
+            ->each(fn (ProcessRecord $record) => $this->ledger->forget($record->pid));
     }
 
     private function signalTree(int $pid, string $signal): void
     {
         // Children first (vite/esbuild under a watcher), then the parent.
+        // A failing pkill just means no children; a failing parent kill is
+        // caught by the isAlive() re-poll after each signal round.
         $this->processes->command(['pkill', "-{$signal}", '-P', (string) $pid])->run();
         $this->signal($pid, "-{$signal}");
     }
@@ -91,6 +132,14 @@ final class ProcessReaper
         $runningBinary = basename(strtok($running, ' ') ?: '');
         $recordedBinary = basename(strtok($recorded, ' ') ?: '');
 
-        return $runningBinary !== '' && $runningBinary === $recordedBinary;
+        if ($runningBinary === '' || $runningBinary !== $recordedBinary) {
+            return false;
+        }
+
+        // A matching binary alone is too loose after PID reuse: any `php`
+        // would match any other `php`. The recorded arguments must appear too.
+        $recordedArguments = trim((string) strstr($recorded, ' '));
+
+        return $recordedArguments === '' || str_contains($running, $recordedArguments);
     }
 }

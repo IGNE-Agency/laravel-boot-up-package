@@ -33,6 +33,21 @@ final class ValetServer implements Server
         return CommandRewrites::none();
     }
 
+    public function providesDatabase(): bool
+    {
+        return false;
+    }
+
+    public function databaseReachableFromHost(): bool
+    {
+        return true;
+    }
+
+    public function stopImpact(): ?string
+    {
+        return null;
+    }
+
     public function isRunning(): bool
     {
         return false;

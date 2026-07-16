@@ -113,6 +113,36 @@ test('does not signal a recycled pid whose command no longer matches', function 
     expect($this->ledger->isEmpty())->toBeTrue();
 });
 
+test('keeps the ledger entry when a process cannot be stopped', function (): void {
+    Prompt::fake();
+    $this->ledger->record(new ProcessRecord(4242, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM)));
+
+    ProcessFaker::fake([
+        'kill -0 4242' => Process::result(),
+        'ps -p 4242*' => Process::result('php artisan queue:work database'),
+        'pkill*' => Process::result(),
+        'kill -TERM 4242' => Process::result(),
+        'kill -KILL 4242' => Process::result(),
+    ]);
+
+    $config = new ServersConfig(
+        drivers: ['double' => RecordingServer::class],
+        promptStopServer: false,
+        stopServerByDefault: true,
+    );
+
+    (new ShutdownRunner(
+        $this->ledger,
+        new ProcessReaper(app(Factory::class), $this->ledger, new Poller, termGraceSeconds: 0, killGraceSeconds: 0),
+        $this->store,
+        new ServerSelector(app(), $config),
+        new StopServerPrompt($config),
+    ))->run();
+
+    expect($this->ledger->all())->toHaveCount(1);
+    Prompt::assertStrippedOutputContains('Could not stop queue-worker (pid 4242)');
+});
+
 test('stops only the server app:serve started', function (): void {
     Prompt::fake();
     ProcessFaker::fake();

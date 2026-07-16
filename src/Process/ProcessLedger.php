@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Process;
 
+use Igne\LaravelBootUp\Support\AtomicFile;
 use Illuminate\Support\Collection;
+
+use function Laravel\Prompts\warning;
 
 /**
  * Persisted ledger of background processes started by the package,
@@ -35,6 +38,8 @@ final class ProcessLedger
         $decoded = json_decode((string) file_get_contents($this->path), true);
 
         if (! \is_array($decoded)) {
+            $this->quarantine();
+
             return new Collection;
         }
 
@@ -61,9 +66,7 @@ final class ProcessLedger
 
     public function clear(): void
     {
-        if (is_file($this->path)) {
-            @unlink($this->path);
-        }
+        AtomicFile::delete($this->path);
     }
 
     public function isEmpty(): bool
@@ -72,23 +75,27 @@ final class ProcessLedger
     }
 
     /**
+     * Moves an undecodable ledger aside (a rename inside a read path, on
+     * purpose): the evidence survives for inspection, and the warning
+     * cannot repeat because the next read finds no file.
+     */
+    private function quarantine(): void
+    {
+        rename($this->path, $this->path.'.corrupt');
+
+        warning('The boot-up process ledger was corrupt — moved to '.basename($this->path).'.corrupt and reset. Background processes it tracked may still be running.');
+    }
+
+    /**
      * @param  Collection<int, ProcessRecord>  $records
      */
     private function write(Collection $records): void
     {
-        $directory = \dirname($this->path);
-
-        if (! is_dir($directory)) {
-            mkdir($directory, 0755, true);
-        }
-
         $payload = json_encode(
             $records->map(fn (ProcessRecord $record): array => $record->toArray())->values()->all(),
             JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR,
         );
 
-        $temporary = $this->path.'.tmp';
-        file_put_contents($temporary, $payload);
-        rename($temporary, $this->path);
+        AtomicFile::write($this->path, $payload);
     }
 }

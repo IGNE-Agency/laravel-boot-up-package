@@ -55,7 +55,7 @@ test('boots the laravel driver end to end: tracked artisan serve + persisted sta
     $records = $this->ledger->withLabel('artisan-serve');
     expect($records)->toHaveCount(1)
         ->and($records->first()->pid)->toBe(12345)
-        ->and($records->first()->command)->toBe('php artisan serve');
+        ->and($records->first()->command)->toBe('php artisan serve --host=127.0.0.1 --port=8000');
 
     $active = $this->store->current();
     expect($active)->not->toBeNull()
@@ -115,3 +115,37 @@ test('rejects an unknown server argument', function (): void {
 
     $this->artisan('app:serve', ['server' => 'nginx'])->assertFailed();
 })->throws(Igne\LaravelBootUp\Servers\ServerException::class);
+
+test('fails fast on native Windows', function (): void {
+    ProcessFaker::fake();
+    app()->instance(Igne\LaravelBootUp\Support\Platform::class, new Igne\LaravelBootUp\Support\Platform('Windows'));
+
+    $this->artisan('app:serve', ['server' => 'laravel'])
+        ->expectsOutputToContain('not supported on native Windows')
+        ->assertFailed();
+
+    Process::assertNothingRan();
+});
+
+test('an unexpected exception fails cleanly with an app:down hint', function (): void {
+    ProcessFaker::fake();
+    config()->set('boot-up.serve_steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
+
+    $this->artisan('app:serve', ['server' => 'laravel'])
+        ->expectsOutputToContain('Unexpected error: something exploded')
+        ->expectsOutputToContain('php artisan app:down')
+        ->assertFailed();
+});
+
+test('dead ledger entries are pruned when a new serve boots', function (): void {
+    ProcessFaker::fake([
+        'kill -0 4444' => Process::result(exitCode: 1),
+        'sh -c nohup php artisan serve*' => Process::result('12345'),
+    ]);
+
+    $this->ledger->record(new Igne\LaravelBootUp\Process\ProcessRecord(4444, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM)));
+
+    $this->artisan('app:serve', ['server' => 'laravel'])->assertSuccessful();
+
+    expect($this->ledger->withLabel('queue-worker'))->toBeEmpty();
+});

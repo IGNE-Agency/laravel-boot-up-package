@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Deploy\Scripts;
 
 use Igne\LaravelBootUp\Deploy\ProjectCommand;
-use Igne\LaravelBootUp\Deploy\ProjectCommandType;
 
 /**
  * Renders a Laravel Forge deployment script: the zero-downtime release
@@ -142,11 +141,7 @@ final class ForgeScriptGenerator implements ScriptGenerator
             return [];
         }
 
-        return [
-            '',
-            $plan->packageManager->ciInstallLine(),
-            "{$plan->packageManager->value} run build",
-        ];
+        return ['', ...$plan->packageManager->buildScriptLines(ensureInstalled: false)];
     }
 
     /**
@@ -160,11 +155,7 @@ final class ForgeScriptGenerator implements ScriptGenerator
             $lines[] = "# {$command->description}";
         }
 
-        $lines[] = match ($command->type) {
-            ProjectCommandType::ARTISAN => "\$FORGE_PHP artisan {$command->command}",
-            ProjectCommandType::COMPOSER => "\$FORGE_COMPOSER {$command->command}",
-            ProjectCommandType::PACKAGE_MANAGER => "{$plan->packageManager->value} {$command->command}",
-        };
+        $lines[] = $command->shellLine('$FORGE_PHP artisan', '$FORGE_COMPOSER', $plan->packageManager->value);
 
         return $lines;
     }

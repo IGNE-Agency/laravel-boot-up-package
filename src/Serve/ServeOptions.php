@@ -12,5 +12,6 @@ final readonly class ServeOptions
         public bool $update = false,
         public bool $withQueue = true,
         public bool $withAssets = true,
+        public bool $fresh = false,
     ) {}
 }
