@@ -28,7 +28,7 @@ final class PipelinePlanner
             nova: $this->composerJson->requires('laravel/nova'),
             pint: $this->composerJson->requires('laravel/pint') || $this->composerJson->requiresDev('laravel/pint'),
             phpVersion: $this->composerJson->phpVersion(),
-            branchHooks: $this->config->branchHooks,
+            branchEnvironments: $this->config->branchEnvironments,
         );
     }
 }

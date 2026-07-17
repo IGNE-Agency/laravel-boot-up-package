@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Tests\Feature\Console\Fixtures;
 
+use Igne\LaravelBootUp\Pipelines\GeneratedFile;
 use Igne\LaravelBootUp\Pipelines\PipelineGenerator;
 use Igne\LaravelBootUp\Pipelines\PipelinePlan;
 
@@ -22,14 +23,14 @@ final class StaticPipelineGenerator implements PipelineGenerator
         return 'Static Provider';
     }
 
-    public function path(): string
+    public function files(PipelinePlan $plan): array
     {
-        return 'static-pipeline.yml';
+        return [new GeneratedFile('static-pipeline.yml', "static-pipeline for php {$plan->phpVersion}\n")];
     }
 
-    public function generate(PipelinePlan $plan): string
+    public function secrets(PipelinePlan $plan): array
     {
-        return "static-pipeline for php {$plan->phpVersion}\n";
+        return [];
     }
 
     public function instructions(PipelinePlan $plan): array

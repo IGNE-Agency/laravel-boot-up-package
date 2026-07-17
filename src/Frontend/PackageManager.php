@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Frontend;
 
+use Igne\LaravelBootUp\Support\Lines;
 use Igne\LaravelBootUp\Tools\Tool;
 
 enum PackageManager: string
@@ -74,21 +75,13 @@ enum PackageManager: string
      * The generated-script frontend block: optionally a global install of
      * this manager (npm is the only one preinstalled in every build
      * environment), then the lockfile-strict install, then the build.
-     *
-     * @return list<string>
      */
-    public function buildScriptLines(bool $ensureInstalled): array
+    public function buildScriptLines(bool $ensureInstalled): Lines
     {
-        $lines = [];
-
-        if ($ensureInstalled && $this !== self::NPM) {
-            $lines[] = "npm i -g {$this->value}";
-        }
-
-        $lines[] = $this->ciInstallLine();
-        $lines[] = "{$this->value} run build";
-
-        return $lines;
+        return Lines::make()
+            ->lineIf($ensureInstalled && $this !== self::NPM, "npm i -g {$this->value}")
+            ->line($this->ciInstallLine())
+            ->line("{$this->value} run build");
     }
 
     public function tool(): Tool

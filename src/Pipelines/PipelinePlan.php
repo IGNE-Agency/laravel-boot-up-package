@@ -13,14 +13,14 @@ use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlan;
 final readonly class PipelinePlan
 {
     /**
-     * @param  array<string, string>  $branchHooks  git branch => deploy-hook secret/variable name
+     * @param  array<string, string>  $branchEnvironments  git branch => deployment environment name
      */
     public function __construct(
         public DeploymentPlan $deployment,
         public bool $nova,
         public bool $pint,
         public string $phpVersion,
-        public array $branchHooks,
+        public array $branchEnvironments,
         public string $envFile = '.env.pipeline',
     ) {}
 }
