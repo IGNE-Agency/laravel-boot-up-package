@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Console;
 
 use Igne\LaravelBootUp\Pipelines\BitbucketPipelinesGenerator;
+use Igne\LaravelBootUp\Pipelines\GeneratedFile;
 use Igne\LaravelBootUp\Pipelines\GitHubActionsGenerator;
 use Igne\LaravelBootUp\Pipelines\PipelineConfig;
 use Igne\LaravelBootUp\Pipelines\PipelineEnvFile;
 use Igne\LaravelBootUp\Pipelines\PipelineGenerator;
 use Igne\LaravelBootUp\Pipelines\PipelinePlan;
 use Igne\LaravelBootUp\Pipelines\PipelinePlanner;
+use Igne\LaravelBootUp\Support\AtomicFile;
 use Illuminate\Console\Command;
 
 use function Laravel\Prompts\confirm;
@@ -29,9 +31,9 @@ final class PipelineCommand extends Command
 
     protected $signature = 'app:pipeline
         {provider? : The git provider (github, bitbucket)}
-        {--force : Overwrite existing pipeline and .env.pipeline files without asking}';
+        {--force : Overwrite existing pipeline, scripts/ci and .env.pipeline files without asking}';
 
-    protected $description = 'Generate a CI/CD pipeline and .env.pipeline for a git provider, based on this package\'s config';
+    protected $description = 'Generate a CI/CD pipeline, its shared scripts/ci files and .env.pipeline for a git provider, based on this package\'s config';
 
     public function handle(PipelinePlanner $planner, PipelineConfig $config, PipelineEnvFile $envFile): int
     {
@@ -50,8 +52,18 @@ final class PipelineCommand extends Command
 
         $plan = $planner->plan();
 
-        $this->write($generator->path(), $generator->generate($plan));
-        $this->write($envFile->path(), $envFile->generate());
+        $files = [
+            ...$generator->files($plan),
+            new GeneratedFile($envFile->path(), $envFile->generate()),
+        ];
+
+        if (! $this->confirmOverwrites($files)) {
+            return self::SUCCESS;
+        }
+
+        foreach ($files as $file) {
+            $this->write($file);
+        }
 
         $this->instructions($generator, $plan);
 
@@ -78,40 +90,68 @@ final class PipelineCommand extends Command
         return (string) select('Which git provider should the pipeline target?', $options);
     }
 
-    private function write(string $relativePath, string $content): void
+    /**
+     * All-or-nothing: the pipeline file and its scripts reference each other,
+     * so a partial write could leave YAML calling scripts that were never
+     * updated. One prompt covers everything that would be overwritten;
+     * declining writes nothing.
+     *
+     * @param  list<GeneratedFile>  $files
+     */
+    private function confirmOverwrites(array $files): bool
     {
-        $path = $this->laravel->basePath($relativePath);
-
-        if (is_file($path) && ! $this->option('force')
-            && ! confirm("{$relativePath} already exists. Overwrite it?", default: false)) {
-            warning("Skipped {$relativePath}.");
-
-            return;
+        if ($this->option('force')) {
+            return true;
         }
 
-        $directory = \dirname($path);
+        $existing = [];
 
-        if (! is_dir($directory)) {
-            mkdir($directory, 0755, recursive: true);
+        foreach ($files as $file) {
+            if (is_file($this->laravel->basePath($file->path))) {
+                $existing[] = $file->path;
+            }
         }
 
-        file_put_contents($path, $content);
-        note("Wrote {$relativePath}.");
+        $confirmed = match (\count($existing)) {
+            0 => true,
+            1 => confirm("{$existing[0]} already exists. Overwrite it?", default: false),
+            default => confirm(
+                'Overwrite these '.\count($existing).' existing files? '.implode(', ', $existing),
+                default: false,
+            ),
+        };
+
+        if (! $confirmed) {
+            warning('Nothing written — declined to overwrite existing files.');
+        }
+
+        return $confirmed;
+    }
+
+    private function write(GeneratedFile $file): void
+    {
+        $path = $this->laravel->basePath($file->path);
+
+        AtomicFile::write($path, $file->contents);
+
+        if ($file->executable) {
+            chmod($path, 0755);
+        }
+
+        note("Wrote {$file->path}.");
     }
 
     private function instructions(PipelineGenerator $generator, PipelinePlan $plan): void
     {
         $rows = [];
 
-        foreach ($plan->branchHooks as $branch => $hook) {
-            $rows[] = [$hook, "Deploy webhook URL, requested after a green push to {$branch}"];
+        foreach ($generator->secrets($plan) as $secret) {
+            $rows[] = [$secret->name, $secret->location, $secret->value, $secret->purpose];
         }
 
-        if ($plan->nova) {
-            $rows[] = ['COMPOSER_AUTH', 'Composer auth JSON for nova.laravel.com'];
+        if ($rows !== []) {
+            table(['Secret', 'Where to add it', 'Value', 'Purpose'], $rows);
         }
-
-        table(['Secret / variable', 'Purpose'], $rows);
 
         note(implode("\n", $generator->instructions($plan)));
     }

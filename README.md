@@ -44,7 +44,7 @@ php artisan app:down             # stop tracked processes + the server app:serve
 php artisan app:deploy-script forge production        # export a hosting deployment script
 php artisan app:deploy-script fortrabbit staging      # (see "Exporting a deployment script")
 
-php artisan app:pipeline github                       # generate a CI/CD pipeline + .env.pipeline
+php artisan app:pipeline github                       # generate a CI/CD pipeline + scripts/ci + .env.pipeline
 php artisan app:pipeline bitbucket                    # (see "Generating a CI/CD pipeline")
 ```
 
@@ -186,40 +186,56 @@ php artisan app:deploy-script forge production --output=deploy.sh
 
 ## Generating a CI/CD pipeline
 
-`app:pipeline` writes a ready-to-commit pipeline for your git provider plus a
-`.env.pipeline` test environment, both at their canonical paths:
+`app:pipeline` writes a thin provider pipeline, the shared shell scripts it
+calls, and a `.env.pipeline` test environment — all at their canonical paths:
 
 ```bash
-php artisan app:pipeline github       # .github/workflows/ci.yml + .env.pipeline
-php artisan app:pipeline bitbucket    # bitbucket-pipelines.yml + .env.pipeline
+php artisan app:pipeline github       # .github/workflows/ci.yml + scripts/ci/* + .env.pipeline
+php artisan app:pipeline bitbucket    # bitbucket-pipelines.yml + scripts/ci/* + .env.pipeline
 php artisan app:pipeline              # prompts for the provider
 php artisan app:pipeline github --force   # overwrite existing files without asking
 ```
 
-Both providers run the **identical command sequence** (generated from one shared
-source): composer install with caching, `cp .env.pipeline .env`, Nova publish
-(only when `laravel/nova` is in your `composer.json` — composer auth comes from
-a `COMPOSER_AUTH` secret), lockfile-strict frontend install + build (driven by
-your `frontend.package_manager` config), finalize commands, project commands,
-`migrate --force`, and `php artisan test`. When `laravel/pint` is installed, a
-**lint job** (`pint --test`) runs in parallel with the tests on both providers,
-and deploys wait for both to pass.
+All logic lives in **`scripts/ci/*.sh`** — the YAML only wires them up, so both
+providers run byte-identical sequences and every stage reproduces locally
+(`bash scripts/ci/test.sh`):
 
-- **Tests** run on every pull request and on pushes to the deploy branches,
+- `bootstrap.sh` — composer install, `cp .env.pipeline .env`, Nova publish (only
+  with `laravel/nova`; composer auth comes from a `COMPOSER_AUTH` secret), then
+  a lockfile-strict Node install. The package manager is **detected from the
+  committed lockfile at run time**, so switching from npm to pnpm never requires
+  regenerating.
+- `lint.sh` / `build.sh` / `test.sh` — three parallel status checks: Pint (only
+  when installed), frontend build + an `artisan optimize` round-trip (mirrors
+  what the deploy scripts run, so un-cacheable config or routes fail CI instead
+  of the deploy), and the test suite with finalize/project commands around
+  `migrate --force`.
+- `deploy-hook.sh` — POSTs the environment's deploy webhook with retries, HTTPS
+  enforcement and status checking. It always sends the `User-Agent: fortrabbit`
+  header fortrabbit's webhook endpoint requires (without it, fortrabbit answers
+  403); other hosts ignore it.
+
+The pipeline behaves the same on both providers:
+
+- **Checks** run on every pull request and on pushes to the deploy branches,
   against in-memory SQLite (`.env.pipeline` carries the config — commit it; the
   generated `APP_KEY` is only ever used in CI).
-- **Deploys** are webhook-based: after a green push, the pipeline curls the hook
-  named in `boot-up.pipeline.branches` (defaults: `develop` → `DEV_DEPLOY`,
-  `staging` → `STAGING_DEPLOY`, `master` → `PROD_DEPLOY`). Point each secret at
-  your host's deploy trigger URL (e.g. Forge's "Deployment trigger URL"). An
-  unset hook skips that deploy with a notice instead of failing the run. On a
-  `main` repo, remap `boot-up.pipeline.branches` and regenerate.
+- **Deploys** are environment-scoped: `boot-up.pipeline.branches` maps each
+  branch to a deployment environment (defaults: `develop` → `development`,
+  `staging` → `staging`, `master` → `production`). Create the environment on
+  your provider (GitHub → Settings → Environments; Bitbucket → Repository
+  settings → Deployments) and give each one a `DEPLOY_HOOK` secret holding your
+  host's deploy trigger URL — for fortrabbit that's
+  `https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}`
+  from the dashboard. An unset hook skips that deploy with a notice; a green
+  push then deploys only its own branch's environment, and in-flight deploys are
+  never cancelled. Want production approvals? Add required reviewers to the
+  GitHub environment, or `trigger: manual` to the Bitbucket step.
 - **PHP version** comes from your `composer.json` `require.php` (setup-php on
   GitHub, the `laravelsail/php{XY}-composer` image on Bitbucket).
-- After generating, the command prints exactly which secrets/variables to create
-  and where (GitHub → Actions secrets; Bitbucket → secured repository
-  variables + enabling Pipelines once). Nothing else needs to change in the git
-  provider.
+- After generating, the command prints a table of exactly which secrets to
+  create, where to add them, and what value goes in each — plus provider notes
+  (branch protection checks, enabling Bitbucket Pipelines once).
 
 ## Extending the package
 
@@ -247,10 +263,12 @@ Four extension points, none of which require touching package code:
    and register it under `deploy.script_generators` (e.g.
    `'envoyer' => EnvoyerScriptGenerator::class`); it becomes selectable in
    `app:deploy-script` alongside Forge and Fortrabbit.
-1. **Custom git providers** — implement `Pipelines\PipelineGenerator` and
-   register it under `pipeline.generators` (e.g.
+1. **Custom git providers** — implement `Pipelines\PipelineGenerator` (`files()`
+   returns the `GeneratedFile`s to write, `secrets()` the rows of the
+   instructions table) and register it under `pipeline.generators` (e.g.
    `'gitlab' => GitlabPipelineGenerator::class`); it becomes selectable in
-   `app:pipeline` alongside GitHub and Bitbucket.
+   `app:pipeline` alongside GitHub and Bitbucket. Reuse `Pipelines\CiScripts` to
+   ship the same shared scripts, and `Support\Lines` to build documents.
 
 ## Testing
 
