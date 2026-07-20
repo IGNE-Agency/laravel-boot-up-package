@@ -19,7 +19,7 @@ final class PipelinePlanner
         private readonly PipelineConfig $config,
     ) {}
 
-    public function plan(): PipelinePlan
+    public function plan(DeployHookHost $host): PipelinePlan
     {
         return new PipelinePlan(
             // CI needs dev dependencies (the test framework) and must not
@@ -29,6 +29,7 @@ final class PipelinePlanner
             pint: $this->composerJson->requires('laravel/pint') || $this->composerJson->requiresDev('laravel/pint'),
             phpVersion: $this->composerJson->phpVersion(),
             branchEnvironments: $this->config->branchEnvironments,
+            host: $host,
         );
     }
 }

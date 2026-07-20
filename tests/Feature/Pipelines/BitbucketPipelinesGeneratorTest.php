@@ -7,6 +7,7 @@ use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlan;
 use Igne\LaravelBootUp\Frontend\PackageManager;
 use Igne\LaravelBootUp\Pipelines\BitbucketPipelinesGenerator;
 use Igne\LaravelBootUp\Pipelines\CiScripts;
+use Igne\LaravelBootUp\Pipelines\DeployHookHost;
 use Igne\LaravelBootUp\Pipelines\GitHubActionsGenerator;
 use Igne\LaravelBootUp\Pipelines\PipelinePlan;
 
@@ -33,6 +34,7 @@ function bitbucketPipelinePlan(array $overrides = [], array $deploymentOverrides
             'staging' => 'staging',
             'master' => 'production',
         ],
+        'host' => DeployHookHost::FORTRABBIT,
     ];
 
     return new PipelinePlan(...array_merge($defaults, $overrides));
@@ -187,17 +189,48 @@ test('secrets list one deployment-scoped DEPLOY_HOOK per branch and COMPOSER_AUT
 
     expect(array_map(fn ($secret) => $secret->name, $secrets))
         ->toBe(['DEPLOY_HOOK', 'DEPLOY_HOOK', 'DEPLOY_HOOK', 'COMPOSER_AUTH'])
-        ->and($secrets[0]->location)->toContain('Repository settings → Deployments → development')
-        ->and($secrets[0]->value)->toContain('Deploy hook URL')
-        ->and($secrets[3]->location)->toContain('Repository variables');
+        ->and($secrets[0]->location)->toBe('development deployment')
+        ->and($secrets[0]->purpose)->toBe('deploys on push to develop')
+        ->and(implode("\n", $secrets[0]->details))->toContain('Add under: Repository settings → Deployments → development → Variables')
+        ->and(implode("\n", $secrets[0]->details))->toContain('https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}')
+        ->and($secrets[3]->location)->toBe('repository variables')
+        ->and(implode("\n", $secrets[3]->details))->toContain('Repository settings → Repository variables (mark as secured)')
+        ->and(implode("\n", $secrets[3]->details))->toContain('Composer reads COMPOSER_AUTH straight from the environment');
 });
 
-test('instructions carry the fortrabbit hook example and the user-agent note', function (): void {
-    $instructions = implode("\n", bitbucketGenerator()->instructions(bitbucketPipelinePlan()));
+function bitbucketGuidance(PipelinePlan $plan): string
+{
+    return implode("\n", [
+        ...array_merge(...array_map(fn ($secret) => $secret->details, bitbucketGenerator()->secrets($plan))),
+        ...bitbucketGenerator()->instructions($plan),
+    ]);
+}
 
-    expect($instructions)->toContain('https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}')
+test('the fortrabbit host gets the dashboard path, the hook example and the user-agent note', function (): void {
+    $plan = bitbucketPipelinePlan(['host' => DeployHookHost::FORTRABBIT]);
+    $guidance = bitbucketGuidance($plan);
+    $instructions = implode("\n", bitbucketGenerator()->instructions($plan));
+
+    expect($guidance)->toContain('fortrabbit dashboard')
+        ->and($guidance)->toContain('https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}')
         ->and($instructions)->toContain('User-Agent: fortrabbit')
+        ->and($instructions)->toContain('Enable Pipelines once')
         ->and($instructions)->toContain('trigger: manual');
+});
+
+test('the forge host gets the deployment trigger URL and no fortrabbit mentions', function (): void {
+    $guidance = bitbucketGuidance(bitbucketPipelinePlan(['host' => DeployHookHost::FORGE]));
+
+    expect($guidance)->toContain('Deployment trigger URL')
+        ->and($guidance)->not->toContain('fortrabbit');
+});
+
+test('the webhook host gets neutral guidance naming no host', function (): void {
+    $guidance = bitbucketGuidance(bitbucketPipelinePlan(['host' => DeployHookHost::WEBHOOK]));
+
+    expect($guidance)->toContain("your host's HTTPS deploy hook URL for development")
+        ->and($guidance)->not->toContain('fortrabbit')
+        ->and($guidance)->not->toContain('Forge');
 });
 
 test('both providers ship byte-identical scripts and invoke them in the same order', function (): void {

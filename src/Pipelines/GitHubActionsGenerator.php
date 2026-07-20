@@ -41,18 +41,25 @@ final class GitHubActionsGenerator implements PipelineGenerator
         foreach ($plan->branchEnvironments as $branch => $environment) {
             $secrets[] = new PipelineSecret(
                 'DEPLOY_HOOK',
-                "Settings → Environments → {$environment} → Environment secrets (create the environment first)",
-                "Deploy hook URL from your host — fortrabbit: dashboard → your app → {$environment} → Deploy hook",
-                "Deploys {$environment} after a green push to {$branch}",
+                "{$environment} environment",
+                "deploys on push to {$branch}",
+                [
+                    "Add under: Settings → Environments → {$environment} → Environment secrets (create the environment first).",
+                    ...$plan->host->hookValueGuidance($environment),
+                ],
             );
         }
 
         if ($plan->nova) {
             $secrets[] = new PipelineSecret(
                 'COMPOSER_AUTH',
-                'Settings → Secrets and variables → Actions → Repository secrets',
-                'Composer auth JSON for nova.laravel.com (example below)',
-                'Lets composer install Laravel Nova in CI',
+                'repository secrets',
+                'lets composer install Nova',
+                [
+                    'Add under: Settings → Secrets and variables → Actions → Repository secrets.',
+                    'Value: composer auth JSON for nova.laravel.com, e.g.',
+                    '{"http-basic":{"nova.laravel.com":{"username":"you@example.com","password":"<license key>"}}}',
+                ],
             );
         }
 
@@ -63,18 +70,9 @@ final class GitHubActionsGenerator implements PipelineGenerator
     {
         $checks = $plan->pint ? 'Lint, Build and Test' : 'Build and Test';
 
-        $notes = [
-            'Commit .github/workflows/ci.yml, scripts/ci/* and .env.pipeline — every script also runs locally, e.g. `bash scripts/ci/test.sh`.',
-            'DEPLOY_HOOK example (fortrabbit): https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}',
-            'The deploy script always sends the `User-Agent: fortrabbit` header fortrabbit requires; other hosts ignore it.',
-        ];
-
-        if ($plan->nova) {
-            $notes[] = 'COMPOSER_AUTH example: {"http-basic":{"nova.laravel.com":{"username":"you@example.com","password":"<license key>"}}}';
-        }
-
         return [
-            ...$notes,
+            'Commit .github/workflows/ci.yml, scripts/ci/* and .env.pipeline — every script also runs locally, e.g. `bash scripts/ci/test.sh`.',
+            ...$plan->host->notes(),
             "Branch protection: require the {$checks} checks.",
             'Optional approval gate: add required reviewers to the production environment (Settings → Environments).',
             "An unset DEPLOY_HOOK skips that environment's deploy with a notice instead of failing the run.",

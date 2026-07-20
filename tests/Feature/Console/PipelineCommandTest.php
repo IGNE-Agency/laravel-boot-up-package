@@ -15,7 +15,7 @@ afterEach(function (): void {
 });
 
 test('github writes the workflow, the ci scripts and .env.pipeline at their canonical paths', function (): void {
-    $this->artisan('app:pipeline', ['provider' => 'github'])->assertSuccessful();
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])->assertSuccessful();
 
     $workflow = (string) file_get_contents(base_path('.github/workflows/ci.yml'));
     $deployHook = (string) file_get_contents(base_path('scripts/ci/deploy-hook.sh'));
@@ -33,7 +33,7 @@ test('github writes the workflow, the ci scripts and .env.pipeline at their cano
 });
 
 test('the ci scripts are written executable', function (): void {
-    $this->artisan('app:pipeline', ['provider' => 'github'])->assertSuccessful();
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])->assertSuccessful();
 
     foreach (['bootstrap.sh', 'build.sh', 'test.sh', 'deploy-hook.sh'] as $script) {
         expect(is_executable(base_path("scripts/ci/{$script}")))->toBeTrue("scripts/ci/{$script} is not executable");
@@ -41,7 +41,7 @@ test('the ci scripts are written executable', function (): void {
 });
 
 test('bitbucket writes bitbucket-pipelines.yml at the repo root plus the same scripts', function (): void {
-    $this->artisan('app:pipeline', ['provider' => 'bitbucket'])->assertSuccessful();
+    $this->artisan('app:pipeline', ['provider' => 'bitbucket', 'host' => 'fortrabbit'])->assertSuccessful();
 
     $pipeline = (string) file_get_contents(base_path('bitbucket-pipelines.yml'));
 
@@ -52,12 +52,27 @@ test('bitbucket writes bitbucket-pipelines.yml at the repo root plus the same sc
         ->and(is_file(base_path('.env.pipeline')))->toBeTrue();
 });
 
-test('prompts for the provider when omitted', function (): void {
+test('prompts for the provider and host when omitted', function (): void {
     $this->artisan('app:pipeline')
         ->expectsQuestion('Which git provider should the pipeline target?', 'bitbucket')
+        ->expectsQuestion('Which host receives the deploy hook?', 'fortrabbit')
         ->assertSuccessful();
 
     expect(is_file(base_path('bitbucket-pipelines.yml')))->toBeTrue();
+});
+
+test('prompts for the host when only the provider is given', function (): void {
+    $this->artisan('app:pipeline', ['provider' => 'github'])
+        ->expectsQuestion('Which host receives the deploy hook?', 'webhook')
+        ->assertSuccessful();
+
+    expect(is_file(base_path('.github/workflows/ci.yml')))->toBeTrue();
+});
+
+test('rejects an unknown host', function (): void {
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'heroku'])->assertFailed();
+
+    expect(is_file(base_path('.env.pipeline')))->toBeFalse();
 });
 
 test('rejects an unknown provider', function (): void {
@@ -70,7 +85,7 @@ test('a declined overwrite writes nothing at all', function (): void {
     File::ensureDirectoryExists(base_path('.github/workflows'));
     file_put_contents(base_path('.github/workflows/ci.yml'), 'hand-rolled workflow');
 
-    $this->artisan('app:pipeline', ['provider' => 'github'])
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])
         ->expectsConfirmation('.github/workflows/ci.yml already exists. Overwrite it?')
         ->assertSuccessful();
 
@@ -84,7 +99,7 @@ test('multiple existing files get one summary confirmation', function (): void {
     file_put_contents(base_path('.github/workflows/ci.yml'), 'hand-rolled workflow');
     file_put_contents(base_path('.env.pipeline'), 'APP_ENV=stale');
 
-    $this->artisan('app:pipeline', ['provider' => 'github'])
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])
         ->expectsConfirmation('Overwrite these 2 existing files? .github/workflows/ci.yml, .env.pipeline')
         ->assertSuccessful();
 
@@ -97,7 +112,7 @@ test('--force overwrites existing files without asking', function (): void {
     file_put_contents(base_path('.github/workflows/ci.yml'), 'hand-rolled workflow');
     file_put_contents(base_path('.env.pipeline'), 'APP_ENV=stale');
 
-    $this->artisan('app:pipeline', ['provider' => 'github', '--force' => true])->assertSuccessful();
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit', '--force' => true])->assertSuccessful();
 
     expect((string) file_get_contents(base_path('.github/workflows/ci.yml')))->toContain('# CI/CD pipeline (GitHub Actions)')
         ->and((string) file_get_contents(base_path('.env.pipeline')))->toContain('APP_ENV=testing');
@@ -111,7 +126,7 @@ test('a nova project gets composer auth in the workflow, nova publish in bootstr
 
     app()->singleton(ComposerJson::class, fn () => new ComposerJson($fixture));
 
-    $this->artisan('app:pipeline', ['provider' => 'github'])->assertSuccessful();
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])->assertSuccessful();
 
     $workflow = (string) file_get_contents(base_path('.github/workflows/ci.yml'));
     $bootstrap = (string) file_get_contents(base_path('scripts/ci/bootstrap.sh'));
@@ -131,8 +146,8 @@ test('a project with pint gets a lint check on both providers', function (): voi
 
     app()->singleton(ComposerJson::class, fn () => new ComposerJson($fixture));
 
-    $this->artisan('app:pipeline', ['provider' => 'github', '--force' => true])->assertSuccessful();
-    $this->artisan('app:pipeline', ['provider' => 'bitbucket', '--force' => true])->assertSuccessful();
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit', '--force' => true])->assertSuccessful();
+    $this->artisan('app:pipeline', ['provider' => 'bitbucket', 'host' => 'fortrabbit', '--force' => true])->assertSuccessful();
 
     $workflow = (string) file_get_contents(base_path('.github/workflows/ci.yml'));
     $pipeline = (string) file_get_contents(base_path('bitbucket-pipelines.yml'));
@@ -149,7 +164,7 @@ test('a project with pint gets a lint check on both providers', function (): voi
 test('a custom generator registered in config is selectable and its files are honored', function (): void {
     config()->set('boot-up.pipeline.generators', ['static' => StaticPipelineGenerator::class]);
 
-    $this->artisan('app:pipeline', ['provider' => 'static'])->assertSuccessful();
+    $this->artisan('app:pipeline', ['provider' => 'static', 'host' => 'webhook'])->assertSuccessful();
 
     expect((string) file_get_contents(base_path('static-pipeline.yml')))->toContain('static-pipeline for php');
 });
@@ -157,7 +172,7 @@ test('a custom generator registered in config is selectable and its files are ho
 test('remapped branches flow from config into the generated pipeline', function (): void {
     config()->set('boot-up.pipeline.branches', ['main' => 'production']);
 
-    $this->artisan('app:pipeline', ['provider' => 'github'])->assertSuccessful();
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])->assertSuccessful();
 
     $workflow = (string) file_get_contents(base_path('.github/workflows/ci.yml'));
 
@@ -165,4 +180,32 @@ test('remapped branches flow from config into the generated pipeline', function 
         ->and($workflow)->toContain('deploy-production:')
         ->and($workflow)->toContain("github.ref == 'refs/heads/main'")
         ->and($workflow)->not->toContain('deploy-development');
+});
+
+// Each expectsOutputToContain can only match a distinct output chunk (one
+// table, one note per section), so the assertions below sample one line from
+// each section rather than several lines of the same one.
+test('prints the slim secrets table with a guidance section per secret and the next steps', function (): void {
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])
+        ->expectsOutputToContain('deploys on push to develop')
+        ->expectsOutputToContain('DEPLOY_HOOK — development environment')
+        ->expectsOutputToContain('Add under: Settings → Environments → staging → Environment secrets (create the environment first).')
+        ->expectsOutputToContain('Example: https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}')
+        ->expectsOutputToContain('Next steps')
+        ->assertSuccessful();
+});
+
+test('the forge host shows forge guidance and never mentions fortrabbit', function (): void {
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'forge'])
+        ->expectsOutputToContain('Deployment trigger URL')
+        ->doesntExpectOutputToContain('fortrabbit')
+        ->assertSuccessful();
+});
+
+test('the webhook host shows neutral guidance and names no host', function (): void {
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'webhook'])
+        ->expectsOutputToContain("Value: your host's HTTPS deploy hook URL for development")
+        ->doesntExpectOutputToContain('fortrabbit')
+        ->doesntExpectOutputToContain('Forge')
+        ->assertSuccessful();
 });

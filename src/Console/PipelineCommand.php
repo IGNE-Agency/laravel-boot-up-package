@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Console;
 
 use Igne\LaravelBootUp\Pipelines\BitbucketPipelinesGenerator;
+use Igne\LaravelBootUp\Pipelines\DeployHookHost;
 use Igne\LaravelBootUp\Pipelines\GeneratedFile;
 use Igne\LaravelBootUp\Pipelines\GitHubActionsGenerator;
 use Igne\LaravelBootUp\Pipelines\PipelineConfig;
@@ -12,8 +13,11 @@ use Igne\LaravelBootUp\Pipelines\PipelineEnvFile;
 use Igne\LaravelBootUp\Pipelines\PipelineGenerator;
 use Igne\LaravelBootUp\Pipelines\PipelinePlan;
 use Igne\LaravelBootUp\Pipelines\PipelinePlanner;
+use Igne\LaravelBootUp\Pipelines\PipelineSecret;
 use Igne\LaravelBootUp\Support\AtomicFile;
+use Igne\LaravelBootUp\Support\Lines;
 use Illuminate\Console\Command;
+use Laravel\Prompts\Concerns\Colors;
 
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\error;
@@ -24,6 +28,8 @@ use function Laravel\Prompts\warning;
 
 final class PipelineCommand extends Command
 {
+    use Colors;
+
     private const BUILT_IN_GENERATORS = [
         'github' => GitHubActionsGenerator::class,
         'bitbucket' => BitbucketPipelinesGenerator::class,
@@ -31,6 +37,7 @@ final class PipelineCommand extends Command
 
     protected $signature = 'app:pipeline
         {provider? : The git provider (github, bitbucket)}
+        {host? : The deploy-hook host (fortrabbit, forge, webhook)}
         {--force : Overwrite existing pipeline, scripts/ci and .env.pipeline files without asking}';
 
     protected $description = 'Generate a CI/CD pipeline, its shared scripts/ci files and .env.pipeline for a git provider, based on this package\'s config';
@@ -50,7 +57,15 @@ final class PipelineCommand extends Command
         /** @var PipelineGenerator $generator */
         $generator = $this->laravel->make($generators[$provider]);
 
-        $plan = $planner->plan();
+        $host = $this->host();
+
+        if (\is_string($host)) {
+            error("Unknown host [{$host}]. Available: ".implode(', ', array_column(DeployHookHost::cases(), 'value')));
+
+            return self::FAILURE;
+        }
+
+        $plan = $planner->plan($host);
 
         $files = [
             ...$generator->files($plan),
@@ -88,6 +103,32 @@ final class PipelineCommand extends Command
         }
 
         return (string) select('Which git provider should the pipeline target?', $options);
+    }
+
+    /**
+     * The chosen deploy-hook host, or the unrecognized argument verbatim so
+     * the caller can report it. Only the printed guidance depends on this —
+     * the generated files work with any HTTPS deploy hook.
+     */
+    private function host(): DeployHookHost|string
+    {
+        $argument = $this->argument('host');
+
+        if (\is_string($argument) && $argument !== '') {
+            return DeployHookHost::tryFrom(strtolower($argument)) ?? strtolower($argument);
+        }
+
+        $options = [];
+
+        foreach (DeployHookHost::cases() as $host) {
+            $options[$host->value] = $host->label();
+        }
+
+        return DeployHookHost::from((string) select(
+            label: 'Which host receives the deploy hook?',
+            options: $options,
+            default: DeployHookHost::FORTRABBIT->value,
+        ));
     }
 
     /**
@@ -143,16 +184,38 @@ final class PipelineCommand extends Command
 
     private function instructions(PipelineGenerator $generator, PipelinePlan $plan): void
     {
-        $rows = [];
+        $secrets = $generator->secrets($plan);
 
-        foreach ($generator->secrets($plan) as $secret) {
-            $rows[] = [$secret->name, $secret->location, $secret->value, $secret->purpose];
+        if ($secrets !== []) {
+            table(
+                ['Secret', 'Add under', 'Purpose'],
+                array_map(fn (PipelineSecret $secret) => [$secret->name, $secret->location, $secret->purpose], $secrets),
+            );
         }
 
-        if ($rows !== []) {
-            table(['Secret', 'Where to add it', 'Value', 'Purpose'], $rows);
+        foreach ($secrets as $secret) {
+            $this->section($this->cyan("{$secret->name} — {$secret->location}"), $secret->details);
         }
 
-        note(implode("\n", $generator->instructions($plan)));
+        $this->section($this->green('Next steps'), $generator->instructions($plan));
+    }
+
+    /**
+     * A spaced note block: colored heading, body indented beneath it.
+     *
+     * @param  list<string>  $lines
+     */
+    private function section(string $heading, array $lines): void
+    {
+        if ($lines === []) {
+            return;
+        }
+
+        $this->newLine();
+
+        note(implode("\n", Lines::make()
+            ->line($heading)
+            ->indent(2, fn (Lines $note) => $note->lines($lines))
+            ->toArray()));
     }
 }

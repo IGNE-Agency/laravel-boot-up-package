@@ -44,8 +44,8 @@ php artisan app:down             # stop tracked processes + the server app:serve
 php artisan app:deploy-script forge production        # export a hosting deployment script
 php artisan app:deploy-script fortrabbit staging      # (see "Exporting a deployment script")
 
-php artisan app:pipeline github                       # generate a CI/CD pipeline + scripts/ci + .env.pipeline
-php artisan app:pipeline bitbucket                    # (see "Generating a CI/CD pipeline")
+php artisan app:pipeline github fortrabbit            # generate a CI/CD pipeline + scripts/ci + .env.pipeline
+php artisan app:pipeline bitbucket webhook            # (see "Generating a CI/CD pipeline")
 ```
 
 ### What `app:serve` does, in order
@@ -190,10 +190,10 @@ php artisan app:deploy-script forge production --output=deploy.sh
 calls, and a `.env.pipeline` test environment — all at their canonical paths:
 
 ```bash
-php artisan app:pipeline github       # .github/workflows/ci.yml + scripts/ci/* + .env.pipeline
-php artisan app:pipeline bitbucket    # bitbucket-pipelines.yml + scripts/ci/* + .env.pipeline
-php artisan app:pipeline              # prompts for the provider
-php artisan app:pipeline github --force   # overwrite existing files without asking
+php artisan app:pipeline github fortrabbit   # .github/workflows/ci.yml + scripts/ci/* + .env.pipeline
+php artisan app:pipeline bitbucket webhook   # bitbucket-pipelines.yml + scripts/ci/* + .env.pipeline
+php artisan app:pipeline                     # prompts for the provider and the deploy-hook host
+php artisan app:pipeline github fortrabbit --force   # overwrite existing files without asking
 ```
 
 All logic lives in **`scripts/ci/*.sh`** — the YAML only wires them up, so both
@@ -225,17 +225,18 @@ The pipeline behaves the same on both providers:
   `staging` → `staging`, `master` → `production`). Create the environment on
   your provider (GitHub → Settings → Environments; Bitbucket → Repository
   settings → Deployments) and give each one a `DEPLOY_HOOK` secret holding your
-  host's deploy trigger URL — for fortrabbit that's
-  `https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}`
-  from the dashboard. An unset hook skips that deploy with a notice; a green
-  push then deploys only its own branch's environment, and in-flight deploys are
-  never cancelled. Want production approvals? Add required reviewers to the
-  GitHub environment, or `trigger: manual` to the Bitbucket step.
+  host's deploy trigger URL — the command output shows exactly where to find it
+  for the host you picked (fortrabbit, Laravel Forge, or a generic webhook). An
+  unset hook skips that deploy with a notice; a green push then deploys only its
+  own branch's environment, and in-flight deploys are never cancelled. Want
+  production approvals? Add required reviewers to the GitHub environment, or
+  `trigger: manual` to the Bitbucket step.
 - **PHP version** comes from your `composer.json` `require.php` (setup-php on
   GitHub, the `laravelsail/php{XY}-composer` image on Bitbucket).
-- After generating, the command prints a table of exactly which secrets to
-  create, where to add them, and what value goes in each — plus provider notes
-  (branch protection checks, enabling Bitbucket Pipelines once).
+- After generating, the command prints a slim table of the secrets to create, a
+  guidance section per secret (the exact settings path and where its value comes
+  from on your deploy-hook host), and a "Next steps" list (branch protection
+  checks, enabling Bitbucket Pipelines once).
 
 ## Extending the package
 
@@ -264,9 +265,9 @@ Four extension points, none of which require touching package code:
    `'envoyer' => EnvoyerScriptGenerator::class`); it becomes selectable in
    `app:deploy-script` alongside Forge and Fortrabbit.
 1. **Custom git providers** — implement `Pipelines\PipelineGenerator` (`files()`
-   returns the `GeneratedFile`s to write, `secrets()` the rows of the
-   instructions table) and register it under `pipeline.generators` (e.g.
-   `'gitlab' => GitlabPipelineGenerator::class`); it becomes selectable in
+   returns the `GeneratedFile`s to write, `secrets()` the instructions-table
+   rows and their detail sections) and register it under `pipeline.generators`
+   (e.g. `'gitlab' => GitlabPipelineGenerator::class`); it becomes selectable in
    `app:pipeline` alongside GitHub and Bitbucket. Reuse `Pipelines\CiScripts` to
    ship the same shared scripts, and `Support\Lines` to build documents.
 

@@ -6,6 +6,7 @@ use Igne\LaravelBootUp\Deploy\Scripts\DeploymentEnvironment;
 use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlan;
 use Igne\LaravelBootUp\Frontend\PackageManager;
 use Igne\LaravelBootUp\Pipelines\CiScripts;
+use Igne\LaravelBootUp\Pipelines\DeployHookHost;
 use Igne\LaravelBootUp\Pipelines\GitHubActionsGenerator;
 use Igne\LaravelBootUp\Pipelines\PipelinePlan;
 
@@ -32,6 +33,7 @@ function githubPipelinePlan(array $overrides = [], array $deploymentOverrides = 
             'staging' => 'staging',
             'master' => 'production',
         ],
+        'host' => DeployHookHost::FORTRABBIT,
     ];
 
     return new PipelinePlan(...array_merge($defaults, $overrides));
@@ -273,10 +275,13 @@ test('secrets list one environment-scoped DEPLOY_HOOK per branch and COMPOSER_AU
 
     expect(array_map(fn ($secret) => $secret->name, $secrets))
         ->toBe(['DEPLOY_HOOK', 'DEPLOY_HOOK', 'DEPLOY_HOOK', 'COMPOSER_AUTH'])
-        ->and($secrets[0]->location)->toContain('Settings → Environments → development')
-        ->and($secrets[0]->value)->toContain('Deploy hook URL')
-        ->and($secrets[0]->purpose)->toContain('green push to develop')
-        ->and($secrets[3]->location)->toContain('Repository secrets');
+        ->and($secrets[0]->location)->toBe('development environment')
+        ->and($secrets[0]->purpose)->toBe('deploys on push to develop')
+        ->and(implode("\n", $secrets[0]->details))->toContain('Add under: Settings → Environments → development → Environment secrets')
+        ->and(implode("\n", $secrets[0]->details))->toContain('https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}')
+        ->and($secrets[3]->location)->toBe('repository secrets')
+        ->and(implode("\n", $secrets[3]->details))->toContain('Settings → Secrets and variables → Actions → Repository secrets')
+        ->and(implode("\n", $secrets[3]->details))->toContain('"nova.laravel.com"');
 });
 
 test('a project without nova lists no COMPOSER_AUTH secret', function (): void {
@@ -285,11 +290,34 @@ test('a project without nova lists no COMPOSER_AUTH secret', function (): void {
     expect($names)->not->toContain('COMPOSER_AUTH');
 });
 
-test('instructions carry the fortrabbit hook example and the user-agent note', function (): void {
-    $instructions = implode("\n", githubGenerator()->instructions(githubPipelinePlan()));
+function githubGuidance(PipelinePlan $plan): string
+{
+    return implode("\n", [
+        ...array_merge(...array_map(fn ($secret) => $secret->details, githubGenerator()->secrets($plan))),
+        ...githubGenerator()->instructions($plan),
+    ]);
+}
 
-    expect($instructions)->toContain('https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}')
-        ->and($instructions)->toContain('User-Agent: fortrabbit')
-        ->and($instructions)->toContain('COMPOSER_AUTH example')
-        ->and($instructions)->toContain('Lint, Build and Test');
+test('the fortrabbit host gets the dashboard path, the hook example and the user-agent note', function (): void {
+    $guidance = githubGuidance(githubPipelinePlan(['host' => DeployHookHost::FORTRABBIT]));
+
+    expect($guidance)->toContain('fortrabbit dashboard')
+        ->and($guidance)->toContain('https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}')
+        ->and($guidance)->toContain('User-Agent: fortrabbit')
+        ->and($guidance)->toContain('Lint, Build and Test');
+});
+
+test('the forge host gets the deployment trigger URL and no fortrabbit mentions', function (): void {
+    $guidance = githubGuidance(githubPipelinePlan(['host' => DeployHookHost::FORGE]));
+
+    expect($guidance)->toContain('Deployment trigger URL')
+        ->and($guidance)->not->toContain('fortrabbit');
+});
+
+test('the webhook host gets neutral guidance naming no host', function (): void {
+    $guidance = githubGuidance(githubPipelinePlan(['host' => DeployHookHost::WEBHOOK]));
+
+    expect($guidance)->toContain("your host's HTTPS deploy hook URL for development")
+        ->and($guidance)->not->toContain('fortrabbit')
+        ->and($guidance)->not->toContain('Forge');
 });

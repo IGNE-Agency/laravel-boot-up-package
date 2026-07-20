@@ -41,18 +41,26 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
         foreach ($plan->branchEnvironments as $branch => $environment) {
             $secrets[] = new PipelineSecret(
                 'DEPLOY_HOOK',
-                "Repository settings → Deployments → {$environment} → Variables (mark as secured; create the environment first)",
-                "Deploy hook URL from your host — fortrabbit: dashboard → your app → {$environment} → Deploy hook",
-                "Deploys {$environment} after a green push to {$branch}",
+                "{$environment} deployment",
+                "deploys on push to {$branch}",
+                [
+                    "Add under: Repository settings → Deployments → {$environment} → Variables (mark as secured; create the environment first).",
+                    ...$plan->host->hookValueGuidance($environment),
+                ],
             );
         }
 
         if ($plan->nova) {
             $secrets[] = new PipelineSecret(
                 'COMPOSER_AUTH',
-                'Repository settings → Repository variables (mark as secured)',
-                'Composer auth JSON for nova.laravel.com (example below)',
-                'Lets composer install Laravel Nova in CI',
+                'repository variables',
+                'lets composer install Nova',
+                [
+                    'Add under: Repository settings → Repository variables (mark as secured).',
+                    'Value: composer auth JSON for nova.laravel.com, e.g.',
+                    '{"http-basic":{"nova.laravel.com":{"username":"you@example.com","password":"<license key>"}}}',
+                    'Composer reads COMPOSER_AUTH straight from the environment — no auth.json step is needed.',
+                ],
             );
         }
 
@@ -61,20 +69,10 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
 
     public function instructions(PipelinePlan $plan): array
     {
-        $notes = [
+        return [
             'Commit bitbucket-pipelines.yml, scripts/ci/* and .env.pipeline — every script also runs locally, e.g. `bash scripts/ci/test.sh`.',
             'Enable Pipelines once under Repository settings → Pipelines → Settings.',
-            'DEPLOY_HOOK example (fortrabbit): https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}',
-            'The deploy script always sends the `User-Agent: fortrabbit` header fortrabbit requires; other hosts ignore it.',
-        ];
-
-        if ($plan->nova) {
-            $notes[] = 'COMPOSER_AUTH example: {"http-basic":{"nova.laravel.com":{"username":"you@example.com","password":"<license key>"}}}';
-            $notes[] = 'Composer reads COMPOSER_AUTH straight from the environment — no auth.json step is needed.';
-        }
-
-        return [
-            ...$notes,
+            ...$plan->host->notes(),
             'Optional approval gate: add `trigger: manual` to the production deploy step.',
             "An unset DEPLOY_HOOK skips that environment's deploy with a notice instead of failing the run.",
             'Deploying from other branches (e.g. main)? Remap boot-up.pipeline.branches and regenerate.',

@@ -22,5 +22,6 @@ final readonly class PipelinePlan
         public string $phpVersion,
         public array $branchEnvironments,
         public string $envFile = '.env.pipeline',
+        public DeployHookHost $host = DeployHookHost::WEBHOOK,
     ) {}
 }

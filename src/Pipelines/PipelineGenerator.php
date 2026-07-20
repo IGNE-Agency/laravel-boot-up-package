@@ -29,15 +29,16 @@ interface PipelineGenerator
     public function files(PipelinePlan $plan): array;
 
     /**
-     * The secrets/variables the generated pipeline expects — one row of the
-     * instructions table each, with the provider-specific place to add it.
+     * The secrets/variables the generated pipeline expects — each is a row
+     * of the instructions table plus its own detail section with the
+     * provider-specific place to add it and where the value comes from.
      *
      * @return list<PipelineSecret>
      */
     public function secrets(PipelinePlan $plan): array;
 
     /**
-     * Provider-specific setup notes, printed after the secrets table.
+     * The "Next steps" list, printed after the secrets table and sections.
      *
      * @return list<string>
      */
