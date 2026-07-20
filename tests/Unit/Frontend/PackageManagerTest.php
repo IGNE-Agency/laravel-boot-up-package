@@ -40,16 +40,16 @@ test('update commands', function (): void {
 });
 
 test('buildScriptLines renders the shared frontend block', function (): void {
-    expect(PackageManager::BUN->buildScriptLines(ensureInstalled: true))->toBe([
+    expect(PackageManager::BUN->buildScriptLines(ensureInstalled: true)->toArray())->toBe([
         'npm i -g bun',
         'bun install --frozen-lockfile || bun install',
         'bun run build',
     ])
-        ->and(PackageManager::NPM->buildScriptLines(ensureInstalled: true))->toBe([
+        ->and(PackageManager::NPM->buildScriptLines(ensureInstalled: true)->toArray())->toBe([
             'npm ci || npm install',
             'npm run build',
         ])
-        ->and(PackageManager::BUN->buildScriptLines(ensureInstalled: false))->toBe([
+        ->and(PackageManager::BUN->buildScriptLines(ensureInstalled: false)->toArray())->toBe([
             'bun install --frozen-lockfile || bun install',
             'bun run build',
         ]);

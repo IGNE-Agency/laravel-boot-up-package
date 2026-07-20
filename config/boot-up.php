@@ -149,17 +149,19 @@ return [
     |--------------------------------------------------------------------------
     | CI/CD pipelines
     |--------------------------------------------------------------------------
-    | app:pipeline generates a provider pipeline plus .env.pipeline. 'branches'
-    | maps a git branch to the deploy-hook secret/variable the pipeline curls
-    | after a green push (an unset secret skips that deploy gracefully).
+    | app:pipeline generates a provider pipeline, shared scripts/ci/*.sh and
+    | .env.pipeline. 'branches' maps a git branch to the deployment environment
+    | (GitHub environment / Bitbucket deployment) whose DEPLOY_HOOK secret is
+    | curled after a green push (an unset secret skips that deploy gracefully).
+    | Environment names should be unique per branch.
     | Extension point: 'generators' maps a provider key to a class implementing
     | Igne\LaravelBootUp\Pipelines\PipelineGenerator (wins over built-ins).
     */
     'pipeline' => [
         'branches' => [
-            'develop' => 'DEV_DEPLOY',
-            'staging' => 'STAGING_DEPLOY',
-            'master' => 'PROD_DEPLOY',
+            'develop' => 'development',
+            'staging' => 'staging',
+            'master' => 'production',
         ],
         'generators' => [],
     ],
