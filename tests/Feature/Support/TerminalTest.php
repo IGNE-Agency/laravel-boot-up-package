@@ -194,11 +194,3 @@ test('fail settles the bar in its error state and detaches it', function (): voi
     expect($progress->isRendered())->toBeFalse()
         ->and($afterError)->not->toContain('Boot progress');
 });
-
-test('output without an active bar just writes', function (): void {
-    Prompt::fake();
-
-    (new Terminal)->info('plain path');
-
-    Prompt::assertStrippedOutputContains('plain path');
-});

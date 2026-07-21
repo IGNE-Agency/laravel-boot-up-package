@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRecord;
 use Igne\LaravelBootUp\Serve\ShutdownRunner;
-use Igne\LaravelBootUp\Servers\ActiveServer;
+use Igne\LaravelBootUp\Servers\ActiveServerRecord;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Tests\Feature\Serve\Fixtures\RecordingServer;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
@@ -34,7 +34,7 @@ afterEach(function (): void {
 
 test('reaps tracked processes and stops only the persisted server', function (): void {
     $this->ledger->record(new ProcessRecord(4242, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM)));
-    $this->store->remember(new ActiveServer('double', true, (int) getmypid(), date(DATE_ATOM)));
+    $this->store->remember(new ActiveServerRecord('double', true, (int) getmypid(), date(DATE_ATOM)));
 
     ProcessFaker::fake([
         'kill -0 4242' => Process::result(exitCode: 1),
@@ -50,7 +50,7 @@ test('reaps tracked processes and stops only the persisted server', function ():
 });
 
 test('leaves a pre-existing server running and clears the state', function (): void {
-    $this->store->remember(new ActiveServer('double', false, (int) getmypid(), date(DATE_ATOM)));
+    $this->store->remember(new ActiveServerRecord('double', false, (int) getmypid(), date(DATE_ATOM)));
 
     ProcessFaker::fake();
 
@@ -61,7 +61,7 @@ test('leaves a pre-existing server running and clears the state', function (): v
 });
 
 test('a second app:down after everything was cleaned is a friendly no-op', function (): void {
-    $this->store->remember(new ActiveServer('double', true, (int) getmypid(), date(DATE_ATOM)));
+    $this->store->remember(new ActiveServerRecord('double', true, (int) getmypid(), date(DATE_ATOM)));
 
     ProcessFaker::fake();
 

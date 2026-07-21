@@ -30,7 +30,7 @@ final class StageReporter
      *
      * @return list<ReportedStep>
      */
-    public function begin(ServePlan $plan): array
+    public function begin(StepSequence $plan): array
     {
         if ($plan->count() > 0) {
             $this->progress = terminal()->progress('Boot progress', $plan->count(), $plan->steps[0]->label);
@@ -38,12 +38,12 @@ final class StageReporter
         }
 
         return array_map(
-            fn (PlannedStep $planned): ReportedStep => new ReportedStep($this->container, $this, $planned),
+            fn (StepDescriptor $planned): ReportedStep => new ReportedStep($this->container, $this, $planned),
             $plan->steps,
         );
     }
 
-    public function starting(PlannedStep $step): void
+    public function starting(StepDescriptor $step): void
     {
         if ($step->stage !== $this->currentStage) {
             $this->currentStage = $step->stage;
@@ -56,7 +56,7 @@ final class StageReporter
         }
     }
 
-    public function completed(PlannedStep $step): void
+    public function completed(StepDescriptor $step): void
     {
         if (isset($this->advanced[$step->index])) {
             return;

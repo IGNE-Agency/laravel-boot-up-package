@@ -4,20 +4,22 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
+use Igne\LaravelBootUp\Console\Support\Selection;
 use Igne\LaravelBootUp\Pipelines\BitbucketPipelinesGenerator;
 use Igne\LaravelBootUp\Pipelines\DeployHookHost;
 use Igne\LaravelBootUp\Pipelines\GeneratedFile;
 use Igne\LaravelBootUp\Pipelines\GitHubActionsGenerator;
 use Igne\LaravelBootUp\Pipelines\PipelineConfig;
 use Igne\LaravelBootUp\Pipelines\PipelineEnvFile;
+use Igne\LaravelBootUp\Pipelines\PipelineExtensionValidator;
+use Igne\LaravelBootUp\Pipelines\PipelineFile;
 use Igne\LaravelBootUp\Pipelines\PipelineGenerator;
 use Igne\LaravelBootUp\Pipelines\PipelinePlan;
 use Igne\LaravelBootUp\Pipelines\PipelinePlanner;
 use Igne\LaravelBootUp\Pipelines\PipelineSecret;
 use Igne\LaravelBootUp\Support\AtomicFile;
-use Illuminate\Console\Command;
 
-final class PipelineCommand extends Command
+final class PipelineCommand extends BootUpCommand
 {
     private const BUILT_IN_GENERATORS = [
         'github' => GitHubActionsGenerator::class,
@@ -31,13 +33,13 @@ final class PipelineCommand extends Command
 
     protected $description = 'Generate a CI/CD pipeline, its shared scripts/ci files and .env.pipeline for a git provider, based on this package\'s config';
 
-    public function handle(PipelinePlanner $planner, PipelineConfig $config, PipelineEnvFile $envFile): int
+    public function perform(PipelinePlanner $planner, PipelineConfig $config, PipelineEnvFile $envFile, Selection $selection): int
     {
         terminal()->intro('Generating the CI/CD pipeline...');
 
         $generators = array_merge(self::BUILT_IN_GENERATORS, $config->generators);
 
-        $provider = $this->provider($generators);
+        $provider = $this->provider($generators, $selection);
 
         if (! isset($generators[$provider])) {
             terminal()->error("Unknown provider [{$provider}]. Available: ".implode(', ', array_keys($generators)));
@@ -48,7 +50,7 @@ final class PipelineCommand extends Command
         /** @var PipelineGenerator $generator */
         $generator = $this->laravel->make($generators[$provider]);
 
-        $host = $this->host();
+        $host = $this->host($selection);
 
         if (\is_string($host)) {
             terminal()->error("Unknown host [{$host}]. Available: ".implode(', ', array_column(DeployHookHost::cases(), 'value')));
@@ -58,9 +60,18 @@ final class PipelineCommand extends Command
 
         $plan = $planner->plan($host);
 
+        $extensions = (new PipelineExtensionValidator($this->laravel->basePath()))
+            ->validate($config->steps, $config->files, $generator, $plan, array_keys($generators));
+
+        $plan = $plan->withExtensions($extensions);
+
         $files = [
             ...$generator->files($plan),
             new GeneratedFile($envFile->path(), $envFile->generate()),
+            ...array_map(
+                fn (PipelineFile $file): GeneratedFile => new GeneratedFile($file->path, $file->contents, $file->executable),
+                $extensions->filesFor($provider),
+            ),
         ];
 
         if (! $this->confirmOverwrites($files)) {
@@ -81,21 +92,15 @@ final class PipelineCommand extends Command
     /**
      * @param  array<string, class-string<PipelineGenerator>>  $generators
      */
-    private function provider(array $generators): string
+    private function provider(array $generators, Selection $selection): string
     {
-        $argument = $this->argument('provider');
-
-        if (\is_string($argument) && $argument !== '') {
-            return strtolower($argument);
-        }
-
         $options = [];
 
         foreach ($generators as $key => $class) {
             $options[$key] = $this->laravel->make($class)->label();
         }
 
-        return (string) terminal()->select('Which git provider should the pipeline target?', $options);
+        return $selection->resolve($this->argument('provider'), $options, 'Which git provider should the pipeline target?');
     }
 
     /**
@@ -104,25 +109,22 @@ final class PipelineCommand extends Command
      * differs — the generated files work with any HTTPS deploy hook; picking
      * none generates a checks-only pipeline without deploy steps.
      */
-    private function host(): DeployHookHost|string
+    private function host(Selection $selection): DeployHookHost|string
     {
-        $argument = $this->argument('host');
-
-        if (\is_string($argument) && $argument !== '') {
-            return DeployHookHost::tryFrom(strtolower($argument)) ?? strtolower($argument);
-        }
-
         $options = [];
 
         foreach (DeployHookHost::cases() as $host) {
             $options[$host->value] = $host->label();
         }
 
-        return DeployHookHost::from((string) terminal()->select(
-            label: 'Which host receives the deploy hook?',
-            options: $options,
-            default: DeployHookHost::FORTRABBIT->value,
-        ));
+        $choice = $selection->resolve(
+            $this->argument('host'),
+            $options,
+            'Which host receives the deploy hook?',
+            DeployHookHost::FORTRABBIT->value,
+        );
+
+        return DeployHookHost::tryFrom($choice) ?? $choice;
     }
 
     /**

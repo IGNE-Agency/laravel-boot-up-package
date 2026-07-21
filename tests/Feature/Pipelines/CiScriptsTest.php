@@ -261,6 +261,19 @@ test('project commands render around migrate with echoed descriptions', function
         ->and(strpos($script->contents, 'composer dump-autoload --optimize'))->toBeGreaterThan($migrate);
 });
 
+test('before-deploy runs before migrate and after-deploy runs after it, before the test run', function (): void {
+    $script = (new CiScripts)->test(ciScriptsPlan([], [
+        'beforeDeploy' => [ProjectCommand::artisan('pennant:purge')],
+        'afterDeploy' => [ProjectCommand::artisan('cache:warm')],
+    ]))->contents;
+
+    $migrate = strpos($script, 'php artisan migrate --force');
+
+    expect(strpos($script, 'php artisan pennant:purge'))->toBeLessThan($migrate)
+        ->and(strpos($script, 'php artisan cache:warm'))->toBeGreaterThan($migrate)
+        ->and(strpos($script, 'php artisan cache:warm'))->toBeLessThan(strpos($script, 'php artisan test'));
+});
+
 test('package-manager project commands use the runtime $PM with a frontend and the configured manager without', function (): void {
     $scripts = new CiScripts;
     $command = ['beforeMigrations' => [ProjectCommand::packageManager('run generate')]];

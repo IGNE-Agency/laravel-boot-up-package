@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootUp\Facades\Platform;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRecord;
 use Igne\LaravelBootUp\Serve\ServeProcessProbe;
-use Igne\LaravelBootUp\Servers\ActiveServer;
+use Igne\LaravelBootUp\Servers\ActiveServerRecord;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\ServerSelector;
-use Illuminate\Console\Command;
 use Throwable;
 
 /**
@@ -20,25 +18,21 @@ use Throwable;
  * each tracked background process. Deliberately mutates nothing — dead
  * entries are shown as dead and pruned by the next app:serve, not here.
  */
-final class StatusCommand extends Command
+final class StatusCommand extends BootUpCommand
 {
+    protected bool $requiresUnix = true;
+
     protected $signature = 'app:status';
 
     protected $description = 'Show the active server and tracked background processes';
 
-    public function handle(
+    public function perform(
         ActiveServerStore $store,
         ProcessLedger $ledger,
         ProcessReaper $reaper,
         ServerSelector $selector,
         ServeProcessProbe $probe,
     ): int {
-        if (Platform::isWindows()) {
-            terminal()->error('app:status is not supported on native Windows. Run it inside WSL2.');
-
-            return self::FAILURE;
-        }
-
         terminal()->intro('Application status');
 
         $active = $store->current();
@@ -65,7 +59,7 @@ final class StatusCommand extends Command
         return self::SUCCESS;
     }
 
-    private function describeServer(ActiveServer $active, ServerSelector $selector, ServeProcessProbe $probe): void
+    private function describeServer(ActiveServerRecord $active, ServerSelector $selector, ServeProcessProbe $probe): void
     {
         // The driver key may belong to a custom driver that no longer
         // exists in config — the record itself is still worth showing.

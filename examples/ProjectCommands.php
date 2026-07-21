@@ -26,6 +26,18 @@ use Igne\LaravelBootUp\Deploy\ProvidesProjectCommands;
 final class ProjectCommands implements ProvidesProjectCommands
 {
     /**
+     * Runs first, once dependencies are installed and before the framework
+     * is optimized or migrated. Use this for the earliest, schema-independent
+     * work. Return [] if you have none.
+     *
+     * @return list<ProjectCommand>
+     */
+    public function beforeDeploy(): array
+    {
+        return [];
+    }
+
+    /**
      * Runs after dependencies are installed but before migrations.
      *
      * Use this for code generation that does not depend on the database
@@ -69,5 +81,19 @@ final class ProjectCommands implements ProvidesProjectCommands
             //     'Optimizing the Composer autoloader...',
             // ),
         ];
+    }
+
+    /**
+     * Runs last, after the application is finalized and the release is live.
+     *
+     * Use this for anything that should happen only once the new release is
+     * serving traffic: cache warming, health pings, notifications. Return []
+     * if you have none.
+     *
+     * @return list<ProjectCommand>
+     */
+    public function afterDeploy(): array
+    {
+        return [];
     }
 }

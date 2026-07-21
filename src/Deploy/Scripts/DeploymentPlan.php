@@ -17,6 +17,8 @@ final readonly class DeploymentPlan
      * @param  list<string>  $finalize  artisan commands run at the end of a deploy
      * @param  list<ProjectCommand>  $beforeMigrations
      * @param  list<ProjectCommand>  $afterMigrations
+     * @param  list<ProjectCommand>  $beforeDeploy  earliest custom hook, before optimize/migrations
+     * @param  list<ProjectCommand>  $afterDeploy  latest custom hook, after the release is finalized/live
      */
     public function __construct(
         public DeploymentEnvironment $environment,
@@ -28,5 +30,7 @@ final readonly class DeploymentPlan
         public PackageManager $packageManager,
         public bool $restartQueues,
         public bool $zeroDowntime = true,
+        public array $beforeDeploy = [],
+        public array $afterDeploy = [],
     ) {}
 }

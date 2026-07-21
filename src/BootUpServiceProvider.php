@@ -28,6 +28,7 @@ use Igne\LaravelBootUp\Queue\QueueConfig;
 use Igne\LaravelBootUp\Serve\ServeConfig;
 use Igne\LaravelBootUp\Serve\ShutdownRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
+use Igne\LaravelBootUp\Servers\Herd\HerdServices;
 use Igne\LaravelBootUp\Servers\Herd\HerdSites;
 use Igne\LaravelBootUp\Servers\ServersConfig;
 use Igne\LaravelBootUp\Support\Platform;
@@ -78,6 +79,17 @@ final class BootUpServiceProvider extends ServiceProvider
                 ? ($_SERVER['HOME'] ?? '').'/Library/Application Support/Herd/config/valet/Sites'
                 : ($_SERVER['HOME'] ?? '').'/.config/valet/Sites',
         ));
+
+        $this->app->singleton(HerdServices::class, function (Application $app): HerdServices {
+            $config = $app->make(ServersConfig::class);
+
+            return new HerdServices(
+                runner: $app->make(ProcessRunner::class),
+                healthAttempts: $config->herdHealthAttempts,
+                healthDelayMs: $config->herdHealthDelayMs,
+                healthTimeoutSeconds: $config->herdHealthTimeoutSeconds,
+            );
+        });
 
         $this->app->singleton(TerminalLauncher::class, function (Application $app): TerminalLauncher {
             $platform = $app->make(Platform::class);

@@ -21,6 +21,15 @@ interface PipelineGenerator
     public function label(): string;
 
     /**
+     * The job/step names project-configured extra steps may attach to (see
+     * boot-up.pipeline.steps), for this plan — e.g. "lint" only exists with
+     * Pint, "deploy" only with a deploy host. Used to validate configuration.
+     *
+     * @return list<string>
+     */
+    public function anchors(PipelinePlan $plan): array;
+
+    /**
      * Every file this provider needs, repo-relative. The first entry should
      * be the provider's pipeline definition; shared scripts follow.
      *

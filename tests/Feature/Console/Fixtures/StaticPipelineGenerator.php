@@ -23,6 +23,11 @@ final class StaticPipelineGenerator implements PipelineGenerator
         return 'Static Provider';
     }
 
+    public function anchors(PipelinePlan $plan): array
+    {
+        return ['build', 'test'];
+    }
+
     public function files(PipelinePlan $plan): array
     {
         return [new GeneratedFile('static-pipeline.yml', "static-pipeline for php {$plan->phpVersion}\n")];

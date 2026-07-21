@@ -55,15 +55,26 @@ final class FortrabbitScriptGenerator implements ScriptGenerator
     private function postDeployCommands(DeploymentPlan $plan): Lines
     {
         return Lines::make()
-            ->each($plan->beforeMigrations, fn (Lines $script, ProjectCommand $command) => $script
-                ->lines($this->projectCommand($command, $plan)))
+            ->lines($this->projectCommands($plan->beforeDeploy, $plan))
+            ->lines($this->projectCommands($plan->beforeMigrations, $plan))
             ->lineIf($plan->migrate, 'php artisan migrate --force')
-            ->each($plan->afterMigrations, fn (Lines $script, ProjectCommand $command) => $script
-                ->lines($this->projectCommand($command, $plan)))
+            ->lines($this->projectCommands($plan->afterMigrations, $plan))
             ->lineIf($plan->environment->optimize(), 'php artisan optimize')
             ->each($plan->finalize, fn (Lines $script, string $command) => $script
                 ->line("php artisan {$command}"))
+            ->lines($this->projectCommands($plan->afterDeploy, $plan))
             ->lineIf($plan->restartQueues, 'php artisan queue:restart');
+    }
+
+    /**
+     * @param  list<ProjectCommand>  $commands
+     */
+    private function projectCommands(array $commands, DeploymentPlan $plan): Lines
+    {
+        return Lines::make()->each(
+            $commands,
+            fn (Lines $script, ProjectCommand $command) => $script->lines($this->projectCommand($command, $plan)),
+        );
     }
 
     private function projectCommand(ProjectCommand $command, DeploymentPlan $plan): Lines

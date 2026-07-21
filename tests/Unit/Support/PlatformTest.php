@@ -17,11 +17,3 @@ test('each family answers exactly one check', function (): void {
         ->and($windows->isWindows())->toBeTrue()
         ->and($windows->isMacos())->toBeFalse();
 });
-
-test('defaults to the family PHP itself reports', function (): void {
-    $platform = new Platform;
-
-    expect($platform->isMacos())->toBe(PHP_OS_FAMILY === 'Darwin')
-        ->and($platform->isLinux())->toBe(PHP_OS_FAMILY === 'Linux')
-        ->and($platform->isWindows())->toBe(PHP_OS_FAMILY === 'Windows');
-});

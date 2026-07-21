@@ -45,6 +45,18 @@ test('runs the deploy pipeline without booting a server', function (): void {
     expect($this->store->current())->toBeNull();
 });
 
+test('shows the execution plan and a progress bar like app:serve', function (): void {
+    ProcessFaker::fake([
+        'php artisan storage:link' => Process::result('The links have been created.'),
+    ]);
+
+    $this->artisan('app:deploy')
+        ->expectsOutputToContain('What app:deploy will do')
+        ->expectsOutputToContain('Boot progress')
+        ->expectsOutputToContain('Deploy complete.')
+        ->assertSuccessful();
+});
+
 test('a failing finalize command fails the deploy cleanly', function (): void {
     ProcessFaker::fake([
         'php artisan storage:link' => Process::result(output: 'boom', exitCode: 1),

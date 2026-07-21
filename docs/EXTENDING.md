@@ -4,10 +4,12 @@ Six extension points, none of which require touching package code.
 
 ## Project commands
 
-Generators and warmers that run before/after migrations during `app:serve` and
-`app:deploy`, and get embedded in exported deployment scripts.
+Generators and warmers that run across four deploy phases (`beforeDeploy`,
+`beforeMigrations`, `afterMigrations`, `afterDeploy`) during `app:serve` /
+`app:deploy` and get embedded in exported deployment scripts.
 
-1. Implement `Igne\LaravelBootUp\Deploy\ProvidesProjectCommands`.
+1. Implement `Igne\LaravelBootUp\Deploy\ProvidesProjectCommands` (all four
+   methods; return `[]` for phases you don't use).
 2. Bind it as a singleton in your `AppServiceProvider::register()`.
 
 Full guide: [CUSTOM_COMMANDS.md](CUSTOM_COMMANDS.md) — example:
@@ -65,7 +67,9 @@ It becomes selectable in `app:deploy-script` alongside Forge and fortrabbit.
 
 1. Implement `Igne\LaravelBootUp\Pipelines\PipelineGenerator` — `files()`
    returns the `GeneratedFile`s to write, `secrets()` the instructions-table
-   rows and their detail sections.
+   rows and their detail sections, and `anchors()` the job names project config
+   may inject extra steps into (see
+   [Extending the pipeline](PIPELINES.md#extending-the-pipeline)).
 2. Register it under `boot-up.pipeline.generators`, e.g.
    `'gitlab' => GitlabPipelineGenerator::class`.
 

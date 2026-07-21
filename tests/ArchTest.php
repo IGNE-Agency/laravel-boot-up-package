@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Console\BootUpCommand;
 use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Support\BootUpException;
 use Igne\LaravelBootUp\Support\Terminal;
@@ -11,11 +12,11 @@ arch('all package code uses strict types')
     ->expect('Igne\LaravelBootUp')
     ->toUseStrictTypes();
 
-arch('every class is final except the shared exception base')
+arch('every class is final except the shared exception and command bases')
     ->expect('Igne\LaravelBootUp')
     ->classes()
     ->toBeFinal()
-    ->ignoring(BootUpException::class);
+    ->ignoring([BootUpException::class, BootUpCommand::class]);
 
 arch('no raw process primitives anywhere — the ProcessRunner is the only OS seam')
     ->expect('Igne\LaravelBootUp')

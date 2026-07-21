@@ -14,12 +14,12 @@ final class ActiveServerStore
 {
     public function __construct(private readonly string $path) {}
 
-    public function remember(ActiveServer $server): void
+    public function remember(ActiveServerRecord $server): void
     {
         AtomicFile::write($this->path, (string) json_encode($server->toArray(), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
     }
 
-    public function current(): ?ActiveServer
+    public function current(): ?ActiveServerRecord
     {
         if (! is_file($this->path)) {
             return null;
@@ -33,7 +33,7 @@ final class ActiveServerStore
             return null;
         }
 
-        return ActiveServer::fromArray($decoded);
+        return ActiveServerRecord::fromArray($decoded);
     }
 
     public function clear(): void

@@ -56,6 +56,18 @@ return [
             // Fixed Herd site name (served at https://{name}.test). null
             // prompts on first link, defaulting to the project folder name.
             'site' => env('BOOT_UP_HERD_SITE'),
+
+            // app:serve does not trust "Herd started" — it verifies Nginx
+            // actually answers the served site, restarting an unhealthy Herd
+            // between checks. 'attempts' bounds the checks (a permanently
+            // broken Herd fails fast with guidance rather than hanging);
+            // 'delay_ms' waits between a restart and the next check;
+            // 'timeout_seconds' caps each reachability request.
+            'health' => [
+                'attempts' => (int) env('BOOT_UP_HERD_HEALTH_ATTEMPTS', 10),
+                'delay_ms' => (int) env('BOOT_UP_HERD_HEALTH_DELAY_MS', 500),
+                'timeout_seconds' => (int) env('BOOT_UP_HERD_HEALTH_TIMEOUT', 5),
+            ],
         ],
         'artisan' => [
             // Where `php artisan serve` binds; also drives the announced URL.
@@ -166,6 +178,41 @@ return [
             'main' => 'production',
         ],
         'generators' => [],
+
+        // Extra steps injected into the generated pipeline jobs. Each is
+        // spliced into its 'job' anchor (lint/build/test/deploy) 'before' or
+        // 'after' that job's own step. Reruns are idempotent — the pipeline is
+        // regenerated from this config, so nothing is ever duplicated.
+        //   'id'       unique identifier (required)
+        //   'job'      anchor: lint | build | test | deploy (required)
+        //   'position' before | after (required)
+        //   'run'      the command to run (required)
+        //   'name'     display name (optional; defaults to the id)
+        //   'provider' restrict to one provider key (optional; default: all)
+        //   'env'      GitHub only — map of name => value (optional)
+        'steps' => [
+            // [
+            //     'id' => 'notify-slack',
+            //     'job' => 'test',
+            //     'position' => 'after',
+            //     'name' => 'Notify Slack',
+            //     'run' => 'bash scripts/ci/notify.sh',
+            //     'env' => ['WEBHOOK' => '${{ secrets.SLACK_WEBHOOK }}'],
+            // ],
+        ],
+
+        // Extra whole files emitted verbatim next to the generated pipeline.
+        // Give each a relative 'path' and exactly one of 'contents' (inline)
+        // or 'stub' (a file read verbatim, relative to the project root).
+        //   'executable' chmod 0755 the written file (optional)
+        //   'provider'   restrict to one provider key (optional; default: all)
+        'files' => [
+            // [
+            //     'path' => '.github/workflows/nightly.yml',
+            //     'stub' => 'stubs/nightly.yml',
+            //     'provider' => 'github',
+            // ],
+        ],
     ],
 
     'browser' => [

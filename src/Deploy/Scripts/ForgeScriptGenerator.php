@@ -48,6 +48,10 @@ final class ForgeScriptGenerator implements ScriptGenerator
             ->when($plan->frontend, fn (Lines $script) => $script
                 ->linesWithBreak($plan->packageManager->buildScriptLines(ensureInstalled: false)))
             ->lineWithBreak('$ACTIVATE_RELEASE()')
+            // afterDeploy runs post-swap: the symlink now points at this release.
+            ->when($plan->afterDeploy !== [], fn (Lines $script) => $script
+                ->blank()
+                ->lines($this->projectCommands($plan->afterDeploy, $plan)))
             ->lineWithBreakIf($plan->restartQueues, '$RESTART_QUEUES()')
             ->render();
     }
@@ -66,6 +70,8 @@ final class ForgeScriptGenerator implements ScriptGenerator
             ->linesWithBreak($this->artisanBlock($plan, '$FORGE_PHP'))
             ->when($plan->frontend, fn (Lines $script) => $script
                 ->linesWithBreak($plan->packageManager->buildScriptLines(ensureInstalled: false)))
+            ->when($plan->afterDeploy !== [], fn (Lines $script) => $script
+                ->linesWithBreak($this->projectCommands($plan->afterDeploy, $plan)))
             ->lineWithBreakIf($plan->restartQueues, '$FORGE_PHP artisan queue:restart')
             ->blank()
             ->comment('Prevent concurrent PHP-FPM reloads...')
@@ -89,14 +95,24 @@ final class ForgeScriptGenerator implements ScriptGenerator
     private function artisanBlock(DeploymentPlan $plan, string $php): Lines
     {
         return Lines::make()
+            ->lines($this->projectCommands($plan->beforeDeploy, $plan))
             ->lineIf($plan->environment->optimize(), "{$php} artisan optimize")
             ->each($plan->finalize, fn (Lines $script, string $command) => $script
                 ->line("{$php} artisan {$command}"))
-            ->each($plan->beforeMigrations, fn (Lines $script, ProjectCommand $command) => $script
-                ->lines($this->projectCommand($command, $plan)))
+            ->lines($this->projectCommands($plan->beforeMigrations, $plan))
             ->lineIf($plan->migrate, "{$php} artisan migrate --force")
-            ->each($plan->afterMigrations, fn (Lines $script, ProjectCommand $command) => $script
-                ->lines($this->projectCommand($command, $plan)));
+            ->lines($this->projectCommands($plan->afterMigrations, $plan));
+    }
+
+    /**
+     * @param  list<ProjectCommand>  $commands
+     */
+    private function projectCommands(array $commands, DeploymentPlan $plan): Lines
+    {
+        return Lines::make()->each(
+            $commands,
+            fn (Lines $script, ProjectCommand $command) => $script->lines($this->projectCommand($command, $plan)),
+        );
     }
 
     private function projectCommand(ProjectCommand $command, DeploymentPlan $plan): Lines

@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
+use Igne\LaravelBootUp\Console\Support\Selection;
 use Igne\LaravelBootUp\Deploy\DeployConfig;
 use Igne\LaravelBootUp\Deploy\Scripts\DeploymentEnvironment;
 use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlanner;
 use Igne\LaravelBootUp\Deploy\Scripts\ForgeScriptGenerator;
 use Igne\LaravelBootUp\Deploy\Scripts\FortrabbitScriptGenerator;
 use Igne\LaravelBootUp\Deploy\Scripts\ScriptGenerator;
-use Illuminate\Console\Command;
 
-final class DeployScriptCommand extends Command
+final class DeployScriptCommand extends BootUpCommand
 {
     private const BUILT_IN_GENERATORS = [
         'forge' => ForgeScriptGenerator::class,
@@ -27,11 +27,11 @@ final class DeployScriptCommand extends Command
 
     protected $description = 'Export a deployment script for a hosting platform, based on this package\'s config';
 
-    public function handle(DeploymentPlanner $planner, DeployConfig $config): int
+    public function perform(DeploymentPlanner $planner, DeployConfig $config, Selection $selection): int
     {
         $generators = array_merge(self::BUILT_IN_GENERATORS, $config->scriptGenerators);
 
-        $platform = $this->platform($generators);
+        $platform = $this->platform($generators, $selection);
 
         if (! isset($generators[$platform])) {
             terminal()->error("Unknown platform [{$platform}]. Available: ".implode(', ', array_keys($generators)));
@@ -42,8 +42,16 @@ final class DeployScriptCommand extends Command
         /** @var ScriptGenerator $generator */
         $generator = $this->laravel->make($generators[$platform]);
 
+        $environment = $this->environment($selection);
+
+        if ($environment === null) {
+            terminal()->error('Unknown environment. Available: '.implode(', ', array_column(DeploymentEnvironment::cases(), 'value')));
+
+            return self::FAILURE;
+        }
+
         $script = $generator->generate($planner->plan(
-            environment: $this->environment(),
+            environment: $environment,
             zeroDowntime: ! $this->option('classic'),
         ));
 
@@ -69,35 +77,26 @@ final class DeployScriptCommand extends Command
     /**
      * @param  array<string, class-string<ScriptGenerator>>  $generators
      */
-    private function platform(array $generators): string
+    private function platform(array $generators, Selection $selection): string
     {
-        $argument = $this->argument('platform');
-
-        if (\is_string($argument) && $argument !== '') {
-            return strtolower($argument);
-        }
-
         $options = [];
 
         foreach ($generators as $key => $class) {
             $options[$key] = $this->laravel->make($class)->label();
         }
 
-        return (string) terminal()->select('Which platform should the deployment script target?', $options);
+        return $selection->resolve($this->argument('platform'), $options, 'Which platform should the deployment script target?');
     }
 
-    private function environment(): DeploymentEnvironment
+    private function environment(Selection $selection): ?DeploymentEnvironment
     {
-        $argument = $this->argument('environment');
+        $choice = $selection->resolve(
+            $this->argument('environment'),
+            array_column(DeploymentEnvironment::cases(), 'value', 'value'),
+            'Which environment is this script for?',
+            DeploymentEnvironment::PRODUCTION->value,
+        );
 
-        if (\is_string($argument) && $argument !== '') {
-            return DeploymentEnvironment::from(strtolower($argument));
-        }
-
-        return DeploymentEnvironment::from((string) terminal()->select(
-            label: 'Which environment is this script for?',
-            options: array_column(DeploymentEnvironment::cases(), 'value', 'value'),
-            default: DeploymentEnvironment::PRODUCTION->value,
-        ));
+        return DeploymentEnvironment::tryFrom($choice);
     }
 }

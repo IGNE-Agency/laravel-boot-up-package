@@ -27,6 +27,16 @@ final class GitHubActionsGenerator implements PipelineGenerator
         return 'GitHub Actions';
     }
 
+    public function anchors(PipelinePlan $plan): array
+    {
+        return array_values(array_filter([
+            $plan->pint ? 'lint' : null,
+            'build',
+            'test',
+            $plan->host->deploys() ? 'deploy' : null,
+        ]));
+    }
+
     public function files(PipelinePlan $plan): array
     {
         return [
@@ -151,11 +161,15 @@ final class GitHubActionsGenerator implements PipelineGenerator
                     ->indent(2, function (Lines $yaml) use ($plan, $job, $step): void {
                         $this->setupSteps($yaml, $plan);
 
+                        $this->extraSteps($yaml, $plan, $job, 'before');
+
                         $yaml->lineWithBreak("- name: {$step}")
                             ->indent(2, function (Lines $yaml) use ($plan, $job): void {
                                 $this->composerAuth($yaml, $plan);
                                 $yaml->line("run: bash scripts/ci/{$job}.sh");
                             });
+
+                        $this->extraSteps($yaml, $plan, $job, 'after');
                     });
             })
             ->blank();
@@ -188,16 +202,22 @@ final class GitHubActionsGenerator implements PipelineGenerator
                         ->line("group: deployment-{$environment}")
                         ->line('cancel-in-progress: false'))
                     ->line('steps:')
-                    ->indent(2, fn (Lines $yaml) => $yaml
-                        ->line('- uses: actions/checkout@v5')
-                        ->indent(2, fn (Lines $yaml) => $yaml
-                            ->line('with:')
-                            ->indent(2, fn (Lines $yaml) => $yaml->line('sparse-checkout: scripts/ci')))
-                        ->lineWithBreak("- name: Trigger the {$environment} deploy hook")
-                        ->indent(2, fn (Lines $yaml) => $yaml
-                            ->line('env:')
-                            ->indent(2, fn (Lines $yaml) => $yaml->line('DEPLOY_HOOK: ${{ secrets.DEPLOY_HOOK }}'))
-                            ->line("run: bash scripts/ci/deploy-hook.sh {$environment} \"\${DEPLOY_HOOK:-}\""))))
+                    ->indent(2, function (Lines $yaml) use ($plan, $environment): void {
+                        $yaml->line('- uses: actions/checkout@v5')
+                            ->indent(2, fn (Lines $yaml) => $yaml
+                                ->line('with:')
+                                ->indent(2, fn (Lines $yaml) => $yaml->line('sparse-checkout: scripts/ci')));
+
+                        $this->extraSteps($yaml, $plan, 'deploy', 'before');
+
+                        $yaml->lineWithBreak("- name: Trigger the {$environment} deploy hook")
+                            ->indent(2, fn (Lines $yaml) => $yaml
+                                ->line('env:')
+                                ->indent(2, fn (Lines $yaml) => $yaml->line('DEPLOY_HOOK: ${{ secrets.DEPLOY_HOOK }}'))
+                                ->line("run: bash scripts/ci/deploy-hook.sh {$environment} \"\${DEPLOY_HOOK:-}\""));
+
+                        $this->extraSteps($yaml, $plan, 'deploy', 'after');
+                    }))
                 ->blank();
         }
     }
@@ -228,6 +248,28 @@ final class GitHubActionsGenerator implements PipelineGenerator
                     ->line('path: ${{ steps.composer-cache.outputs.dir }}')
                     ->line("key: composer-\${{ hashFiles('composer.lock') }}")
                     ->line('restore-keys: composer-')));
+    }
+
+    /**
+     * Render the project's configured extra steps at one job anchor as GitHub
+     * job steps, with their optional env block.
+     */
+    private function extraSteps(Lines $yaml, PipelinePlan $plan, string $job, string $position): void
+    {
+        foreach ($plan->extensions->stepsFor($this->key(), $job, $position) as $step) {
+            $yaml->lineWithBreak("- name: {$step->name}")
+                ->indent(2, function (Lines $yaml) use ($step): void {
+                    if ($step->env !== []) {
+                        $yaml->line('env:')
+                            ->indent(2, fn (Lines $yaml) => $yaml->each(
+                                $step->env,
+                                fn (Lines $yaml, string $value, string $key) => $yaml->line("{$key}: {$value}"),
+                            ));
+                    }
+
+                    $yaml->line("run: {$step->run}");
+                });
+        }
     }
 
     private function composerAuth(Lines $yaml, PipelinePlan $plan): void

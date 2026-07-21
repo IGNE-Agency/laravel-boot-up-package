@@ -70,21 +70,39 @@ final class HerdServer implements Server
         if ($linked !== null) {
             terminal()->note("Project already linked to Herd as https://{$linked}.test.");
             $this->secure($linked);
+        } else {
+            $name = $this->claimSiteName($project);
 
-            return;
+            $this->runOrFail(['herd', 'link', $name]);
+            terminal()->success("Project linked to Herd as https://{$name}.test.");
+
+            $this->secure($name);
         }
 
-        $name = $this->claimSiteName($project);
-
-        $this->runOrFail(['herd', 'link', $name]);
-        terminal()->success("Project linked to Herd as https://{$name}.test.");
-
-        $this->secure($name);
+        $this->ensureServing();
     }
 
     public function isRunning(): bool
     {
-        return $this->services->isHealthy();
+        return $this->services->isRunning();
+    }
+
+    /**
+     * A linked, secured site is not a working one: Herd's daemons must be up
+     * and Nginx must actually answer. Boot Herd if its processes are down,
+     * then wait for the site to respond (restarting an unhealthy Nginx along
+     * the way) before app:serve reports the server ready.
+     */
+    private function ensureServing(): void
+    {
+        if (! $this->services->isRunning()) {
+            terminal()->info('Starting Herd services...');
+            $this->services->boot();
+        }
+
+        terminal()->info('Verifying Herd is reachable...');
+        $this->services->ensureReachable($this->url());
+        terminal()->success("Herd is serving {$this->url()}.");
     }
 
     public function stop(): void

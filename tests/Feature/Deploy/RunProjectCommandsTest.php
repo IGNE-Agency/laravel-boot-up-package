@@ -59,6 +59,11 @@ function bindRunProjectCommandsFixtures(string $dir): void
 
     app()->singleton(ProvidesProjectCommands::class, fn (): ProvidesProjectCommands => new class implements ProvidesProjectCommands
     {
+        public function beforeDeploy(): array
+        {
+            return [ProjectCommand::artisan('pennant:purge')];
+        }
+
         public function beforeMigrations(): array
         {
             return [ProjectCommand::artisan('config:clear')];
@@ -67,6 +72,11 @@ function bindRunProjectCommandsFixtures(string $dir): void
         public function afterMigrations(): array
         {
             return [ProjectCommand::composer('dump-autoload')];
+        }
+
+        public function afterDeploy(): array
+        {
+            return [ProjectCommand::artisan('cache:warm')];
         }
     });
 }
@@ -84,6 +94,19 @@ test("the pipeline ':after' parameter selects the after-migrations commands", fu
 
     expect($result)->toBe($context);
     Process::assertRan(fn ($process): bool => runProjectCommandsCommandOf($process) === 'composer dump-autoload');
+    Process::assertDidntRun(fn ($process): bool => runProjectCommandsCommandOf($process) === 'php artisan config:clear');
+});
+
+test("the ':before-deploy' parameter selects the before-deploy commands", function (): void {
+    Process::fake(['*' => Process::result()]);
+    bindRunProjectCommandsFixtures($this->dir);
+
+    app(Pipeline::class)
+        ->send(new ServeContext(new ServeOptions))
+        ->through([RunProjectCommands::class.':before-deploy'])
+        ->then(fn (ServeContext $passed): ServeContext => $passed);
+
+    Process::assertRan(fn ($process): bool => runProjectCommandsCommandOf($process) === 'php artisan pennant:purge');
     Process::assertDidntRun(fn ($process): bool => runProjectCommandsCommandOf($process) === 'php artisan config:clear');
 });
 

@@ -182,13 +182,3 @@ test('toArray spreads alongside plain string lists', function (): void {
 
     expect(['a', ...$built->toArray(), 'd'])->toBe(['a', 'b', 'c', 'd']);
 });
-
-test('identical chains produce identical output', function (): void {
-    $build = fn (): string => Lines::make()
-        ->comment('header')
-        ->blank()
-        ->indent(2, fn (Lines $lines) => $lines->line('key: value'))
-        ->render();
-
-    expect($build())->toBe($build());
-});

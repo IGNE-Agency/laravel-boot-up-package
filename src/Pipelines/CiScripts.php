@@ -111,12 +111,16 @@ final class CiScripts
 
         $script->lineWithBreak('echo "==> Running the test suite"')
             ->line('php artisan config:clear')
+            ->each($plan->deployment->beforeDeploy, fn (Lines $script, ProjectCommand $command) => $script
+                ->lines($this->projectCommand($command, $plan)))
             ->each($plan->deployment->finalize, fn (Lines $script, string $command) => $script
                 ->line("php artisan {$command}"))
             ->each($plan->deployment->beforeMigrations, fn (Lines $script, ProjectCommand $command) => $script
                 ->lines($this->projectCommand($command, $plan)))
             ->lineIf($plan->deployment->migrate, 'php artisan migrate --force')
             ->each($plan->deployment->afterMigrations, fn (Lines $script, ProjectCommand $command) => $script
+                ->lines($this->projectCommand($command, $plan)))
+            ->each($plan->deployment->afterDeploy, fn (Lines $script, ProjectCommand $command) => $script
                 ->lines($this->projectCommand($command, $plan)))
             ->line('php artisan test');
 

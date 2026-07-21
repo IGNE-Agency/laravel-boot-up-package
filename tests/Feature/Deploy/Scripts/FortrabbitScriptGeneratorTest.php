@@ -48,6 +48,25 @@ php artisan queue:restart
 SCRIPT);
 });
 
+test('renders bound commands for all four phases in the canonical order', function (): void {
+    $script = (new FortrabbitScriptGenerator)->generate(fortrabbitPlan([
+        'beforeDeploy' => [ProjectCommand::artisan('pennant:purge')],
+        'beforeMigrations' => [ProjectCommand::artisan('wayfinder:generate')],
+        'afterMigrations' => [ProjectCommand::artisan('model:typer')],
+        'afterDeploy' => [ProjectCommand::artisan('cache:warm')],
+    ]));
+
+    expect($script)
+        ->toContain('php artisan pennant:purge')
+        ->toContain('php artisan wayfinder:generate')
+        ->toContain('php artisan model:typer')
+        ->toContain('php artisan cache:warm');
+
+    // before-deploy runs before migrations; after-deploy runs after finalize.
+    expect(strpos($script, 'pennant:purge'))->toBeLessThan(strpos($script, 'migrate --force'))
+        ->and(strpos($script, 'cache:warm'))->toBeGreaterThan(strpos($script, 'storage:link'));
+});
+
 test('npm needs no global install line, non-npm managers do', function (): void {
     $npm = (new FortrabbitScriptGenerator)->generate(fortrabbitPlan(['packageManager' => PackageManager::NPM]));
     $bun = (new FortrabbitScriptGenerator)->generate(fortrabbitPlan(['packageManager' => PackageManager::BUN]));

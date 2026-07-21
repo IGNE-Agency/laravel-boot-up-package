@@ -6,7 +6,7 @@ use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRecord;
 use Igne\LaravelBootUp\Serve\ShutdownRunner;
-use Igne\LaravelBootUp\Servers\ActiveServer;
+use Igne\LaravelBootUp\Servers\ActiveServerRecord;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\ServersConfig;
 use Igne\LaravelBootUp\Servers\ServerSelector;
@@ -53,9 +53,9 @@ function shutdownRunner(ProcessLedger $ledger, ActiveServerStore $store, bool $p
     );
 }
 
-function activeDouble(bool $startedByUs): ActiveServer
+function activeDouble(bool $startedByUs): ActiveServerRecord
 {
-    return new ActiveServer('double', $startedByUs, (int) getmypid(), date(DATE_ATOM));
+    return new ActiveServerRecord('double', $startedByUs, (int) getmypid(), date(DATE_ATOM));
 }
 
 test('is a friendly no-op when nothing was started', function (): void {

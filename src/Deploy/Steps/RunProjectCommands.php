@@ -10,9 +10,11 @@ use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\Step;
 
 /**
- * Appears twice in the pipeline: `RunProjectCommands::class.':before'` and
- * `RunProjectCommands::class.':after'` — Laravel's pipeline passes the suffix
- * as the $phase argument.
+ * Runs the host's project commands for one phase. Placed in the pipeline with
+ * a phase suffix Laravel passes as the $phase argument, e.g.
+ * `RunProjectCommands::class.':before'` (before migrations) or `':after'`.
+ * The deploy phases `':before-deploy'` / `':after-deploy'` are also accepted
+ * for pipelines that want the full four-phase model locally.
  */
 final class RunProjectCommands implements Step
 {

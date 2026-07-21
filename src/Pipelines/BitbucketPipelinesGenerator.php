@@ -27,6 +27,16 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
         return 'Bitbucket Pipelines';
     }
 
+    public function anchors(PipelinePlan $plan): array
+    {
+        return array_values(array_filter([
+            $plan->pint ? 'lint' : null,
+            'build',
+            'test',
+            $plan->host->deploys() ? 'deploy' : null,
+        ]));
+    }
+
     public function files(PipelinePlan $plan): array
     {
         return [
@@ -133,7 +143,7 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
                                     $this->checkSteps($yaml, $plan);
 
                                     if ($plan->host->deploys()) {
-                                        $this->deployStep($yaml, $environment);
+                                        $this->deployStep($yaml, $plan, $environment);
                                     }
                                 });
                         },
@@ -156,7 +166,11 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
                     ->line('- composer')
                     ->when($node && $plan->deployment->frontend, fn (Lines $yaml) => $yaml->line('- node')))
                 ->line('script:')
-                ->indent(2, fn (Lines $yaml) => $yaml->line('- '.$this->scalar("bash scripts/ci/{$step}.sh"))));
+                ->indent(2, function (Lines $yaml) use ($plan, $step): void {
+                    $this->extraScript($yaml, $plan, $step, 'before');
+                    $yaml->line('- '.$this->scalar("bash scripts/ci/{$step}.sh"));
+                    $this->extraScript($yaml, $plan, $step, 'after');
+                }));
     }
 
     /**
@@ -176,15 +190,32 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
      * A deployment-tracked step: Bitbucket scopes the DEPLOY_HOOK variable to
      * the named environment and serializes deployments to it natively.
      */
-    private function deployStep(Lines $yaml, string $environment): void
+    private function deployStep(Lines $yaml, PipelinePlan $plan, string $environment): void
     {
         $yaml->line('- step:')
             ->indent(4, fn (Lines $yaml) => $yaml
                 ->line("name: Deploy ({$environment})")
                 ->line("deployment: {$environment}")
                 ->line('script:')
-                ->indent(2, fn (Lines $yaml) => $yaml
-                    ->line('- '.$this->scalar("bash scripts/ci/deploy-hook.sh {$environment} \"\${DEPLOY_HOOK:-}\""))));
+                ->indent(2, function (Lines $yaml) use ($plan, $environment): void {
+                    $this->extraScript($yaml, $plan, 'deploy', 'before');
+                    $yaml->line('- '.$this->scalar("bash scripts/ci/deploy-hook.sh {$environment} \"\${DEPLOY_HOOK:-}\""));
+                    $this->extraScript($yaml, $plan, 'deploy', 'after');
+                }));
+    }
+
+    /**
+     * Render the project's configured extra steps at one anchor as Bitbucket
+     * script lines (a leading comment names each). Per-line env is a GitHub
+     * concept — on Bitbucket, expose values as repository/deployment
+     * variables, which are already in the environment.
+     */
+    private function extraScript(Lines $yaml, PipelinePlan $plan, string $job, string $position): void
+    {
+        foreach ($plan->extensions->stepsFor($this->key(), $job, $position) as $step) {
+            $yaml->comment($step->name)
+                ->line('- '.$this->scalar($step->run));
+        }
     }
 
     /**

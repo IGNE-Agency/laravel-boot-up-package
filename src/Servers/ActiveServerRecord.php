@@ -8,7 +8,7 @@ namespace Igne\LaravelBootUp\Servers;
  * The persisted record of the server an app:serve run is using, written
  * before the driver starts so shutdown always knows what to clean up.
  */
-final readonly class ActiveServer
+final readonly class ActiveServerRecord
 {
     public function __construct(
         public string $key,

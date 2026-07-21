@@ -4,20 +4,18 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootUp\Facades\Platform;
 use Igne\LaravelBootUp\Serve\ServeConfig;
 use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\ServeOptions;
-use Igne\LaravelBootUp\Support\BootUpException;
-use Illuminate\Console\Command;
+use Igne\LaravelBootUp\Serve\StageReporter;
+use Igne\LaravelBootUp\Serve\StepSequence;
 use Illuminate\Contracts\Console\Isolatable;
 use Illuminate\Pipeline\Pipeline;
-use Illuminate\Process\Exceptions\ProcessFailedException;
-use Illuminate\Process\Exceptions\ProcessTimedOutException;
-use Throwable;
 
-final class DeployCommand extends Command implements Isolatable
+final class DeployCommand extends BootUpCommand implements Isolatable
 {
+    protected bool $requiresUnix = true;
+
     protected $signature = 'app:deploy
         {--s|seed : Seed the database after migrating}
         {--no-migrate : Skip running pending migrations}
@@ -26,14 +24,10 @@ final class DeployCommand extends Command implements Isolatable
 
     protected $description = 'Install dependencies, run project commands and migrate — without booting a server';
 
-    public function handle(ServeConfig $config, Pipeline $pipeline): int
+    private ?StageReporter $reporter = null;
+
+    public function perform(ServeConfig $config, Pipeline $pipeline, StageReporter $reporter): int
     {
-        if (Platform::isWindows()) {
-            terminal()->error('app:deploy is not supported on native Windows. Run it inside WSL2.');
-
-            return self::FAILURE;
-        }
-
         terminal()->intro('Deploying the application...');
 
         $options = new ServeOptions(
@@ -43,20 +37,24 @@ final class DeployCommand extends Command implements Isolatable
             fresh: (bool) $this->option('fresh'),
         );
 
-        try {
-            $pipeline->send(new ServeContext($options))->through($config->deploySteps)->thenReturn();
-        } catch (BootUpException|ProcessFailedException|ProcessTimedOutException $exception) {
-            terminal()->error($exception->getMessage());
+        $plan = StepSequence::for($config->deploySteps, $options);
 
-            return self::FAILURE;
-        } catch (Throwable $exception) {
-            terminal()->error('Unexpected error: '.$exception->getMessage());
+        terminal()->section('What app:deploy will do');
+        terminal()->list($plan->summary());
 
-            return self::FAILURE;
-        }
+        $this->reporter = $reporter;
+        $pipes = $reporter->begin($plan);
 
+        $pipeline->send(new ServeContext($options))->through($pipes)->thenReturn();
+
+        $reporter->finish();
         terminal()->outro('Deploy complete.');
 
         return self::SUCCESS;
+    }
+
+    protected function onFailure(): void
+    {
+        $this->reporter?->fail();
     }
 }

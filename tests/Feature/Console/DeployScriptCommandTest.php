@@ -28,6 +28,11 @@ test('exports a fortrabbit script with both dashboard sections', function (): vo
 test('embeds the project\'s bound commands into the exported script', function (): void {
     app()->singleton(ProvidesProjectCommands::class, fn () => new class implements ProvidesProjectCommands
     {
+        public function beforeDeploy(): array
+        {
+            return [];
+        }
+
         public function beforeMigrations(): array
         {
             return [ProjectCommand::artisan('wayfinder:generate', 'Generating routes...')];
@@ -37,11 +42,49 @@ test('embeds the project\'s bound commands into the exported script', function (
         {
             return [];
         }
+
+        public function afterDeploy(): array
+        {
+            return [];
+        }
     });
 
     $this->artisan('app:deploy-script', ['platform' => 'forge', 'environment' => 'production'])
         ->expectsOutputToContain('# Generating routes...')
         ->expectsOutputToContain('$FORGE_PHP artisan wayfinder:generate')
+        ->assertSuccessful();
+});
+
+test('renders bound commands for all four phases in the forge script', function (): void {
+    app()->singleton(ProvidesProjectCommands::class, fn () => new class implements ProvidesProjectCommands
+    {
+        public function beforeDeploy(): array
+        {
+            return [ProjectCommand::artisan('pennant:purge')];
+        }
+
+        public function beforeMigrations(): array
+        {
+            return [ProjectCommand::artisan('wayfinder:generate')];
+        }
+
+        public function afterMigrations(): array
+        {
+            return [ProjectCommand::artisan('model:typer')];
+        }
+
+        public function afterDeploy(): array
+        {
+            return [ProjectCommand::artisan('cache:warm')];
+        }
+    });
+
+    // before-deploy runs before optimize; after-deploy runs after $ACTIVATE_RELEASE.
+    $this->artisan('app:deploy-script', ['platform' => 'forge', 'environment' => 'production'])
+        ->expectsOutputToContain('$FORGE_PHP artisan pennant:purge')
+        ->expectsOutputToContain('$FORGE_PHP artisan wayfinder:generate')
+        ->expectsOutputToContain('$FORGE_PHP artisan model:typer')
+        ->expectsOutputToContain('$FORGE_PHP artisan cache:warm')
         ->assertSuccessful();
 });
 

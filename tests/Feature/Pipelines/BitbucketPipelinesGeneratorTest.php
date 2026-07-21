@@ -9,7 +9,9 @@ use Igne\LaravelBootUp\Pipelines\BitbucketPipelinesGenerator;
 use Igne\LaravelBootUp\Pipelines\CiScripts;
 use Igne\LaravelBootUp\Pipelines\DeployHookHost;
 use Igne\LaravelBootUp\Pipelines\GitHubActionsGenerator;
+use Igne\LaravelBootUp\Pipelines\PipelineExtensions;
 use Igne\LaravelBootUp\Pipelines\PipelinePlan;
+use Igne\LaravelBootUp\Pipelines\PipelineStep;
 
 function bitbucketPipelinePlan(array $overrides = [], array $deploymentOverrides = []): PipelinePlan
 {
@@ -44,6 +46,23 @@ function bitbucketGenerator(): BitbucketPipelinesGenerator
 {
     return new BitbucketPipelinesGenerator(new CiScripts);
 }
+
+test('injects configured extra steps into a step script before and after its command', function (): void {
+    $plan = bitbucketPipelinePlan(['extensions' => new PipelineExtensions([
+        new PipelineStep('prep', 'test', 'before', 'Prepare', 'echo prep'),
+        new PipelineStep('notify', 'test', 'after', 'Notify', 'bash notify.sh'),
+    ])]);
+
+    $yaml = bitbucketGenerator()->files($plan)[0]->contents;
+
+    expect($yaml)
+        ->toContain('- echo prep')
+        ->toContain('- bash notify.sh');
+
+    // before precedes the test script line; after follows it.
+    expect(strpos($yaml, 'echo prep'))->toBeLessThan(strpos($yaml, 'bash scripts/ci/test.sh'))
+        ->and(strpos($yaml, 'bash notify.sh'))->toBeGreaterThan(strpos($yaml, 'bash scripts/ci/test.sh'));
+});
 
 function bitbucketPipeline(PipelinePlan $plan): string
 {

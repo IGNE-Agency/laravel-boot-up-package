@@ -77,6 +77,67 @@ guidance section per secret (the exact settings path and where its value comes
 from on your deploy-hook host), and a "Next steps" list (branch protection
 checks, enabling Bitbucket Pipelines once).
 
+## Extending the pipeline
+
+Two config surfaces let you extend a generated pipeline without replacing the
+generator. `app:pipeline` regenerates its files from this config every run, so
+reruns are **idempotent** — nothing is ever duplicated, and files it does not
+manage are never touched.
+
+### Inject steps
+
+`boot-up.pipeline.steps` splices extra steps into a generated job. Each step
+attaches to a **job anchor** — `lint` (only with Pint), `build`, `test`, or
+`deploy` — `before` or `after` that job's own step:
+
+```php
+'pipeline' => [
+    'steps' => [
+        [
+            'id' => 'notify-slack',   // unique — drives validation and idempotency
+            'job' => 'test',          // lint | build | test | deploy
+            'position' => 'after',    // before | after
+            'name' => 'Notify Slack',
+            'run' => 'bash scripts/ci/notify.sh',
+            'env' => ['WEBHOOK' => '${{ secrets.SLACK_WEBHOOK }}'], // GitHub only
+            'provider' => 'github',   // optional — omit to inject into every provider
+        ],
+    ],
+],
+```
+
+On GitHub the step renders as a job step (with its optional `env` block). On
+Bitbucket it renders as a `script` line (per-line `env` is a GitHub concept —
+expose values as repository/deployment variables instead, which are already in
+the environment).
+
+### Add files
+
+`boot-up.pipeline.files` emits extra whole files verbatim. Give each a relative
+`path` and exactly one of `contents` (inline) or `stub` (a file read verbatim,
+relative to the project root):
+
+```php
+'pipeline' => [
+    'files' => [
+        [
+            'path' => '.github/workflows/nightly.yml',
+            'stub' => 'stubs/nightly.yml',
+            'provider' => 'github',   // optional
+            'executable' => false,    // optional — chmod 0755 when true
+        ],
+    ],
+],
+```
+
+### Validation
+
+Configuration is validated before anything is written, so a mistake fails the
+run cleanly (and leaves your files untouched) rather than emitting broken YAML:
+unknown job anchors, duplicate step ids, an invalid `position`, an unknown
+`provider`, a missing `run`, absolute or `..` paths, a file with both/neither
+`contents` and `stub`, and missing stub files all produce an actionable error.
+
 ## Custom git providers
 
 Using GitLab or something else? Register your own generator — see

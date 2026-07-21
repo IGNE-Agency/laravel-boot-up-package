@@ -23,7 +23,25 @@ final readonly class PipelinePlan
         public array $branchEnvironments,
         public string $envFile = '.env.pipeline',
         public DeployHookHost $host = DeployHookHost::WEBHOOK,
+        public PipelineExtensions $extensions = new PipelineExtensions,
     ) {}
+
+    /**
+     * A copy of this plan carrying the validated project extensions.
+     */
+    public function withExtensions(PipelineExtensions $extensions): self
+    {
+        return new self(
+            $this->deployment,
+            $this->nova,
+            $this->pint,
+            $this->phpVersion,
+            $this->branchEnvironments,
+            $this->envFile,
+            $this->host,
+            $extensions,
+        );
+    }
 
     /**
      * The environment worth an approval gate — the last mapping in

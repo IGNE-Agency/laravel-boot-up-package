@@ -18,6 +18,14 @@ final class ServerException extends BootUpException
         return new self("{$label} failed to start: {$reason}");
     }
 
+    public static function unreachable(string $url, int $attempts): self
+    {
+        return new self(
+            "Laravel Herd did not become reachable at {$url} after {$attempts} attempt(s). "
+            .'Nginx may be unhealthy — check `herd status`, then try `herd restart` (or restart Herd from its menu-bar app) and run app:serve again.'
+        );
+    }
+
     public static function dockerUnavailable(): self
     {
         return new self('Docker did not become available in time. Start Docker manually and try again.');

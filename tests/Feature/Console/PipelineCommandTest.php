@@ -66,6 +66,65 @@ test('bitbucket writes bitbucket-pipelines.yml at the repo root plus the same sc
         ->and(is_file(base_path('.env.pipeline')))->toBeTrue();
 });
 
+test('injects a configured extra step into the generated workflow', function (): void {
+    config()->set('boot-up.pipeline.steps', [[
+        'id' => 'notify',
+        'job' => 'test',
+        'position' => 'after',
+        'name' => 'Notify Slack',
+        'run' => 'bash scripts/ci/notify.sh',
+    ]]);
+
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])->assertSuccessful();
+
+    expect((string) file_get_contents(base_path('.github/workflows/ci.yml')))
+        ->toContain('- name: Notify Slack')
+        ->toContain('run: bash scripts/ci/notify.sh');
+});
+
+test('writes a configured extra file verbatim', function (): void {
+    config()->set('boot-up.pipeline.files', [[
+        'path' => '.github/workflows/nightly.yml',
+        'contents' => "name: Nightly\non: schedule\n",
+    ]]);
+
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])->assertSuccessful();
+
+    expect((string) file_get_contents(base_path('.github/workflows/nightly.yml')))
+        ->toBe("name: Nightly\non: schedule\n");
+});
+
+test('regenerating the pipeline with extensions is byte-for-byte idempotent', function (): void {
+    config()->set('boot-up.pipeline.steps', [[
+        'id' => 'notify',
+        'job' => 'test',
+        'position' => 'after',
+        'run' => 'bash scripts/ci/notify.sh',
+    ]]);
+
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])->assertSuccessful();
+    $first = (string) file_get_contents(base_path('.github/workflows/ci.yml'));
+
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit', '--force' => true])->assertSuccessful();
+
+    expect((string) file_get_contents(base_path('.github/workflows/ci.yml')))->toBe($first);
+});
+
+test('an invalid extra step fails cleanly and writes nothing', function (): void {
+    config()->set('boot-up.pipeline.steps', [[
+        'id' => 'broken',
+        'job' => 'nonexistent',
+        'position' => 'after',
+        'run' => 'x',
+    ]]);
+
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])
+        ->expectsOutputToContain('unknown job [nonexistent]')
+        ->assertFailed();
+
+    expect(is_file(base_path('.github/workflows/ci.yml')))->toBeFalse();
+});
+
 test('prompts for the provider and host when omitted', function (): void {
     $this->artisan('app:pipeline')
         ->expectsQuestion('Which git provider should the pipeline target?', 'bitbucket')

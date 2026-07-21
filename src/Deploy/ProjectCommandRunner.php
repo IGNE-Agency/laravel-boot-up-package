@@ -28,7 +28,7 @@ final class ProjectCommandRunner
     ) {}
 
     /**
-     * @param  string  $phase  'before' or 'after' (migrations)
+     * @param  string  $phase  'before-deploy', 'before' / 'after' (migrations) or 'after-deploy'
      */
     public function run(string $phase, ServeContext $context): void
     {
@@ -39,9 +39,11 @@ final class ProjectCommandRunner
         $provider = $this->container->make(ProvidesProjectCommands::class);
 
         $commands = match ($phase) {
+            'before-deploy' => $provider->beforeDeploy(),
             'before' => $provider->beforeMigrations(),
             'after' => $provider->afterMigrations(),
-            default => throw new InvalidArgumentException("Unknown project command phase [{$phase}]; expected 'before' or 'after'."),
+            'after-deploy' => $provider->afterDeploy(),
+            default => throw new InvalidArgumentException("Unknown project command phase [{$phase}]; expected 'before-deploy', 'before', 'after' or 'after-deploy'."),
         };
 
         foreach ($commands as $command) {

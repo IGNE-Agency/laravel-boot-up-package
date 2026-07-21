@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\ServeOptions;
-use Igne\LaravelBootUp\Servers\ActiveServer;
+use Igne\LaravelBootUp\Servers\ActiveServerRecord;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\CommandRewrites;
 use Igne\LaravelBootUp\Servers\Server;
@@ -33,7 +33,7 @@ function startServerDouble(ActiveServerStore $store, bool $running): Server
     {
         use DefaultServerCapabilities;
 
-        public ?ActiveServer $observedAtStart = null;
+        public ?ActiveServerRecord $observedAtStart = null;
 
         public int $starts = 0;
 

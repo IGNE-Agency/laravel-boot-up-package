@@ -32,7 +32,7 @@ use Illuminate\Support\Str;
  * summary for the "What app:serve will do" block. Only ServeOptions gate
  * summary lines — config/context skip logic stays inside the steps.
  */
-final readonly class ServePlan
+final readonly class StepSequence
 {
     private const STAGES = [
         EnsureEnvFile::class => ServeStage::Prepare,
@@ -85,7 +85,7 @@ final readonly class ServePlan
     ];
 
     /**
-     * @param  list<PlannedStep>  $steps
+     * @param  list<StepDescriptor>  $steps
      */
     private function __construct(
         public array $steps,
@@ -108,7 +108,7 @@ final readonly class ServePlan
             // leading unknowns get their own honest "Custom steps" stage.
             $stage = self::STAGES[$class] ?? $stage ?? ServeStage::Custom;
 
-            $steps[] = new PlannedStep(
+            $steps[] = new StepDescriptor(
                 $index,
                 $entry,
                 $class,

@@ -17,6 +17,11 @@ use Igne\LaravelBootUp\Deploy\ProvidesProjectCommands;
 
 final class ProjectCommands implements ProvidesProjectCommands
 {
+    public function beforeDeploy(): array
+    {
+        return []; // earliest hook — return [] if unused
+    }
+
     public function beforeMigrations(): array
     {
         return [
@@ -31,8 +36,16 @@ final class ProjectCommands implements ProvidesProjectCommands
             ProjectCommand::packageManager('run zodgen', 'Generating Zod schemas...'),
         ];
     }
+
+    public function afterDeploy(): array
+    {
+        return []; // latest hook, after the release is live — return [] if unused
+    }
 }
 ```
+
+All four methods are required; return an empty array for any phase you don't
+use.
 
 1. Bind it as a singleton in your `AppServiceProvider::register()`:
 
@@ -71,22 +84,31 @@ command runs.
 
 ## When they run
 
+Four phases, always in this order:
+
 ```text
 composer install          (deploy step)
 frontend install          (deploy step)
+→ beforeDeploy()          earliest — schema-independent, before optimize
+optimize / finalize
 → beforeMigrations()
 migrations
 → afterMigrations()
-framework caches / finalize
-queue worker, assets, ...
+→ afterDeploy()           latest — after the release is finalized/live
+queue restart
 ```
 
-Need a different position? The whole pipeline is published config — implement
-`Igne\LaravelBootUp\Serve\Step` and insert your own step class anywhere in
-`boot-up.serve_steps` / `boot-up.deploy_steps` instead.
+The local `app:serve` / `app:deploy` pipeline runs the two migration phases by
+default. To run the deploy phases locally too, add
+`RunProjectCommands::class.':before-deploy'` / `':after-deploy'` to
+`boot-up.serve_steps` / `boot-up.deploy_steps`. Need a different position
+entirely? The whole pipeline is published config — implement
+`Igne\LaravelBootUp\Serve\Step` and insert your own step class anywhere.
 
 ## In exported deployment scripts
 
 `php artisan app:deploy-script` embeds your project commands into the generated
-Forge / Fortrabbit scripts at the same before/after-migrations positions, with
-each description rendered as a `#` comment above its command.
+Forge / Fortrabbit scripts (and the CI `test.sh`) in the four-phase order above,
+with each description rendered as a `#` comment above its command. On a Forge
+zero-downtime site, `afterDeploy()` commands run inside `$ACTIVATE_RELEASE()` —
+after the symlink swap, once the new release is serving.

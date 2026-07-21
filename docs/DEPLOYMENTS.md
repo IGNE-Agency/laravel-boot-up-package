@@ -49,9 +49,12 @@ into the matching dashboard fields.
 
 ## Project commands
 
-Your [`ProvidesProjectCommands` binding](CUSTOM_COMMANDS.md) is embedded at the
-right positions (before/after migrations), with each description rendered as a
-comment above its command.
+Your [`ProvidesProjectCommands` binding](CUSTOM_COMMANDS.md) is embedded across
+all four phases (`beforeDeploy` → `beforeMigrations` → `afterMigrations` →
+`afterDeploy`), with each description rendered as a comment above its command.
+On a Forge zero-downtime site, `afterDeploy` commands run inside
+`$ACTIVATE_RELEASE()` — after the release is swapped in and serving; on classic
+Forge and fortrabbit they run as the final post-deploy commands.
 
 ## Custom platforms
 

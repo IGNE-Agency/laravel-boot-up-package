@@ -8,7 +8,7 @@ namespace Igne\LaravelBootUp\Serve;
  * One configured serve-pipeline entry, parsed and annotated with its stage
  * and a human label for the progress bar.
  */
-final readonly class PlannedStep
+final readonly class StepDescriptor
 {
     /**
      * @param  string  $entry  the raw config value, e.g. "RunProjectCommands:before"

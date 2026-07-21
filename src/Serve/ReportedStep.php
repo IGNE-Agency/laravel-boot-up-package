@@ -20,7 +20,7 @@ final class ReportedStep implements Step
     public function __construct(
         private readonly Container $container,
         private readonly StageReporter $reporter,
-        private readonly PlannedStep $planned,
+        private readonly StepDescriptor $planned,
     ) {}
 
     public function handle(ServeContext $context, Closure $next): mixed

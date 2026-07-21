@@ -7,7 +7,7 @@ namespace Igne\LaravelBootUp\Servers\Steps;
 use Closure;
 use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\Step;
-use Igne\LaravelBootUp\Servers\ActiveServer;
+use Igne\LaravelBootUp\Servers\ActiveServerRecord;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 
 /**
@@ -30,7 +30,7 @@ final class StartServer implements Step
         $wasRunning = $server->isRunning();
         $context->serverWasAlreadyRunning = $wasRunning;
 
-        $this->store->remember(new ActiveServer(
+        $this->store->remember(new ActiveServerRecord(
             key: $server->key(),
             startedByUs: ! $wasRunning,
             servePid: (int) getmypid(),

@@ -17,9 +17,9 @@ use Igne\LaravelBootUp\Frontend\Steps\BuildOrWatchAssets;
 use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
 use Igne\LaravelBootUp\Queue\Steps\StartQueueWorker;
 use Igne\LaravelBootUp\Serve\ServeOptions;
-use Igne\LaravelBootUp\Serve\ServePlan;
 use Igne\LaravelBootUp\Serve\ServeStage;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
+use Igne\LaravelBootUp\Serve\StepSequence;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Igne\LaravelBootUp\Services\Steps\StartHorizon;
 use Igne\LaravelBootUp\Services\Steps\StartReverb;
@@ -54,7 +54,7 @@ function defaultServeSteps(): array
 }
 
 test('assigns every default step to its stage, in order', function (): void {
-    $plan = ServePlan::for(defaultServeSteps(), new ServeOptions);
+    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions);
 
     $stages = array_map(fn ($step) => $step->stage, $plan->steps);
 
@@ -72,7 +72,7 @@ test('assigns every default step to its stage, in order', function (): void {
 });
 
 test('the default pipeline summarizes into eleven readable lines', function (): void {
-    $plan = ServePlan::for(defaultServeSteps(), new ServeOptions, 'Herd');
+    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions, 'Herd');
 
     expect($plan->summary())->toBe([
         'Prepare the project (.env file, local environment, application key)',
@@ -90,7 +90,7 @@ test('the default pipeline summarizes into eleven readable lines', function (): 
 });
 
 test('a variant entry parses its class and parameters', function (): void {
-    $plan = ServePlan::for([RunProjectCommands::class.':before'], new ServeOptions);
+    $plan = StepSequence::for([RunProjectCommands::class.':before'], new ServeOptions);
 
     expect($plan->steps[0]->class)->toBe(RunProjectCommands::class)
         ->and($plan->steps[0]->parameters)->toBe(['before'])
@@ -98,7 +98,7 @@ test('a variant entry parses its class and parameters', function (): void {
 });
 
 test('unknown classes inherit the preceding stage; leading unknowns are custom', function (): void {
-    $plan = ServePlan::for([
+    $plan = StepSequence::for([
         stdClass::class,
         StartServer::class,
         stdClass::class,
@@ -111,7 +111,7 @@ test('unknown classes inherit the preceding stage; leading unknowns are custom',
 });
 
 test('a reordered list may repeat stages', function (): void {
-    $plan = ServePlan::for([
+    $plan = StepSequence::for([
         StartServer::class,
         EnsureEnvFile::class,
         InstallComposerDependencies::class,
@@ -122,41 +122,41 @@ test('a reordered list may repeat stages', function (): void {
 });
 
 test('--no-migrate hides the migrations line, even combined with --fresh', function (): void {
-    $plan = ServePlan::for(defaultServeSteps(), new ServeOptions(migrate: false, fresh: true));
+    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions(migrate: false, fresh: true));
 
     expect($plan->summary())->not->toContain('Run pending migrations')
         ->and(implode("\n", $plan->summary()))->not->toContain('migration');
 });
 
 test('--fresh and --seed adjust the migrations wording', function (): void {
-    $fresh = ServePlan::for(defaultServeSteps(), new ServeOptions(fresh: true));
-    $seed = ServePlan::for(defaultServeSteps(), new ServeOptions(seed: true));
+    $fresh = StepSequence::for(defaultServeSteps(), new ServeOptions(fresh: true));
+    $seed = StepSequence::for(defaultServeSteps(), new ServeOptions(seed: true));
 
     expect($fresh->summary())->toContain('Drop all tables and re-run every migration (asks first)')
         ->and($seed->summary())->toContain('Run pending migrations and seed the database');
 });
 
 test('--update switches the dependencies wording', function (): void {
-    $plan = ServePlan::for(defaultServeSteps(), new ServeOptions(update: true));
+    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions(update: true));
 
     expect($plan->summary())->toContain('Update Composer and frontend dependencies');
 });
 
 test('--without-assets drops the frontend fragments and the assets line', function (): void {
-    $plan = ServePlan::for(defaultServeSteps(), new ServeOptions(withAssets: false));
+    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions(withAssets: false));
 
     expect($plan->summary())->toContain('Install Composer dependencies')
         ->and($plan->summary())->not->toContain('Build or watch frontend assets');
 });
 
 test('--without-queue drops the queue worker from the services line', function (): void {
-    $plan = ServePlan::for(defaultServeSteps(), new ServeOptions(withQueue: false));
+    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions(withQueue: false));
 
     expect($plan->summary())->toContain('Start long-running services when enabled: Horizon, Reverb, scheduler');
 });
 
 test('without a server label the server line stays generic', function (): void {
-    $plan = ServePlan::for([StartServer::class], new ServeOptions);
+    $plan = StepSequence::for([StartServer::class], new ServeOptions);
 
     expect($plan->summary())->toBe(['Start the development server']);
 });

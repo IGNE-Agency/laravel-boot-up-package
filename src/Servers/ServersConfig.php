@@ -30,6 +30,9 @@ final readonly class ServersConfig
         public ?string $herdSite = null,
         public string $artisanHost = '127.0.0.1',
         public int $artisanPort = 8000,
+        public int $herdHealthAttempts = 10,
+        public int $herdHealthDelayMs = 500,
+        public int $herdHealthTimeoutSeconds = 5,
     ) {}
 
     public static function fromRepository(Repository $config): self
@@ -46,6 +49,9 @@ final readonly class ServersConfig
             herdSite: $herdSite === null ? null : (string) $herdSite,
             artisanHost: (string) $config->get('boot-up.server.artisan.host', '127.0.0.1'),
             artisanPort: (int) $config->get('boot-up.server.artisan.port', 8000),
+            herdHealthAttempts: (int) $config->get('boot-up.server.herd.health.attempts', 10),
+            herdHealthDelayMs: (int) $config->get('boot-up.server.herd.health.delay_ms', 500),
+            herdHealthTimeoutSeconds: (int) $config->get('boot-up.server.herd.health.timeout_seconds', 5),
         );
     }
 }

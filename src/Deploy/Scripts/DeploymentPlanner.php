@@ -43,6 +43,8 @@ final class DeploymentPlanner
             packageManager: $this->packageManagers->selected(),
             restartQueues: $this->queue->enabled,
             zeroDowntime: $zeroDowntime,
+            beforeDeploy: $projectCommands?->beforeDeploy() ?? [],
+            afterDeploy: $projectCommands?->afterDeploy() ?? [],
         );
     }
 }

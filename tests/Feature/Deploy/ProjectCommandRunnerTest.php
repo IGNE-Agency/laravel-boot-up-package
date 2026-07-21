@@ -65,6 +65,13 @@ function bindProjectCommandProvider(): void
 {
     app()->singleton(ProvidesProjectCommands::class, fn (): ProvidesProjectCommands => new class implements ProvidesProjectCommands
     {
+        public function beforeDeploy(): array
+        {
+            return [
+                ProjectCommand::artisan('pennant:purge'),
+            ];
+        }
+
         public function beforeMigrations(): array
         {
             return [
@@ -77,6 +84,13 @@ function bindProjectCommandProvider(): void
         {
             return [
                 ProjectCommand::composer('dump-autoload --optimize'),
+            ];
+        }
+
+        public function afterDeploy(): array
+        {
+            return [
+                ProjectCommand::artisan('cache:warm'),
             ];
         }
     });
@@ -154,6 +168,27 @@ test('runs the after-phase commands as composer token arrays', function (): void
 
     Process::assertRan(fn ($process): bool => projectCommandOf($process) === 'composer dump-autoload --optimize');
     Process::assertDidntRun(fn ($process): bool => str_starts_with(projectCommandOf($process), 'php artisan'));
+});
+
+test('runs the before-deploy commands, isolated from the other phases', function (): void {
+    Process::fake(['*' => Process::result()]);
+    bindProjectCommandProvider();
+
+    projectCommandRunner($this->dir)->run('before-deploy', new ServeContext(new ServeOptions));
+
+    Process::assertRan(fn ($process): bool => projectCommandOf($process) === 'php artisan pennant:purge');
+    Process::assertDidntRun(fn ($process): bool => projectCommandOf($process) === 'php artisan cache:warm');
+    Process::assertDidntRun(fn ($process): bool => projectCommandOf($process) === 'composer dump-autoload --optimize');
+});
+
+test('runs the after-deploy commands, isolated from the other phases', function (): void {
+    Process::fake(['*' => Process::result()]);
+    bindProjectCommandProvider();
+
+    projectCommandRunner($this->dir)->run('after-deploy', new ServeContext(new ServeOptions));
+
+    Process::assertRan(fn ($process): bool => projectCommandOf($process) === 'php artisan cache:warm');
+    Process::assertDidntRun(fn ($process): bool => projectCommandOf($process) === 'php artisan pennant:purge');
 });
 
 test('rewrites commands through the active server', function (): void {

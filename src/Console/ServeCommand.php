@@ -4,27 +4,25 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootUp\Facades\Platform;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Serve\ServeConfig;
 use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\ServeOptions;
-use Igne\LaravelBootUp\Serve\ServePlan;
 use Igne\LaravelBootUp\Serve\ServeProcessProbe;
 use Igne\LaravelBootUp\Serve\ShutdownRunner;
 use Igne\LaravelBootUp\Serve\StageReporter;
+use Igne\LaravelBootUp\Serve\StepSequence;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\ServerSelector;
-use Igne\LaravelBootUp\Support\BootUpException;
-use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Isolatable;
 use Illuminate\Pipeline\Pipeline;
-use Illuminate\Process\Exceptions\ProcessFailedException;
-use Illuminate\Process\Exceptions\ProcessTimedOutException;
-use Throwable;
 
-final class ServeCommand extends Command implements Isolatable
+final class ServeCommand extends BootUpCommand implements Isolatable
 {
+    protected bool $requiresUnix = true;
+
+    private ?StageReporter $reporter = null;
+
     protected $signature = 'app:serve {server? : The development server to use (herd, sail, laravel, or any driver registered in boot-up.server.drivers)}
         {--s|seed : Seed the database after migrating}
         {--no-migrate : Skip running pending migrations}
@@ -35,7 +33,7 @@ final class ServeCommand extends Command implements Isolatable
 
     protected $description = 'Boot everything the application needs and serve it locally';
 
-    public function handle(
+    public function perform(
         ServerSelector $selector,
         ServeConfig $config,
         ShutdownRunner $shutdown,
@@ -45,12 +43,6 @@ final class ServeCommand extends Command implements Isolatable
         Pipeline $pipeline,
         StageReporter $reporter,
     ): int {
-        if (Platform::isWindows()) {
-            terminal()->error('app:serve is not supported on native Windows. Run it inside WSL2.');
-
-            return self::FAILURE;
-        }
-
         if ($this->anotherServeIsRunning($store, $probe)) {
             terminal()->warning('Another app:serve is already running for this project. Aborting.');
 
@@ -63,11 +55,12 @@ final class ServeCommand extends Command implements Isolatable
 
         $context = new ServeContext($this->serveOptions(), $selector->select($this->argument('server')));
 
-        $plan = ServePlan::for($config->serveSteps, $context->options, $context->server?->label());
+        $plan = StepSequence::for($config->serveSteps, $context->options, $context->server?->label());
 
         terminal()->section('What app:serve will do');
         terminal()->list($plan->summary());
 
+        $this->reporter = $reporter;
         $pipes = $reporter->begin($plan);
 
         // The trap must be registered AFTER begin(): Progress::start()
@@ -79,25 +72,22 @@ final class ServeCommand extends Command implements Isolatable
             exit(self::SUCCESS);
         });
 
-        try {
-            $pipeline->send($context)->through($pipes)->thenReturn();
-        } catch (BootUpException|ProcessFailedException|ProcessTimedOutException $exception) {
-            $reporter->fail();
-            terminal()->error($exception->getMessage());
-
-            return self::FAILURE;
-        } catch (Throwable $exception) {
-            $reporter->fail();
-            terminal()->error('Unexpected error: '.$exception->getMessage());
-            terminal()->note('Background processes may still be running — clean up with: php artisan app:down');
-
-            return self::FAILURE;
-        }
+        $pipeline->send($context)->through($pipes)->thenReturn();
 
         $reporter->finish();
         terminal()->outro('Application ready.');
 
         return self::SUCCESS;
+    }
+
+    protected function onFailure(): void
+    {
+        $this->reporter?->fail();
+    }
+
+    protected function failureHint(): void
+    {
+        terminal()->note('Background processes may still be running — clean up with: php artisan app:down');
     }
 
     private function serveOptions(): ServeOptions

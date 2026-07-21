@@ -67,7 +67,8 @@ php artisan app:status
 ### `app:deploy`
 
 Install dependencies, run project commands and migrate — without booting a
-server.
+server. Like `app:serve`, it prints the plan up front and tracks a progress bar
+as it runs.
 
 ```bash
 php artisan app:deploy
@@ -159,6 +160,12 @@ On first link you choose the site name — the folder name is the default, so
 the actual project path, so a link pointing at a moved project is repaired
 automatically.
 
+`app:serve` does not trust "Herd started": it boots Herd if its processes are
+down and then waits for Nginx to actually answer the site, restarting an
+unhealthy Herd between checks and failing with actionable guidance if it never
+comes up. Tune the check with `server.herd.health.*` (see
+[docs/CONFIGURATION.md](docs/CONFIGURATION.md)).
+
 ## Deployment scripts
 
 `app:deploy-script` turns your boot-up config into a paste-ready deployment
@@ -189,7 +196,12 @@ webhook for that branch's environment only.
 - **Bitbucket** — Bitbucket Pipelines, deploy environments under the
   repository's deployment settings.
 
-Details, secrets and branch mapping: [docs/PIPELINES.md](docs/PIPELINES.md).
+Extend a generated pipeline without replacing the generator: inject extra steps
+into a job or emit extra files verbatim via `boot-up.pipeline.steps` /
+`pipeline.files`. Regeneration is idempotent and validated.
+
+Details, secrets, extensions and branch mapping:
+[docs/PIPELINES.md](docs/PIPELINES.md).
 
 ## Extending the package
 

@@ -6,7 +6,7 @@ use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
-use Igne\LaravelBootUp\Servers\ActiveServer;
+use Igne\LaravelBootUp\Servers\ActiveServerRecord;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Igne\LaravelBootUp\Support\Poller;
@@ -84,7 +84,7 @@ test('aborts when another app:serve is already running for this project', functi
         'ps -p 99999*' => Process::result('php artisan app:serve laravel'),
     ]);
 
-    $this->store->remember(new ActiveServer('laravel', true, 99999, date(DATE_ATOM)));
+    $this->store->remember(new ActiveServerRecord('laravel', true, 99999, date(DATE_ATOM)));
 
     $this->artisan('app:serve', ['server' => 'laravel'])->assertFailed();
 
@@ -97,7 +97,7 @@ test('a stale active-server record from a dead process does not block a new serv
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
 
-    $this->store->remember(new ActiveServer('laravel', true, 99999, date(DATE_ATOM)));
+    $this->store->remember(new ActiveServerRecord('laravel', true, 99999, date(DATE_ATOM)));
 
     $this->artisan('app:serve', ['server' => 'laravel'])->assertSuccessful();
 });
@@ -110,11 +110,13 @@ test('a failing step surfaces as a clean failure, not a stack trace', function (
     $this->artisan('app:serve', ['server' => 'laravel'])->assertFailed();
 });
 
-test('rejects an unknown server argument', function (): void {
+test('rejects an unknown server argument with a clean, actionable failure', function (): void {
     ProcessFaker::fake();
 
-    $this->artisan('app:serve', ['server' => 'nginx'])->assertFailed();
-})->throws(Igne\LaravelBootUp\Servers\ServerException::class);
+    $this->artisan('app:serve', ['server' => 'nginx'])
+        ->expectsOutputToContain('Unknown development server [nginx]')
+        ->assertFailed();
+});
 
 test('fails fast on native Windows', function (): void {
     ProcessFaker::fake();
