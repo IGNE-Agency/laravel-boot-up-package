@@ -137,6 +137,105 @@ test('an unexpected exception fails cleanly with an app:down hint', function ():
         ->assertFailed();
 });
 
+test('prints the execution plan before booting', function (): void {
+    ProcessFaker::fake([
+        'sh -c nohup php artisan serve*' => Process::result('12345'),
+    ]);
+
+    $this->artisan('app:serve', ['server' => 'laravel'])
+        ->expectsOutputToContain('What app:serve will do')
+        ->assertSuccessful();
+});
+
+test('the plan names the selected server', function (): void {
+    ProcessFaker::fake([
+        'sh -c nohup php artisan serve*' => Process::result('12345'),
+    ]);
+
+    $this->artisan('app:serve', ['server' => 'laravel'])
+        ->expectsOutputToContain('development server')
+        ->assertSuccessful();
+});
+
+test('renders a stage divider when the pipeline enters a stage', function (): void {
+    ProcessFaker::fake([
+        'sh -c nohup php artisan serve*' => Process::result('12345'),
+    ]);
+
+    $this->artisan('app:serve', ['server' => 'laravel'])
+        ->expectsOutputToContain('Start and install')
+        ->assertSuccessful();
+});
+
+test('the finalize stage gets its own divider', function (): void {
+    ProcessFaker::fake([
+        'sh -c nohup php artisan serve*' => Process::result('12345'),
+    ]);
+
+    $this->artisan('app:serve', ['server' => 'laravel'])
+        ->expectsOutputToContain('Finalize development environment')
+        ->assertSuccessful();
+});
+
+test('the progress bar runs and the boot ends with an outro', function (): void {
+    ProcessFaker::fake([
+        'sh -c nohup php artisan serve*' => Process::result('12345'),
+    ]);
+
+    $this->artisan('app:serve', ['server' => 'laravel'])
+        ->expectsOutputToContain('Boot progress')
+        ->expectsOutputToContain('Application ready.')
+        ->assertSuccessful();
+});
+
+test('a custom step class gets the custom steps divider', function (): void {
+    ProcessFaker::fake();
+    config()->set('boot-up.serve_steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
+
+    $this->artisan('app:serve', ['server' => 'laravel'])
+        ->expectsOutputToContain('Custom steps')
+        ->assertFailed();
+});
+
+test('a Class:variant entry still resolves with its variant argument', function (): void {
+    ProcessFaker::fake();
+    config()->set('boot-up.serve_steps', [
+        Igne\LaravelBootUp\Deploy\Steps\RunProjectCommands::class.':before',
+    ]);
+
+    $this->artisan('app:serve', ['server' => 'laravel'])->assertSuccessful();
+});
+
+test('--no-migrate hides the migrations plan line', function (): void {
+    ProcessFaker::fake([
+        'sh -c nohup php artisan serve*' => Process::result('12345'),
+    ]);
+    config()->set('boot-up.serve_steps', [
+        StartServer::class,
+        Igne\LaravelBootUp\Database\Steps\RunPendingMigrations::class,
+        AnnounceApplication::class,
+    ]);
+
+    $this->artisan('app:serve', ['server' => 'laravel', '--no-migrate' => true])
+        ->doesntExpectOutputToContain('Run pending migrations')
+        ->assertSuccessful();
+});
+
+test('the migrations plan line shows without --no-migrate', function (): void {
+    ProcessFaker::fake([
+        'sh -c nohup php artisan serve*' => Process::result('12345'),
+    ]);
+    config()->set('boot-up.serve_steps', [
+        StartServer::class,
+        Igne\LaravelBootUp\Database\Steps\RunPendingMigrations::class,
+        AnnounceApplication::class,
+    ]);
+
+    $this->artisan('app:serve', ['server' => 'laravel'])
+        ->expectsOutputToContain('Run pending migrations')
+        ->assertSuccessful();
+});
+
 test('dead ledger entries are pruned when a new serve boots', function (): void {
     ProcessFaker::fake([
         'kill -0 4444' => Process::result(exitCode: 1),

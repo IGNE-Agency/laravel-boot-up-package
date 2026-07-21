@@ -40,6 +40,7 @@ test('reports that nothing is running on a clean project', function (): void {
     ProcessFaker::fake();
 
     $this->artisan('app:status')
+        ->expectsOutputToContain('Application status')
         ->expectsOutputToContain('Nothing is running.')
         ->assertSuccessful();
 

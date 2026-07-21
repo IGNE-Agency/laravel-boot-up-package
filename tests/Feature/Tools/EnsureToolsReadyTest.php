@@ -89,8 +89,31 @@ test('ensures every configured tool and then the server tools', function (): voi
 
     expect(EnsureToolsReadySpy::$ensured)->toBe(['alpha', 'docker'])
         ->and($result)->toBe($context);
-    Prompt::assertStrippedOutputContains("Alpha 1.0.0 satisfies '^1.0'.");
-    Prompt::assertStrippedOutputContains('Docker is installed.');
+    Prompt::assertStrippedOutputContains('Dependencies ready');
+    Prompt::assertStrippedOutputContains('• Alpha 1.0.0');
+    Prompt::assertStrippedOutputContains('• Docker');
+    Prompt::assertStrippedOutputContains('All required dependencies are installed.');
+});
+
+test('quiet successes no longer print their own lines', function (): void {
+    bindToolsConfig(
+        required: ['alpha' => '^1.0'],
+        installers: ['alpha' => AlphaToolSpy::class],
+    );
+
+    app(EnsureToolsReady::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+
+    Prompt::assertStrippedOutputDoesntContain('satisfies');
+    Prompt::assertStrippedOutputDoesntContain('is installed.');
+});
+
+test('no summary is printed when nothing was ensured', function (): void {
+    bindToolsConfig(required: [], installers: ['bun' => BunToolSpy::class]);
+    bindPackageJson(exists: false);
+
+    app(EnsureToolsReady::class)->handle(new ServeContext(new ServeOptions, ensureToolsServer([])), fn ($passed) => $passed);
+
+    Prompt::assertStrippedOutputDoesntContain('Dependencies ready');
 });
 
 test('server tools already covered by the required map are not ensured twice', function (): void {
