@@ -14,7 +14,19 @@ afterEach(function (): void {
     @unlink(base_path('static-pipeline.yml'));
 });
 
+/** Pin the branch map so assertions never depend on the package default. */
+function pinDefaultBranches(): void
+{
+    config()->set('boot-up.pipeline.branches', [
+        'develop' => 'development',
+        'staging' => 'staging',
+        'main' => 'production',
+    ]);
+}
+
 test('github writes the workflow, the ci scripts and .env.pipeline at their canonical paths', function (): void {
+    pinDefaultBranches();
+
     $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])->assertSuccessful();
 
     $workflow = (string) file_get_contents(base_path('.github/workflows/ci.yml'));
@@ -41,6 +53,8 @@ test('the ci scripts are written executable', function (): void {
 });
 
 test('bitbucket writes bitbucket-pipelines.yml at the repo root plus the same scripts', function (): void {
+    pinDefaultBranches();
+
     $this->artisan('app:pipeline', ['provider' => 'bitbucket', 'host' => 'fortrabbit'])->assertSuccessful();
 
     $pipeline = (string) file_get_contents(base_path('bitbucket-pipelines.yml'));
@@ -70,6 +84,8 @@ test('prompts for the host when only the provider is given', function (): void {
 });
 
 test('the none host writes a checks-only github workflow without deploy files or secrets', function (): void {
+    pinDefaultBranches();
+
     $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'none'])
         ->doesntExpectOutputToContain('DEPLOY_HOOK')
         ->assertSuccessful();
@@ -218,10 +234,31 @@ test('remapped branches flow from config into the generated pipeline', function 
         ->and($workflow)->not->toContain('deploy-development');
 });
 
+test('remapped branches drive the github approval instruction, not hardcoded names', function (): void {
+    config()->set('boot-up.pipeline.branches', ['master' => 'acceptance']);
+
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'webhook'])
+        ->expectsOutputToContain('add required reviewers to the acceptance environment')
+        ->doesntExpectOutputToContain('production')
+        ->doesntExpectOutputToContain('(e.g. main)')
+        ->assertSuccessful();
+});
+
+test('remapped branches drive the bitbucket approval instruction, not hardcoded names', function (): void {
+    config()->set('boot-up.pipeline.branches', ['master' => 'acceptance']);
+
+    $this->artisan('app:pipeline', ['provider' => 'bitbucket', 'host' => 'webhook'])
+        ->expectsOutputToContain('add `trigger: manual` to the acceptance deploy step')
+        ->doesntExpectOutputToContain('production')
+        ->assertSuccessful();
+});
+
 // Each expectsOutputToContain can only match a distinct output chunk (one
 // table, one note per section), so the assertions below sample one line from
 // each section rather than several lines of the same one.
 test('prints the slim secrets table with a guidance section per secret and the next steps', function (): void {
+    pinDefaultBranches();
+
     $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])
         ->expectsOutputToContain('deploys on push to develop')
         ->expectsOutputToContain('DEPLOY_HOOK — development environment')

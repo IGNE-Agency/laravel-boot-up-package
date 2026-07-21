@@ -32,7 +32,7 @@ final class EnsureLocalEnvironment implements Step
         $environment = ($environment === null || $environment === '') ? 'local' : $environment;
 
         if (! \in_array($environment, $this->config->allowedEnvironments, true)) {
-            throw EnvironmentException::unsupportedEnvironment($environment);
+            throw EnvironmentException::unsupportedEnvironment($environment, $this->config->allowedEnvironments);
         }
 
         if ($this->isRemoteHost()) {

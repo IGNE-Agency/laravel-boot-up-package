@@ -18,9 +18,14 @@ final class EnvironmentException extends BootUpException
         return new self('The .env file does not exist. Create it before writing environment values.');
     }
 
-    public static function unsupportedEnvironment(string $env): self
+    /**
+     * @param  list<string>  $allowed
+     */
+    public static function unsupportedEnvironment(string $env, array $allowed): self
     {
-        return new self("This command only runs in a local environment; APP_ENV is [{$env}].");
+        $environments = implode(', ', $allowed);
+
+        return new self("This command only runs when APP_ENV is one of [{$environments}] (boot-up.environments); APP_ENV is [{$env}].");
     }
 
     public static function remoteHost(): self

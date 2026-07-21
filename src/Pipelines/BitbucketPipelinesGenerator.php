@@ -72,14 +72,16 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
 
     public function instructions(PipelinePlan $plan): array
     {
+        $approval = $plan->approvalEnvironment();
+
         return [
             'Commit bitbucket-pipelines.yml, scripts/ci/* and .env.pipeline — every script also runs locally, e.g. `bash scripts/ci/test.sh`.',
             'Enable Pipelines once under Repository settings → Pipelines → Settings.',
             ...$plan->host->notes(),
             ...$plan->host->deploys() ? [
-                'Optional approval gate: add `trigger: manual` to the production deploy step.',
+                ...$approval === null ? [] : ["Optional approval gate: add `trigger: manual` to the {$approval} deploy step."],
                 "An unset DEPLOY_HOOK skips that environment's deploy with a notice instead of failing the run.",
-                'Deploying from other branches (e.g. main)? Remap boot-up.pipeline.branches and regenerate.',
+                'Deploying from other branches? Remap boot-up.pipeline.branches and regenerate.',
             ] : [
                 'Ready to deploy from this pipeline later? Rerun app:pipeline with a deploy-hook host to add the deploy steps.',
             ],

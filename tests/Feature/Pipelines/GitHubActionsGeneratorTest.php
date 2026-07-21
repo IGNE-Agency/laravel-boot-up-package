@@ -322,6 +322,23 @@ test('the webhook host gets neutral guidance naming no host', function (): void 
         ->and($guidance)->not->toContain('Forge');
 });
 
+test('the approval-gate instruction names the last configured environment', function (): void {
+    $instructions = implode("\n", githubGenerator()->instructions(githubPipelinePlan([
+        'branchEnvironments' => ['develop' => 'dev', 'master' => 'live'],
+    ])));
+
+    expect($instructions)->toContain('add required reviewers to the live environment')
+        ->and($instructions)->toContain('Deploying from other branches? Remap boot-up.pipeline.branches and regenerate.')
+        ->and($instructions)->not->toContain('production')
+        ->and($instructions)->not->toContain('(e.g. main)');
+});
+
+test('an empty branch map drops the approval-gate instruction', function (): void {
+    $instructions = implode("\n", githubGenerator()->instructions(githubPipelinePlan(['branchEnvironments' => []])));
+
+    expect($instructions)->not->toContain('approval gate');
+});
+
 test('the none host renders a checks-only workflow that still runs on pushes', function (): void {
     $yaml = githubWorkflow(githubPipelinePlan(['host' => DeployHookHost::NONE]));
 

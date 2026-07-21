@@ -57,6 +57,12 @@ test('throws for a production APP_ENV', function (): void {
     ($this->step)()->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 })->throws(EnvironmentException::class, 'production');
 
+test('the rejection names the configured allowed environments', function (): void {
+    file_put_contents($this->dir.'/.env', "APP_ENV=production\n");
+
+    ($this->step)()->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+})->throws(EnvironmentException::class, '[local, development]');
+
 test('respects a customised allowed environments list', function (): void {
     file_put_contents($this->dir.'/.env', "APP_ENV=staging\n");
 

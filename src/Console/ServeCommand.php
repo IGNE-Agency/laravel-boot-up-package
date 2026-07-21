@@ -25,7 +25,7 @@ use Throwable;
 
 final class ServeCommand extends Command implements Isolatable
 {
-    protected $signature = 'app:serve {server? : The development server to use (herd, sail, laravel)}
+    protected $signature = 'app:serve {server? : The development server to use (herd, sail, laravel, or any driver registered in boot-up.server.drivers)}
         {--s|seed : Seed the database after migrating}
         {--no-migrate : Skip running pending migrations}
         {--fresh : Drop all tables and re-run every migration (asks first)}

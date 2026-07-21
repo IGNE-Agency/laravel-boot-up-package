@@ -72,15 +72,16 @@ final class GitHubActionsGenerator implements PipelineGenerator
     public function instructions(PipelinePlan $plan): array
     {
         $checks = $plan->pint ? 'Lint, Build and Test' : 'Build and Test';
+        $approval = $plan->approvalEnvironment();
 
         return [
             'Commit .github/workflows/ci.yml, scripts/ci/* and .env.pipeline — every script also runs locally, e.g. `bash scripts/ci/test.sh`.',
             ...$plan->host->notes(),
             "Branch protection: require the {$checks} checks.",
             ...$plan->host->deploys() ? [
-                'Optional approval gate: add required reviewers to the production environment (Settings → Environments).',
+                ...$approval === null ? [] : ["Optional approval gate: add required reviewers to the {$approval} environment (Settings → Environments)."],
                 "An unset DEPLOY_HOOK skips that environment's deploy with a notice instead of failing the run.",
-                'Deploying from other branches (e.g. main)? Remap boot-up.pipeline.branches and regenerate.',
+                'Deploying from other branches? Remap boot-up.pipeline.branches and regenerate.',
             ] : [
                 'Ready to deploy from this pipeline later? Rerun app:pipeline with a deploy-hook host to add the deploy jobs.',
             ],

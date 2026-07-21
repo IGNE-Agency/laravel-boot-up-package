@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Pipelines;
 
 use Igne\LaravelBootUp\Deploy\ProjectCommand;
+use Igne\LaravelBootUp\Deploy\Scripts\DeploymentEnvironment;
 use Igne\LaravelBootUp\Frontend\PackageManager;
 use Igne\LaravelBootUp\Support\Lines;
 
@@ -84,9 +85,14 @@ final class CiScripts
 
         $this->frontendBuild($script, $plan);
 
+        $optimizing = implode('/', array_map(
+            fn (DeploymentEnvironment $environment) => $environment->value,
+            array_filter(DeploymentEnvironment::cases(), fn (DeploymentEnvironment $environment) => $environment->optimize()),
+        ));
+
         $script->blank()
             ->comment('`artisan optimize` mirrors what the generated deploy scripts run on')
-            ->comment('staging/production, so un-cacheable config, routes or views fail')
+            ->comment("{$optimizing}, so un-cacheable config, routes or views fail")
             ->comment('this job instead of the deploy.')
             ->line('echo "==> Validating framework caches"')
             ->line('php artisan optimize')
@@ -170,8 +176,9 @@ final class CiScripts
     }
 
     /**
-     * The branches as prose for generated header comments,
-     * e.g. "develop, staging and main".
+     * The configured branches as prose for generated header comments — the
+     * plan's branchEnvironments keys, e.g. "develop, staging and main" for
+     * the default map.
      */
     public function branchList(PipelinePlan $plan): string
     {

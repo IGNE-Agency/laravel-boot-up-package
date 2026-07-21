@@ -25,7 +25,7 @@ final class PipelineCommand extends Command
     ];
 
     protected $signature = 'app:pipeline
-        {provider? : The git provider (github, bitbucket)}
+        {provider? : The git provider (github, bitbucket, or any generator registered in boot-up.pipeline.generators)}
         {host? : The deploy-hook host (fortrabbit, forge, webhook), or "none" to skip the deploy step}
         {--force : Overwrite existing pipeline, scripts/ci and .env.pipeline files without asking}';
 

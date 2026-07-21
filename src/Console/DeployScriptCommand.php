@@ -20,7 +20,7 @@ final class DeployScriptCommand extends Command
     ];
 
     protected $signature = 'app:deploy-script
-        {platform? : The hosting platform (forge, fortrabbit)}
+        {platform? : The hosting platform (forge, fortrabbit, or any generator registered in boot-up.deploy.script_generators)}
         {environment? : The target environment (development, staging, production)}
         {--classic : Forge only — generate for classic (non-zero-downtime) sites}
         {--output= : Write the script to a file instead of printing it}';

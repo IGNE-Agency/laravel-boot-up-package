@@ -24,4 +24,16 @@ final readonly class PipelinePlan
         public string $envFile = '.env.pipeline',
         public DeployHookHost $host = DeployHookHost::WEBHOOK,
     ) {}
+
+    /**
+     * The environment worth an approval gate — the last mapping in
+     * branchEnvironments, which is the most production-like by the map's
+     * dev → prod convention. Null when no branches are mapped.
+     */
+    public function approvalEnvironment(): ?string
+    {
+        $key = array_key_last($this->branchEnvironments);
+
+        return $key === null ? null : $this->branchEnvironments[$key];
+    }
 }
