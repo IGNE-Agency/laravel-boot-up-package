@@ -112,11 +112,11 @@ test('when falls back to the otherwise callback', function (): void {
 
 test('each passes the builder, value and key in iteration order', function (): void {
     $lines = Lines::make()->each(
-        ['develop' => 'development', 'master' => 'production'],
+        ['develop' => 'development', 'main' => 'production'],
         fn (Lines $lines, string $environment, string $branch) => $lines->line("{$branch} -> {$environment}"),
     );
 
-    expect($lines->toArray())->toBe(['develop -> development', 'master -> production']);
+    expect($lines->toArray())->toBe(['develop -> development', 'main -> production']);
 });
 
 test('indent prefixes content lines but never blank lines', function (): void {

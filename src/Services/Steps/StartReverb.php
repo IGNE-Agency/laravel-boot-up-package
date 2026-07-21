@@ -45,13 +45,14 @@ final class StartReverb implements Step
             return $next($context);
         }
 
-        $record = $this->runner->start(
-            $this->rewriter->rewrite(
-                ShellCommand::make(['php', 'artisan', 'reverb:start'])->withTimeout(null),
-                $context->server?->commandRewrites(),
-            ),
-            self::LABEL,
+        $command = $this->rewriter->rewrite(
+            ShellCommand::make(['php', 'artisan', 'reverb:start'])->withTimeout(null),
+            $context->server?->commandRewrites(),
         );
+
+        $record = $this->config->reverbRunIn === 'terminal'
+            ? $this->runner->startInTerminal($command, self::LABEL)
+            : $this->runner->start($command, self::LABEL);
 
         terminal()->success("Reverb started (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
 

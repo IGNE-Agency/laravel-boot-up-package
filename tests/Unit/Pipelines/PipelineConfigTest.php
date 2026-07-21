@@ -27,6 +27,6 @@ test('fromRepository falls back to the documented defaults', function (): void {
     expect($pipeline->branchEnvironments)->toBe([
         'develop' => 'development',
         'staging' => 'staging',
-        'master' => 'production',
+        'main' => 'production',
     ])->and($pipeline->generators)->toBe([]);
 });

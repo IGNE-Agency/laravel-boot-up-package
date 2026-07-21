@@ -27,6 +27,6 @@ test('fromRepository falls back to the documented defaults', function (): void {
     $queue = QueueConfig::fromRepository(new Repository);
 
     expect($queue->enabled)->toBeTrue()
-        ->and($queue->runIn)->toBe('background')
+        ->and($queue->runIn)->toBe('terminal')
         ->and($queue->flags)->toBe([]);
 });

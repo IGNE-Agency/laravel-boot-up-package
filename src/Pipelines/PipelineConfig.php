@@ -11,7 +11,7 @@ final readonly class PipelineConfig
     public const DEFAULT_BRANCH_ENVIRONMENTS = [
         'develop' => 'development',
         'staging' => 'staging',
-        'master' => 'production',
+        'main' => 'production',
     ];
 
     /**

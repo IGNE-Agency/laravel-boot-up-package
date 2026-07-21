@@ -26,7 +26,7 @@ final class PipelineCommand extends Command
 
     protected $signature = 'app:pipeline
         {provider? : The git provider (github, bitbucket)}
-        {host? : The deploy-hook host (fortrabbit, forge, webhook)}
+        {host? : The deploy-hook host (fortrabbit, forge, webhook), or "none" to skip the deploy step}
         {--force : Overwrite existing pipeline, scripts/ci and .env.pipeline files without asking}';
 
     protected $description = 'Generate a CI/CD pipeline, its shared scripts/ci files and .env.pipeline for a git provider, based on this package\'s config';
@@ -100,8 +100,9 @@ final class PipelineCommand extends Command
 
     /**
      * The chosen deploy-hook host, or the unrecognized argument verbatim so
-     * the caller can report it. Only the printed guidance depends on this —
-     * the generated files work with any HTTPS deploy hook.
+     * the caller can report it. For real hosts only the printed guidance
+     * differs — the generated files work with any HTTPS deploy hook; picking
+     * none generates a checks-only pipeline without deploy steps.
      */
     private function host(): DeployHookHost|string
     {

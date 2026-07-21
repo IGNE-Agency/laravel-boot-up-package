@@ -31,7 +31,7 @@ final class CiScripts
             $this->lint($plan),
             $this->build($plan),
             $this->test($plan),
-            $this->deployHook(),
+            $plan->host->deploys() ? $this->deployHook() : null,
         ]));
     }
 
@@ -171,7 +171,7 @@ final class CiScripts
 
     /**
      * The branches as prose for generated header comments,
-     * e.g. "develop, staging and master".
+     * e.g. "develop, staging and main".
      */
     public function branchList(PipelinePlan $plan): string
     {

@@ -8,6 +8,7 @@ use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRecord;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Process\Terminal\TerminalLauncher;
 use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\ServeOptions;
 use Igne\LaravelBootUp\Services\ServicesConfig;
@@ -26,7 +27,7 @@ use Laravel\Prompts\Prompt;
  *
  * @param  array<string, mixed>  $composer
  */
-function bindServiceDeps(string $dir, ?ServicesConfig $config = null, array $composer = []): ProcessLedger
+function bindServiceDeps(string $dir, ?ServicesConfig $config = null, array $composer = [], ?TerminalLauncher $terminal = null): ProcessLedger
 {
     $ledger = new ProcessLedger($dir.'/processes.json');
 
@@ -39,13 +40,40 @@ function bindServiceDeps(string $dir, ?ServicesConfig $config = null, array $com
     app()->instance(ProcessRunner::class, new ProcessRunner(
         processes: app(Factory::class),
         ledger: $ledger,
-        terminal: new NullTerminal,
+        terminal: $terminal ?? new NullTerminal,
         poller: new Poller,
         logDirectory: $dir.'/logs',
         runtimeDirectory: $dir.'/runtime',
     ));
 
     return $ledger;
+}
+
+/**
+ * A terminal that records what it opens and writes the pid file the
+ * runner's shim would normally write, so startInTerminal() completes.
+ */
+function fakeServiceTerminal(): TerminalLauncher
+{
+    return new class implements TerminalLauncher
+    {
+        /** @var list<string> */
+        public array $opened = [];
+
+        public function available(): bool
+        {
+            return true;
+        }
+
+        public function open(string $command, ?string $directory = null): void
+        {
+            $this->opened[] = $command;
+
+            if (preg_match("/echo \\\$\\\$ > '([^']+)'/", $command, $matches) === 1) {
+                file_put_contents($matches[1], "4242\n");
+            }
+        }
+    };
 }
 
 beforeEach(function (): void {
@@ -73,7 +101,7 @@ test('the scheduler stays off by default', function (): void {
 
 test('an enabled scheduler starts a tracked schedule:work process', function (): void {
     ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
-    $ledger = bindServiceDeps($this->dir, new ServicesConfig(schedulerEnabled: true));
+    $ledger = bindServiceDeps($this->dir, new ServicesConfig(schedulerEnabled: true, schedulerRunIn: 'background'));
 
     app(StartScheduler::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
@@ -107,13 +135,26 @@ test('horizon is skipped when the project does not require it', function (): voi
 
 test('horizon starts when the project requires it', function (): void {
     ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
-    $ledger = bindServiceDeps($this->dir, composer: ['require' => ['laravel/horizon' => '^6.0']]);
+    $ledger = bindServiceDeps($this->dir, new ServicesConfig(horizonRunIn: 'background'), ['require' => ['laravel/horizon' => '^6.0']]);
 
     app(StartHorizon::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
     ProcessFaker::assertRan('*nohup php artisan horizon*horizon.log*');
     expect($ledger->withLabel('horizon'))->toHaveCount(1);
     Prompt::assertStrippedOutputContains('Horizon started (PID 4242)');
+});
+
+test('horizon opens a terminal window by default', function (): void {
+    Process::fake();
+    $terminal = fakeServiceTerminal();
+    $ledger = bindServiceDeps($this->dir, composer: ['require' => ['laravel/horizon' => '^6.0']], terminal: $terminal);
+
+    app(StartHorizon::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+
+    expect($terminal->opened)->toHaveCount(1)
+        ->and($terminal->opened[0])->toContain('php artisan horizon')
+        ->and($ledger->withLabel('horizon'))->toHaveCount(1);
+    Process::assertDidntRun(fn ($process): bool => str_contains(implode(' ', $process->command), 'nohup'));
 });
 
 test('horizon can be disabled in configuration even when installed', function (): void {
@@ -127,12 +168,25 @@ test('horizon can be disabled in configuration even when installed', function ()
 
 test('reverb starts when the project requires it', function (): void {
     ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
-    $ledger = bindServiceDeps($this->dir, composer: ['require' => ['laravel/reverb' => '^2.0']]);
+    $ledger = bindServiceDeps($this->dir, new ServicesConfig(reverbRunIn: 'background'), ['require' => ['laravel/reverb' => '^2.0']]);
 
     app(StartReverb::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
     ProcessFaker::assertRan('*nohup php artisan reverb:start*reverb.log*');
     expect($ledger->withLabel('reverb'))->toHaveCount(1);
+});
+
+test('reverb opens a terminal window by default', function (): void {
+    Process::fake();
+    $terminal = fakeServiceTerminal();
+    $ledger = bindServiceDeps($this->dir, composer: ['require' => ['laravel/reverb' => '^2.0']], terminal: $terminal);
+
+    app(StartReverb::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+
+    expect($terminal->opened)->toHaveCount(1)
+        ->and($terminal->opened[0])->toContain('php artisan reverb:start')
+        ->and($ledger->withLabel('reverb'))->toHaveCount(1);
+    Process::assertDidntRun(fn ($process): bool => str_contains(implode(' ', $process->command), 'nohup'));
 });
 
 test('reverb is skipped when the project does not require it', function (): void {

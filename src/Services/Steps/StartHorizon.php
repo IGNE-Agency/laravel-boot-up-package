@@ -46,13 +46,14 @@ final class StartHorizon implements Step
             return $next($context);
         }
 
-        $record = $this->runner->start(
-            $this->rewriter->rewrite(
-                ShellCommand::make(['php', 'artisan', 'horizon'])->withTimeout(null),
-                $context->server?->commandRewrites(),
-            ),
-            self::LABEL,
+        $command = $this->rewriter->rewrite(
+            ShellCommand::make(['php', 'artisan', 'horizon'])->withTimeout(null),
+            $context->server?->commandRewrites(),
         );
+
+        $record = $this->config->horizonRunIn === 'terminal'
+            ? $this->runner->startInTerminal($command, self::LABEL)
+            : $this->runner->start($command, self::LABEL);
 
         terminal()->success("Horizon started (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
 

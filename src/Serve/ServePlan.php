@@ -249,7 +249,7 @@ final readonly class ServePlan
             return null;
         }
 
-        return 'Start background services when enabled: '.implode(', ', $services);
+        return 'Start long-running services when enabled: '.implode(', ', $services);
     }
 
     /**

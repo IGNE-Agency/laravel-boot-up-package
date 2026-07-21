@@ -13,7 +13,7 @@ final readonly class QueueConfig
      */
     public function __construct(
         public bool $enabled = true,
-        public string $runIn = 'background',
+        public string $runIn = 'terminal',
         public array $flags = [],
     ) {}
 
@@ -21,7 +21,7 @@ final readonly class QueueConfig
     {
         return new self(
             enabled: (bool) $config->get('boot-up.queue.enabled', true),
-            runIn: (string) $config->get('boot-up.queue.run_in', 'background'),
+            runIn: (string) $config->get('boot-up.queue.run_in', 'terminal'),
             flags: (array) $config->get('boot-up.queue.flags', []),
         );
     }

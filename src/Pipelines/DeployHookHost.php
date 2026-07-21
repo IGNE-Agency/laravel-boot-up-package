@@ -5,15 +5,27 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Pipelines;
 
 /**
- * Where the DEPLOY_HOOK URL comes from. Only the app:pipeline guidance is
- * host-specific — the generated pipeline and scripts/ci/deploy-hook.sh work
- * with any HTTPS POST deploy hook regardless of this choice.
+ * Where the DEPLOY_HOOK URL comes from. The generated pipeline and
+ * scripts/ci/deploy-hook.sh work with any HTTPS POST deploy hook, so for the
+ * real hosts only the app:pipeline guidance differs. NONE goes further: the
+ * deploy jobs, DEPLOY_HOOK secrets and deploy-hook.sh are omitted entirely —
+ * the pipeline runs checks only.
  */
 enum DeployHookHost: string
 {
     case FORTRABBIT = 'fortrabbit';
     case FORGE = 'forge';
     case WEBHOOK = 'webhook';
+    case NONE = 'none';
+
+    /**
+     * Whether the pipeline gets deploy jobs at all — everything deploy-related
+     * (jobs, secrets, deploy-hook.sh, guidance) keys off this.
+     */
+    public function deploys(): bool
+    {
+        return $this !== self::NONE;
+    }
 
     public function label(): string
     {
@@ -21,6 +33,7 @@ enum DeployHookHost: string
             self::FORTRABBIT => 'fortrabbit',
             self::FORGE => 'Laravel Forge',
             self::WEBHOOK => 'Another host (generic HTTPS deploy hook)',
+            self::NONE => 'None — skip the deploy step',
         };
     }
 
@@ -43,6 +56,7 @@ enum DeployHookHost: string
             self::WEBHOOK => [
                 "Value: your host's HTTPS deploy hook URL for {$environment} — any URL that starts a deploy when POSTed.",
             ],
+            self::NONE => [],
         };
     }
 
@@ -57,7 +71,7 @@ enum DeployHookHost: string
             self::FORTRABBIT => [
                 'The deploy script sends the `User-Agent: fortrabbit` header fortrabbit requires — without it its webhook answers 403.',
             ],
-            self::FORGE, self::WEBHOOK => [],
+            self::FORGE, self::WEBHOOK, self::NONE => [],
         };
     }
 }

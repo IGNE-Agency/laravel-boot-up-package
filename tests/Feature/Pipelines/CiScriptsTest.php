@@ -7,6 +7,7 @@ use Igne\LaravelBootUp\Deploy\Scripts\DeploymentEnvironment;
 use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlan;
 use Igne\LaravelBootUp\Frontend\PackageManager;
 use Igne\LaravelBootUp\Pipelines\CiScripts;
+use Igne\LaravelBootUp\Pipelines\DeployHookHost;
 use Igne\LaravelBootUp\Pipelines\PipelinePlan;
 
 function ciScriptsPlan(array $overrides = [], array $deploymentOverrides = []): PipelinePlan
@@ -30,7 +31,7 @@ function ciScriptsPlan(array $overrides = [], array $deploymentOverrides = []): 
         'branchEnvironments' => [
             'develop' => 'development',
             'staging' => 'staging',
-            'master' => 'production',
+            'main' => 'production',
         ],
     ];
 
@@ -211,6 +212,13 @@ test('files returns every script, executable, under scripts/ci', function (): vo
     ])->and(array_map(fn ($file) => $file->executable, $files))->each->toBeTrue();
 });
 
+test('files skips deploy-hook.sh when the host is none', function (): void {
+    $paths = array_map(fn ($file) => $file->path, (new CiScripts)->files(ciScriptsPlan(['host' => DeployHookHost::NONE])));
+
+    expect($paths)->not->toContain('scripts/ci/deploy-hook.sh')
+        ->and($paths)->toHaveCount(4);
+});
+
 test('files skips the lint script without pint', function (): void {
     $paths = array_map(fn ($file) => $file->path, (new CiScripts)->files(ciScriptsPlan(['pint' => false])));
 
@@ -265,6 +273,6 @@ test('package-manager project commands use the runtime $PM with a frontend and t
 test('branchList renders the branches as prose', function (): void {
     $scripts = new CiScripts;
 
-    expect($scripts->branchList(ciScriptsPlan()))->toBe('develop, staging and master')
+    expect($scripts->branchList(ciScriptsPlan()))->toBe('develop, staging and main')
         ->and($scripts->branchList(ciScriptsPlan(['branchEnvironments' => ['main' => 'production']])))->toBe('main');
 });

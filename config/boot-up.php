@@ -97,7 +97,7 @@ return [
     'frontend' => [
         'package_manager' => env('BOOT_UP_PACKAGE_MANAGER', 'bun'), // bun | yarn | npm | pnpm
         'assets' => env('BOOT_UP_ASSETS', 'watch'), // watch | build | skip
-        'watch_in' => env('BOOT_UP_ASSETS_WATCH_IN', 'background'), // background | terminal
+        'watch_in' => env('BOOT_UP_ASSETS_WATCH_IN', 'terminal'), // terminal | background
     ],
 
     /*
@@ -109,7 +109,7 @@ return [
     */
     'queue' => [
         'enabled' => env('BOOT_UP_QUEUE', true),
-        'run_in' => env('BOOT_UP_QUEUE_RUN_IN', 'background'), // background | terminal
+        'run_in' => env('BOOT_UP_QUEUE_RUN_IN', 'terminal'), // terminal | background
         'flags' => [],
     ],
 
@@ -125,13 +125,15 @@ return [
     'services' => [
         'scheduler' => [
             'enabled' => env('BOOT_UP_SCHEDULER', false),
-            'run_in' => env('BOOT_UP_SCHEDULER_RUN_IN', 'background'), // background | terminal
+            'run_in' => env('BOOT_UP_SCHEDULER_RUN_IN', 'terminal'), // terminal | background
         ],
         'horizon' => [
             'enabled' => env('BOOT_UP_HORIZON', true),
+            'run_in' => env('BOOT_UP_HORIZON_RUN_IN', 'terminal'), // terminal | background
         ],
         'reverb' => [
             'enabled' => env('BOOT_UP_REVERB', true),
+            'run_in' => env('BOOT_UP_REVERB_RUN_IN', 'terminal'), // terminal | background
         ],
     ],
 
@@ -161,7 +163,7 @@ return [
         'branches' => [
             'develop' => 'development',
             'staging' => 'staging',
-            'master' => 'production',
+            'main' => 'production',
         ],
         'generators' => [],
     ],

@@ -69,6 +69,42 @@ test('prompts for the host when only the provider is given', function (): void {
     expect(is_file(base_path('.github/workflows/ci.yml')))->toBeTrue();
 });
 
+test('the none host writes a checks-only github workflow without deploy files or secrets', function (): void {
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'none'])
+        ->doesntExpectOutputToContain('DEPLOY_HOOK')
+        ->assertSuccessful();
+
+    $workflow = (string) file_get_contents(base_path('.github/workflows/ci.yml'));
+
+    expect($workflow)->toContain('branches: [develop, staging, main]')
+        ->and($workflow)->toContain('run: bash scripts/ci/test.sh')
+        ->and($workflow)->not->toContain('deploy-hook.sh')
+        ->and($workflow)->not->toContain('environment:')
+        ->and(is_file(base_path('scripts/ci/test.sh')))->toBeTrue()
+        ->and(is_file(base_path('scripts/ci/deploy-hook.sh')))->toBeFalse()
+        ->and(is_file(base_path('.env.pipeline')))->toBeTrue();
+});
+
+test('the none host writes a checks-only bitbucket pipeline', function (): void {
+    $this->artisan('app:pipeline', ['provider' => 'bitbucket', 'host' => 'none'])->assertSuccessful();
+
+    $pipeline = (string) file_get_contents(base_path('bitbucket-pipelines.yml'));
+
+    expect($pipeline)->toContain('- step: *test')
+        ->and($pipeline)->not->toContain('deployment:')
+        ->and($pipeline)->not->toContain('deploy-hook.sh')
+        ->and(is_file(base_path('scripts/ci/deploy-hook.sh')))->toBeFalse();
+});
+
+test('none is selectable at the host prompt', function (): void {
+    $this->artisan('app:pipeline', ['provider' => 'github'])
+        ->expectsQuestion('Which host receives the deploy hook?', 'none')
+        ->assertSuccessful();
+
+    expect(is_file(base_path('.github/workflows/ci.yml')))->toBeTrue()
+        ->and(is_file(base_path('scripts/ci/deploy-hook.sh')))->toBeFalse();
+});
+
 test('rejects an unknown host', function (): void {
     $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'heroku'])->assertFailed();
 

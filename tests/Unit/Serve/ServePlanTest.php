@@ -83,7 +83,7 @@ test('the default pipeline summarizes into eleven readable lines', function (): 
         "Run the project's configured commands",
         'Run pending migrations',
         'Cache and finalize the application',
-        'Start background services when enabled: queue worker, Horizon, Reverb, scheduler',
+        'Start long-running services when enabled: queue worker, Horizon, Reverb, scheduler',
         'Build or watch frontend assets',
         'Announce the application URL',
     ]);
@@ -152,7 +152,7 @@ test('--without-assets drops the frontend fragments and the assets line', functi
 test('--without-queue drops the queue worker from the services line', function (): void {
     $plan = ServePlan::for(defaultServeSteps(), new ServeOptions(withQueue: false));
 
-    expect($plan->summary())->toContain('Start background services when enabled: Horizon, Reverb, scheduler');
+    expect($plan->summary())->toContain('Start long-running services when enabled: Horizon, Reverb, scheduler');
 });
 
 test('without a server label the server line stays generic', function (): void {

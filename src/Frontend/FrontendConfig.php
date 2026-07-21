@@ -19,7 +19,7 @@ final readonly class FrontendConfig
         return new self(
             packageManager: PackageManager::from((string) $config->get('boot-up.frontend.package_manager', 'bun')),
             assets: (string) $config->get('boot-up.frontend.assets', 'watch'),
-            watchIn: (string) $config->get('boot-up.frontend.watch_in', 'background'),
+            watchIn: (string) $config->get('boot-up.frontend.watch_in', 'terminal'),
         );
     }
 }
