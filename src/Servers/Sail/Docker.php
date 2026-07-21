@@ -10,8 +10,6 @@ use Igne\LaravelBootUp\Servers\ServerException;
 use Igne\LaravelBootUp\Support\Platform;
 use Igne\LaravelBootUp\Support\Poller;
 
-use function Laravel\Prompts\info;
-
 final class Docker
 {
     public function __construct(
@@ -32,7 +30,7 @@ final class Docker
             return;
         }
 
-        info('Starting Docker...');
+        terminal()->info('Starting Docker...');
 
         $this->platform->isMacos()
             ? $this->runner->runSilently(ShellCommand::make(['open', '-a', 'Docker']))

@@ -15,9 +15,6 @@ use Igne\LaravelBootUp\Servers\Server;
 use Igne\LaravelBootUp\Servers\ServersConfig;
 use Igne\LaravelBootUp\Tools\Tool;
 
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
-
 /**
  * Serves via a tracked, detached `php artisan serve` process. Key stays
  * 'laravel' for backwards compatibility with existing config and args.
@@ -74,7 +71,7 @@ final class ArtisanServer implements Server
     public function start(ServeContext $context): void
     {
         if ($this->isRunning()) {
-            note('php artisan serve is already running.');
+            terminal()->note('php artisan serve is already running.');
 
             return;
         }
@@ -88,7 +85,7 @@ final class ArtisanServer implements Server
             self::LABEL,
         );
 
-        info("php artisan serve started (PID {$record->pid}).");
+        terminal()->success("php artisan serve started (PID {$record->pid}).");
     }
 
     public function isRunning(): bool

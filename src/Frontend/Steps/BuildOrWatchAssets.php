@@ -18,9 +18,6 @@ use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
-
 final class BuildOrWatchAssets implements Step
 {
     private const LABEL = 'assets-watch';
@@ -38,19 +35,19 @@ final class BuildOrWatchAssets implements Step
     public function handle(ServeContext $context, Closure $next): mixed
     {
         if (! $context->options->withAssets) {
-            note('Assets skipped (--without-assets).');
+            terminal()->note('Assets skipped (--without-assets).');
 
             return $next($context);
         }
 
         if ($this->config->assets === 'skip') {
-            note('Assets disabled in configuration.');
+            terminal()->note('Assets disabled in configuration.');
 
             return $next($context);
         }
 
         if (! $this->packageJson->exists()) {
-            note('No package.json found — skipping assets.');
+            terminal()->note('No package.json found — skipping assets.');
 
             return $next($context);
         }
@@ -67,12 +64,12 @@ final class BuildOrWatchAssets implements Step
     private function build(ServeContext $context, PackageManager $manager): void
     {
         if (! $this->packageJson->hasScript('build')) {
-            note("package.json has no 'build' script — skipping the asset build.");
+            terminal()->note("package.json has no 'build' script — skipping the asset build.");
 
             return;
         }
 
-        info("Building assets with {$manager->value}...");
+        terminal()->info("Building assets with {$manager->value}...");
 
         $this->runner->run($this->rewrite($context, $manager->runCommand('build')));
     }
@@ -80,13 +77,13 @@ final class BuildOrWatchAssets implements Step
     private function watch(ServeContext $context, PackageManager $manager): void
     {
         if (! $this->packageJson->hasScript('dev')) {
-            note("package.json has no 'dev' script — skipping the asset watcher.");
+            terminal()->note("package.json has no 'dev' script — skipping the asset watcher.");
 
             return;
         }
 
         if ($this->watcherIsRunning()) {
-            note('Asset watcher already running — skipping.');
+            terminal()->note('Asset watcher already running — skipping.');
 
             return;
         }
@@ -97,7 +94,7 @@ final class BuildOrWatchAssets implements Step
             ? $this->runner->startInTerminal($command, self::LABEL)
             : $this->runner->start($command, self::LABEL);
 
-        info("Asset watcher started (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
+        terminal()->success("Asset watcher started (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
     }
 
     private function watcherIsRunning(): bool

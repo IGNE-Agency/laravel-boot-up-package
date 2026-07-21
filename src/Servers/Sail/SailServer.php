@@ -13,8 +13,6 @@ use Igne\LaravelBootUp\Support\Poller;
 use Igne\LaravelBootUp\Tools\Tool;
 use Illuminate\Contracts\Config\Repository;
 
-use function Laravel\Prompts\info;
-
 final class SailServer implements Server
 {
     public function __construct(
@@ -71,7 +69,7 @@ final class SailServer implements Server
         $this->docker->ensureRunning();
 
         if (! $this->sail->isConfigured()) {
-            info('Scaffolding Sail configuration...');
+            terminal()->info('Scaffolding Sail configuration...');
             $this->sail->scaffold();
         }
 

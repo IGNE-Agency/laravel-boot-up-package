@@ -32,6 +32,7 @@ use Igne\LaravelBootUp\Servers\Herd\HerdSites;
 use Igne\LaravelBootUp\Servers\ServersConfig;
 use Igne\LaravelBootUp\Support\Platform;
 use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Support\Terminal;
 use Igne\LaravelBootUp\Tools\ToolsConfig;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Process\Factory;
@@ -59,6 +60,8 @@ final class BootUpServiceProvider extends ServiceProvider
         foreach (self::CONFIG_CLASSES as $configClass) {
             $this->app->singleton($configClass, fn (Application $app) => $configClass::fromRepository($app['config']));
         }
+
+        $this->app->singleton(Terminal::class, fn () => new Terminal);
 
         $this->app->singleton(ProcessLedger::class, fn (Application $app) => new ProcessLedger(
             $app->storagePath('framework/boot-up/processes.json'),

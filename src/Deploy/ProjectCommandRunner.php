@@ -13,8 +13,6 @@ use Illuminate\Contracts\Container\Container;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 use InvalidArgumentException;
 
-use function Laravel\Prompts\note;
-
 /**
  * Runs the host application's project commands for a deploy phase. The
  * provider is resolved lazily so projects that never bind
@@ -54,7 +52,7 @@ final class ProjectCommandRunner
     private function execute(ProjectCommand $command, ServeContext $context): void
     {
         if ($command->description !== null) {
-            note($command->description);
+            terminal()->info($command->description);
         }
 
         $shell = $this->rewriter->rewrite(

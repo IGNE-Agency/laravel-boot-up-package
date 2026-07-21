@@ -15,9 +15,6 @@ use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Services\ServicesConfig;
 
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
-
 /**
  * Starts a tracked `schedule:work` process. Off by default — a project
  * without scheduled tasks gains nothing from a scheduler loop — and
@@ -42,7 +39,7 @@ final class StartScheduler implements Step
         }
 
         if ($this->alreadyRunning()) {
-            note('Scheduler already running — skipping.');
+            terminal()->note('Scheduler already running — skipping.');
 
             return $next($context);
         }
@@ -56,7 +53,7 @@ final class StartScheduler implements Step
             ? $this->runner->startInTerminal($command, self::LABEL)
             : $this->runner->start($command, self::LABEL);
 
-        info("Scheduler started (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
+        terminal()->success("Scheduler started (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
 
         return $next($context);
     }

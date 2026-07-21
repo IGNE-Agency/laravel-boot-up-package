@@ -12,10 +12,6 @@ use Igne\LaravelBootUp\Deploy\Scripts\FortrabbitScriptGenerator;
 use Igne\LaravelBootUp\Deploy\Scripts\ScriptGenerator;
 use Illuminate\Console\Command;
 
-use function Laravel\Prompts\error;
-use function Laravel\Prompts\note;
-use function Laravel\Prompts\select;
-
 final class DeployScriptCommand extends Command
 {
     private const BUILT_IN_GENERATORS = [
@@ -38,7 +34,7 @@ final class DeployScriptCommand extends Command
         $platform = $this->platform($generators);
 
         if (! isset($generators[$platform])) {
-            error("Unknown platform [{$platform}]. Available: ".implode(', ', array_keys($generators)));
+            terminal()->error("Unknown platform [{$platform}]. Available: ".implode(', ', array_keys($generators)));
 
             return self::FAILURE;
         }
@@ -54,12 +50,15 @@ final class DeployScriptCommand extends Command
         $output = $this->option('output');
 
         if (\is_string($output) && $output !== '') {
+            terminal()->intro('Generating a deployment script...');
             file_put_contents($output, $script);
-            note("Deployment script written to {$output}.");
+            terminal()->outro("Deployment script written to {$output}.");
 
             return self::SUCCESS;
         }
 
+        // No intro/outro here on purpose: the raw script goes to stdout, so
+        // `app:deploy-script forge production > deploy.sh` must stay clean.
         foreach (explode("\n", rtrim($script, "\n")) as $line) {
             $this->line($line);
         }
@@ -84,7 +83,7 @@ final class DeployScriptCommand extends Command
             $options[$key] = $this->laravel->make($class)->label();
         }
 
-        return (string) select('Which platform should the deployment script target?', $options);
+        return (string) terminal()->select('Which platform should the deployment script target?', $options);
     }
 
     private function environment(): DeploymentEnvironment
@@ -95,7 +94,7 @@ final class DeployScriptCommand extends Command
             return DeploymentEnvironment::from(strtolower($argument));
         }
 
-        return DeploymentEnvironment::from((string) select(
+        return DeploymentEnvironment::from((string) terminal()->select(
             label: 'Which environment is this script for?',
             options: array_column(DeploymentEnvironment::cases(), 'value', 'value'),
             default: DeploymentEnvironment::PRODUCTION->value,

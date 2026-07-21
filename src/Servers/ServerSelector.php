@@ -6,8 +6,6 @@ namespace Igne\LaravelBootUp\Servers;
 
 use Illuminate\Contracts\Container\Container;
 
-use function Laravel\Prompts\select;
-
 /**
  * Picks the server driver for this run: explicit argument, then the
  * configured default, then an interactive select over the driver map.
@@ -33,7 +31,7 @@ final class ServerSelector
             return $this->driver('laravel');
         }
 
-        return $this->driver((string) select(
+        return $this->driver((string) terminal()->select(
             label: 'Which development server should serve the application?',
             options: $this->options(),
         ));

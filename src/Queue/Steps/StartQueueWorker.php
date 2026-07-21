@@ -19,9 +19,6 @@ use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Services\ServicesConfig;
 use Illuminate\Contracts\Config\Repository;
 
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
-
 final class StartQueueWorker implements Step
 {
     private const LABEL = 'queue-worker';
@@ -41,19 +38,19 @@ final class StartQueueWorker implements Step
     public function handle(ServeContext $context, Closure $next): mixed
     {
         if (! $context->options->withQueue) {
-            note('Queue worker skipped (--without-queue).');
+            terminal()->note('Queue worker skipped (--without-queue).');
 
             return $next($context);
         }
 
         if (! $this->config->enabled) {
-            note('Queue worker disabled in configuration.');
+            terminal()->note('Queue worker disabled in configuration.');
 
             return $next($context);
         }
 
         if ($this->services->horizonEnabled && $this->composerJson->requires('laravel/horizon')) {
-            note('laravel/horizon manages the queue — skipping queue:work.');
+            terminal()->note('laravel/horizon manages the queue — skipping queue:work.');
 
             return $next($context);
         }
@@ -61,13 +58,13 @@ final class StartQueueWorker implements Step
         $connection = $this->connection();
 
         if ($connection === 'sync') {
-            note('Queue connection is sync — no worker needed.');
+            terminal()->note('Queue connection is sync — no worker needed.');
 
             return $next($context);
         }
 
         if ($this->workerIsRunning()) {
-            note('Queue worker already running — skipping.');
+            terminal()->note('Queue worker already running — skipping.');
 
             return $next($context);
         }
@@ -83,7 +80,7 @@ final class StartQueueWorker implements Step
             ? $this->runner->startInTerminal($command, self::LABEL)
             : $this->runner->start($command, self::LABEL);
 
-        info("Queue worker started on [{$connection}] (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
+        terminal()->success("Queue worker started on [{$connection}] (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
 
         return $next($context);
     }

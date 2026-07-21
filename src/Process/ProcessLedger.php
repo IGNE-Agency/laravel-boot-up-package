@@ -7,8 +7,6 @@ namespace Igne\LaravelBootUp\Process;
 use Igne\LaravelBootUp\Support\AtomicFile;
 use Illuminate\Support\Collection;
 
-use function Laravel\Prompts\warning;
-
 /**
  * Persisted ledger of background processes started by the package,
  * surviving the boundary between app:serve and app:down.
@@ -83,7 +81,7 @@ final class ProcessLedger
     {
         rename($this->path, $this->path.'.corrupt');
 
-        warning('The boot-up process ledger was corrupt — moved to '.basename($this->path).'.corrupt and reset. Background processes it tracked may still be running.');
+        terminal()->warning('The boot-up process ledger was corrupt — moved to '.basename($this->path).'.corrupt and reset. Background processes it tracked may still be running.');
     }
 
     /**

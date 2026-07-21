@@ -11,9 +11,6 @@ use Igne\LaravelBootUp\Process\ShellCommand;
 use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\Step;
 
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
-
 /**
  * Off by default: config:cache freezes env() lookups, which breaks local
  * development against a mutating .env.
@@ -30,12 +27,12 @@ final class CacheFrameworkFiles implements Step
     public function handle(ServeContext $context, Closure $next): mixed
     {
         if (! $this->config->cacheFrameworkFiles) {
-            note('Framework file caching is disabled; skipping.');
+            terminal()->note('Framework file caching is disabled; skipping.');
 
             return $next($context);
         }
 
-        info('Caching framework files...');
+        terminal()->info('Caching framework files...');
 
         foreach (self::COMMANDS as $command) {
             $this->processes->run(ShellCommand::make(['php', 'artisan', $command]));

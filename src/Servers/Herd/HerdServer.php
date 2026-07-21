@@ -13,11 +13,6 @@ use Igne\LaravelBootUp\Servers\ServerException;
 use Igne\LaravelBootUp\Servers\ServersConfig;
 use Igne\LaravelBootUp\Tools\Tool;
 
-use function Laravel\Prompts\confirm;
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\text;
-use function Laravel\Prompts\warning;
-
 final class HerdServer implements Server
 {
     public function __construct(
@@ -73,7 +68,7 @@ final class HerdServer implements Server
         $linked = $this->sites->nameFor($project);
 
         if ($linked !== null) {
-            info("Project already linked to Herd as https://{$linked}.test.");
+            terminal()->note("Project already linked to Herd as https://{$linked}.test.");
             $this->secure($linked);
 
             return;
@@ -82,7 +77,7 @@ final class HerdServer implements Server
         $name = $this->claimSiteName($project);
 
         $this->runOrFail(['herd', 'link', $name]);
-        info("Project linked to Herd as https://{$name}.test.");
+        terminal()->success("Project linked to Herd as https://{$name}.test.");
 
         $this->secure($name);
     }
@@ -142,13 +137,13 @@ final class HerdServer implements Server
         }
 
         if (! is_dir($target)) {
-            warning("Herd linked [{$name}] to {$target}, which no longer exists — relinking to this project.");
+            terminal()->warning("Herd linked [{$name}] to {$target}, which no longer exists — relinking to this project.");
             $this->runOrFail(['herd', 'unlink', $name]);
 
             return true;
         }
 
-        if (! confirm("Herd already links [{$name}] to {$target}. Replace it with this project?", default: false)) {
+        if (! terminal()->confirm("Herd already links [{$name}] to {$target}. Replace it with this project?", default: false)) {
             return false;
         }
 
@@ -159,7 +154,7 @@ final class HerdServer implements Server
 
     private function promptForName(string $project): string
     {
-        return (string) text(
+        return (string) terminal()->text(
             label: 'What should the Herd site be called?',
             default: basename($project),
             hint: 'The site is served at https://{name}.test.',
@@ -172,7 +167,7 @@ final class HerdServer implements Server
     private function secure(string $name): void
     {
         $this->runOrFail(['herd', 'secure', $name]);
-        info('HTTPS certificate configured.');
+        terminal()->success('HTTPS certificate configured.');
     }
 
     /**

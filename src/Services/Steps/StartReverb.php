@@ -16,9 +16,6 @@ use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Services\ServicesConfig;
 
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
-
 /**
  * Starts a tracked Reverb WebSocket server when laravel/reverb is a
  * project dependency. Detect-and-skip, like Horizon.
@@ -43,7 +40,7 @@ final class StartReverb implements Step
         }
 
         if ($this->alreadyRunning()) {
-            note('Reverb already running — skipping.');
+            terminal()->note('Reverb already running — skipping.');
 
             return $next($context);
         }
@@ -56,7 +53,7 @@ final class StartReverb implements Step
             self::LABEL,
         );
 
-        info("Reverb started (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
+        terminal()->success("Reverb started (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
 
         return $next($context);
     }

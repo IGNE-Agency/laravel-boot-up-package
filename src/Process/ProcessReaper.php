@@ -7,8 +7,6 @@ namespace Igne\LaravelBootUp\Process;
 use Igne\LaravelBootUp\Support\Poller;
 use Illuminate\Process\Factory;
 
-use function Laravel\Prompts\warning;
-
 /**
  * Terminates ledger-tracked processes: TERM (including children), a grace
  * period, then KILL. Guards against PID reuse by comparing the running
@@ -70,7 +68,7 @@ final class ProcessReaper
         }
 
         if (! $terminated) {
-            warning("Could not stop {$record->label} (pid {$record->pid}) — it stays in the ledger; stop it manually or re-run app:down.");
+            terminal()->warning("Could not stop {$record->label} (pid {$record->pid}) — it stays in the ledger; stop it manually or re-run app:down.");
 
             return false;
         }

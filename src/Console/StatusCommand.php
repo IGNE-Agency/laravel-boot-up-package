@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
+use Igne\LaravelBootUp\Facades\Platform;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRecord;
@@ -11,13 +12,7 @@ use Igne\LaravelBootUp\Serve\ServeProcessProbe;
 use Igne\LaravelBootUp\Servers\ActiveServer;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\ServerSelector;
-use Igne\LaravelBootUp\Support\Platform;
 use Illuminate\Console\Command;
-
-use function Laravel\Prompts\error;
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
-
 use Throwable;
 
 /**
@@ -37,19 +32,20 @@ final class StatusCommand extends Command
         ProcessReaper $reaper,
         ServerSelector $selector,
         ServeProcessProbe $probe,
-        Platform $platform,
     ): int {
-        if ($platform->isWindows()) {
-            error('app:status is not supported on native Windows. Run it inside WSL2.');
+        if (Platform::isWindows()) {
+            terminal()->error('app:status is not supported on native Windows. Run it inside WSL2.');
 
             return self::FAILURE;
         }
+
+        terminal()->intro('Application status');
 
         $active = $store->current();
         $records = $ledger->all();
 
         if ($active === null && $records->isEmpty()) {
-            info('Nothing is running.');
+            terminal()->outro('Nothing is running.');
 
             return self::SUCCESS;
         }
@@ -61,10 +57,10 @@ final class StatusCommand extends Command
         $records->each(function (ProcessRecord $record) use ($reaper): void {
             $state = $reaper->isAlive($record) ? 'running' : 'dead';
 
-            note("{$record->label} (pid {$record->pid}): {$state} — logs: storage/logs/boot-up/{$record->label}.log");
+            terminal()->info("{$record->label} (pid {$record->pid}): {$state} — logs: storage/logs/boot-up/{$record->label}.log");
         });
 
-        note('Stop everything with: php artisan app:down');
+        terminal()->outro('Stop everything with: php artisan app:down');
 
         return self::SUCCESS;
     }
@@ -80,13 +76,13 @@ final class StatusCommand extends Command
             $name = $active->key;
         }
 
-        // One note() per line: artisan output expectations can match at
-        // most one assertion per write.
-        note("Server: {$name}");
-        note($active->startedByUs
+        // One Terminal call per line: artisan output expectations can match
+        // at most one assertion per write.
+        terminal()->info("Server: {$name}");
+        terminal()->info($active->startedByUs
             ? 'The server was started by app:serve.'
             : 'The server was already running before app:serve.');
-        note($probe->isServing($active->servePid)
+        terminal()->info($probe->isServing($active->servePid)
             ? "app:serve is running (pid {$active->servePid})."
             : "Its app:serve (pid {$active->servePid}) is no longer running.");
     }

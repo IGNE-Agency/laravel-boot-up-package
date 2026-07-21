@@ -4,14 +4,11 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Tools;
 
-use function Laravel\Prompts\confirm;
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
-use function Laravel\Prompts\warning;
-
 /**
  * Pure policy: decides whether a tool must be installed, updated, or left
  * alone. A version we cannot read or satisfy never blocks the boot.
+ * Satisfied tools stay quiet — the caller bundles their outcomes into one
+ * summary; installs, updates and warnings print immediately.
  */
 final class ToolManager
 {
@@ -19,76 +16,74 @@ final class ToolManager
         private readonly ToolsConfig $config,
     ) {}
 
-    public function ensure(InstallsTool $tool, VersionConstraint $constraint): void
+    public function ensure(InstallsTool $tool, VersionConstraint $constraint): ToolOutcome
     {
         if (! $tool->isInstalled()) {
-            $this->installMissing($tool, $constraint);
-
-            return;
+            return $this->installMissing($tool, $constraint);
         }
 
         if ($constraint->isWildcard()) {
-            info("{$tool->label()} is installed.");
-
-            return;
+            return new ToolOutcome($tool->label(), ToolStatus::Satisfied);
         }
 
         $version = $tool->installedVersion();
 
         if ($version === null) {
-            warning("Could not determine the installed {$tool->label()} version; continuing.");
+            terminal()->warning("Could not determine the installed {$tool->label()} version; continuing.");
 
-            return;
+            return new ToolOutcome($tool->label(), ToolStatus::Unverified);
         }
 
         if ($constraint->isSatisfiedBy($version)) {
-            info("{$tool->label()} {$version} satisfies '{$constraint->value}'.");
-
-            return;
+            return new ToolOutcome($tool->label(), ToolStatus::Satisfied, $version);
         }
 
-        $this->updateOutdated($tool, $constraint, $version);
+        return $this->updateOutdated($tool, $constraint, $version);
     }
 
-    private function installMissing(InstallsTool $tool, VersionConstraint $constraint): void
+    private function installMissing(InstallsTool $tool, VersionConstraint $constraint): ToolOutcome
     {
-        if (! $this->config->autoInstall && ! confirm("{$tool->label()} is not installed. Install it now?")) {
+        if (! $this->config->autoInstall && ! terminal()->confirm("{$tool->label()} is not installed. Install it now?")) {
             throw ToolException::notInstalled($tool->label());
         }
 
-        info("{$tool->label()} not found. Installing...");
+        terminal()->info("{$tool->label()} not found. Installing...");
         $tool->install($constraint);
-        info("{$tool->label()} installed.");
+        terminal()->success("{$tool->label()} installed.");
+
+        return new ToolOutcome($tool->label(), ToolStatus::Installed);
     }
 
-    private function updateOutdated(InstallsTool $tool, VersionConstraint $constraint, string $version): void
+    private function updateOutdated(InstallsTool $tool, VersionConstraint $constraint, string $version): ToolOutcome
     {
         if ($tool->updatesAutomatically()) {
-            note("{$tool->label()} {$version} does not satisfy '{$constraint->value}', but it updates itself — skipping.");
+            terminal()->note("{$tool->label()} {$version} does not satisfy '{$constraint->value}', but it updates itself — skipping.");
 
-            return;
+            return new ToolOutcome($tool->label(), ToolStatus::SkippedSelfUpdating, $version);
         }
 
         if (! $this->config->autoUpdate) {
-            warning("{$tool->label()} {$version} does not satisfy '{$constraint->value}'. Update it manually or enable boot-up.tools.auto_update.");
+            terminal()->warning("{$tool->label()} {$version} does not satisfy '{$constraint->value}'. Update it manually or enable boot-up.tools.auto_update.");
 
-            return;
+            return new ToolOutcome($tool->label(), ToolStatus::Unverified, $version);
         }
 
-        info("{$tool->label()} {$version} does not satisfy '{$constraint->value}'. Updating...");
+        terminal()->info("{$tool->label()} {$version} does not satisfy '{$constraint->value}'. Updating...");
         $tool->update($constraint);
 
         $updated = $tool->installedVersion();
 
         if ($updated !== null && $constraint->isSatisfiedBy($updated)) {
-            info("{$tool->label()} updated to {$updated}.");
+            terminal()->success("{$tool->label()} updated to {$updated}.");
 
-            return;
+            return new ToolOutcome($tool->label(), ToolStatus::Updated, $updated);
         }
 
-        warning(
+        terminal()->warning(
             "{$tool->label()} is ".($updated ?? 'an unreadable version')." after updating, which still does not satisfy '{$constraint->value}'. "
             .'The default install cannot provide it — install a matching version yourself (e.g. a versioned Homebrew formula) or relax the constraint. Continuing.'
         );
+
+        return new ToolOutcome($tool->label(), ToolStatus::Unverified, $updated);
     }
 }

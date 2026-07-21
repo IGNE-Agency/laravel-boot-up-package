@@ -14,11 +14,6 @@ use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Illuminate\Support\Str;
 
-use function Laravel\Prompts\confirm;
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
-use function Laravel\Prompts\warning;
-
 /**
  * Migrates only when migrations are actually pending. When the host cannot
  * reach the database (e.g. it lives inside Sail's containers) the pending
@@ -37,13 +32,13 @@ final class RunPendingMigrations implements Step
     public function handle(ServeContext $context, Closure $next): mixed
     {
         if (! $context->options->migrate) {
-            note('Migrations skipped (--no-migrate).');
+            terminal()->note('Migrations skipped (--no-migrate).');
 
             if ($context->options->fresh) {
-                warning('--fresh ignored: --no-migrate wins as the least destructive option.');
+                terminal()->warning('--fresh ignored: --no-migrate wins as the least destructive option.');
             }
         } elseif (! $this->config->migrationsAuto) {
-            note('Automatic migrations are disabled in configuration — skipping.');
+            terminal()->note('Automatic migrations are disabled in configuration — skipping.');
         } elseif ($context->options->fresh && $this->confirmFresh()) {
             // migrate:fresh carries --seed itself, so the shared seed
             // path below must not run a second time.
@@ -69,18 +64,18 @@ final class RunPendingMigrations implements Step
      */
     private function confirmFresh(): bool
     {
-        if (confirm('--fresh drops ALL tables and re-runs every migration. Continue?', default: false)) {
+        if (terminal()->confirm('--fresh drops ALL tables and re-runs every migration. Continue?', default: false)) {
             return true;
         }
 
-        note('Fresh migration declined — running pending migrations instead.');
+        terminal()->note('Fresh migration declined — running pending migrations instead.');
 
         return false;
     }
 
     private function migrateFresh(ServeContext $context): void
     {
-        info('Dropping all tables and re-running every migration...');
+        terminal()->info('Dropping all tables and re-running every migration...');
 
         $command = ['php', 'artisan', 'migrate:fresh', '--force'];
 
@@ -100,7 +95,7 @@ final class RunPendingMigrations implements Step
             return;
         }
 
-        info('Seeding database...');
+        terminal()->info('Seeding database...');
 
         $this->runner->run($this->rewriter->rewrite(
             ShellCommand::make('php artisan db:seed'),
@@ -118,12 +113,12 @@ final class RunPendingMigrations implements Step
         $output = trim($status->output());
 
         if ($output === '' || str_contains($output, 'No pending migrations')) {
-            info('Database is up to date.');
+            terminal()->success('Database is up to date.');
 
             return false;
         }
 
-        info('Running pending migrations...');
+        terminal()->info('Running pending migrations...');
 
         $this->runner->run($this->rewriter->rewrite(
             ShellCommand::make('php artisan migrate --force'),
@@ -138,12 +133,12 @@ final class RunPendingMigrations implements Step
         $count = $this->pendingMigrations->count();
 
         if ($count === 0) {
-            info('Database is up to date.');
+            terminal()->success('Database is up to date.');
 
             return false;
         }
 
-        info("Running {$count} pending ".Str::plural('migration', $count).'...');
+        terminal()->info("Running {$count} pending ".Str::plural('migration', $count).'...');
 
         $this->runner->run(ShellCommand::make('php artisan migrate --force'));
 

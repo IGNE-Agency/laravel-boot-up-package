@@ -4,21 +4,16 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
+use Igne\LaravelBootUp\Facades\Platform;
 use Igne\LaravelBootUp\Serve\ServeConfig;
 use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\ServeOptions;
 use Igne\LaravelBootUp\Support\BootUpException;
-use Igne\LaravelBootUp\Support\Platform;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Isolatable;
 use Illuminate\Pipeline\Pipeline;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 use Illuminate\Process\Exceptions\ProcessTimedOutException;
-
-use function Laravel\Prompts\error;
-use function Laravel\Prompts\intro;
-use function Laravel\Prompts\outro;
-
 use Throwable;
 
 final class DeployCommand extends Command implements Isolatable
@@ -31,15 +26,15 @@ final class DeployCommand extends Command implements Isolatable
 
     protected $description = 'Install dependencies, run project commands and migrate — without booting a server';
 
-    public function handle(ServeConfig $config, Platform $platform, Pipeline $pipeline): int
+    public function handle(ServeConfig $config, Pipeline $pipeline): int
     {
-        if ($platform->isWindows()) {
-            error('app:deploy is not supported on native Windows. Run it inside WSL2.');
+        if (Platform::isWindows()) {
+            terminal()->error('app:deploy is not supported on native Windows. Run it inside WSL2.');
 
             return self::FAILURE;
         }
 
-        intro('Deploying the application...');
+        terminal()->intro('Deploying the application...');
 
         $options = new ServeOptions(
             seed: (bool) $this->option('seed'),
@@ -51,16 +46,16 @@ final class DeployCommand extends Command implements Isolatable
         try {
             $pipeline->send(new ServeContext($options))->through($config->deploySteps)->thenReturn();
         } catch (BootUpException|ProcessFailedException|ProcessTimedOutException $exception) {
-            error($exception->getMessage());
+            terminal()->error($exception->getMessage());
 
             return self::FAILURE;
         } catch (Throwable $exception) {
-            error('Unexpected error: '.$exception->getMessage());
+            terminal()->error('Unexpected error: '.$exception->getMessage());
 
             return self::FAILURE;
         }
 
-        outro('Deploy complete.');
+        terminal()->outro('Deploy complete.');
 
         return self::SUCCESS;
     }

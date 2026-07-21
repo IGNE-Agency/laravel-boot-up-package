@@ -9,9 +9,6 @@ use Igne\LaravelBootUp\Process\ShellCommand;
 use Igne\LaravelBootUp\Support\LockfileConflictDetector;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\warning;
-
 /**
  * Installs the project's composer dependencies. Always runs host-side —
  * under Sail, vendor/bin/sail cannot exist before composer install has run,
@@ -26,7 +23,7 @@ final class Composer
 
     public function install(bool $update = false): void
     {
-        info($update ? 'Updating composer dependencies...' : 'Installing composer dependencies...');
+        terminal()->info($update ? 'Updating composer dependencies...' : 'Installing composer dependencies...');
 
         try {
             $this->processes->run(ShellCommand::make($update ? 'composer update' : 'composer install'));
@@ -41,7 +38,7 @@ final class Composer
 
     private function regenerateLockfileAndRetry(): void
     {
-        warning('composer.lock is out of sync with composer.json; regenerating it without changing versions...');
+        terminal()->warning('composer.lock is out of sync with composer.json; regenerating it without changing versions...');
 
         try {
             $this->processes->run(ShellCommand::make('composer update --lock'));

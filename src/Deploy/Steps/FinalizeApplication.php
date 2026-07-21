@@ -11,8 +11,6 @@ use Igne\LaravelBootUp\Process\ShellCommand;
 use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\Step;
 
-use function Laravel\Prompts\info;
-
 /**
  * Runs the configured boot-up.deploy.finalize artisan commands host-side
  * (default: storage:link).
@@ -27,7 +25,7 @@ final class FinalizeApplication implements Step
     public function handle(ServeContext $context, Closure $next): mixed
     {
         foreach ($this->config->finalize as $command) {
-            info("Running php artisan {$command}...");
+            terminal()->info("Running php artisan {$command}...");
 
             $this->processes->run(ShellCommand::make("php artisan {$command}"));
         }

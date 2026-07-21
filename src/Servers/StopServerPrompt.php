@@ -4,10 +4,6 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers;
 
-use function Laravel\Prompts\confirm;
-use function Laravel\Prompts\note;
-use function Laravel\Prompts\warning;
-
 /**
  * Asks (config-gated) whether shutdown should stop a server that
  * app:serve itself started. A server whose stop reaches beyond this
@@ -23,7 +19,7 @@ final class StopServerPrompt
 
         if (! $this->config->promptStopServer) {
             if ($impact !== null && $this->config->stopServerByDefault) {
-                note("Leaving {$server->label()} running — stopping it needs an explicit yes: {$impact}");
+                terminal()->note("Leaving {$server->label()} running — stopping it needs an explicit yes: {$impact}");
 
                 return false;
             }
@@ -32,10 +28,10 @@ final class StopServerPrompt
         }
 
         if ($impact !== null) {
-            warning($impact);
+            terminal()->warning($impact);
         }
 
-        return confirm(
+        return terminal()->confirm(
             label: "Stop {$server->label()}? Other projects may be using it.",
             default: $impact === null && $this->config->stopServerByDefault,
         );

@@ -7,9 +7,6 @@ namespace Igne\LaravelBootUp\Servers\Sail;
 use Igne\LaravelBootUp\Environment\EnvironmentConfig;
 use Igne\LaravelBootUp\Environment\ShellProfile;
 
-use function Laravel\Prompts\confirm;
-use function Laravel\Prompts\note;
-
 /**
  * Offers to add the conventional sail alias to the user's shell profile
  * once, at the end of a successful Sail start.
@@ -31,13 +28,13 @@ final class SailAliasInstaller
 
         $path = (string) $this->profile->path();
 
-        if (! confirm(label: "Add a sail alias to {$path}?")) {
-            note("Tip: you can add it yourself: {$path} → ".self::ALIAS);
+        if (! terminal()->confirm(label: "Add a sail alias to {$path}?")) {
+            terminal()->note("Tip: you can add it yourself: {$path} → ".self::ALIAS);
 
             return;
         }
 
         $this->profile->appendBlock(self::ALIAS);
-        note("Sail alias added. Run: source {$path}");
+        terminal()->success("Sail alias added. Run: source {$path}");
     }
 }

@@ -11,9 +11,6 @@ use Igne\LaravelBootUp\Process\ShellCommand;
 use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\Step;
 
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
-
 final class GenerateAppKey implements Step
 {
     public function __construct(
@@ -26,7 +23,7 @@ final class GenerateAppKey implements Step
         $key = $this->envFile->get('APP_KEY');
 
         if ($key !== null && $key !== '') {
-            note('Application key already set.');
+            terminal()->note('Application key already set.');
 
             return $next($context);
         }
@@ -34,7 +31,7 @@ final class GenerateAppKey implements Step
         // Always host-side (no server rewriting): the key must land in the
         // host .env file that every later step reads.
         $this->processes->run(ShellCommand::make('php artisan key:generate --ansi'));
-        info('Application key generated.');
+        terminal()->success('Application key generated.');
 
         return $next($context);
     }

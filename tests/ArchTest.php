@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Support\BootUpException;
+use Igne\LaravelBootUp\Support\Terminal;
+use Igne\LaravelBootUp\Support\TrackedProgress;
 
 arch('all package code uses strict types')
     ->expect('Igne\LaravelBootUp')
@@ -41,6 +43,11 @@ arch('every pipeline step implements the Step contract')
         'Igne\LaravelBootUp\Tools\Steps',
     ])
     ->toImplement(Step::class);
+
+arch('laravel prompts is only touched through the Terminal seam')
+    ->expect('Igne\LaravelBootUp')
+    ->not->toUse('Laravel\Prompts')
+    ->ignoring([Terminal::class, TrackedProgress::class]);
 
 arch('legacy namespaces are gone for good')
     ->expect([

@@ -16,9 +16,6 @@ use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Services\ServicesConfig;
 
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
-
 /**
  * Starts a tracked Horizon supervisor when laravel/horizon is a project
  * dependency. Detect-and-skip: projects without Horizon never notice
@@ -44,7 +41,7 @@ final class StartHorizon implements Step
         }
 
         if ($this->alreadyRunning()) {
-            note('Horizon already running — skipping.');
+            terminal()->note('Horizon already running — skipping.');
 
             return $next($context);
         }
@@ -57,7 +54,7 @@ final class StartHorizon implements Step
             self::LABEL,
         );
 
-        info("Horizon started (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
+        terminal()->success("Horizon started (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
 
         return $next($context);
     }

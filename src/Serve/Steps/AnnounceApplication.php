@@ -10,9 +10,6 @@ use Igne\LaravelBootUp\Serve\ServeConfig;
 use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\Step;
 
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
-
 final class AnnounceApplication implements Step
 {
     public function __construct(
@@ -28,9 +25,9 @@ final class AnnounceApplication implements Step
 
         $url = $context->server->url();
 
-        info("{$context->server->label()} is serving the application at {$url}");
-        note('Background process logs live in storage/logs/boot-up/.');
-        note('Stop everything with: php artisan app:down');
+        terminal()->success("{$context->server->label()} is serving the application at {$url}");
+        terminal()->note('Background process logs live in storage/logs/boot-up/.');
+        terminal()->note('Stop everything with: php artisan app:down');
 
         if ($this->config->openBrowser) {
             $this->browser->open($url);

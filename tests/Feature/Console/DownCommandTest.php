@@ -40,7 +40,9 @@ test('reaps tracked processes and stops only the persisted server', function ():
         'kill -0 4242' => Process::result(exitCode: 1),
     ]);
 
-    $this->artisan('app:down')->assertSuccessful();
+    $this->artisan('app:down')
+        ->expectsOutputToContain('Done.')
+        ->assertSuccessful();
 
     expect($this->server->stops)->toBe(1)
         ->and($this->ledger->isEmpty())->toBeTrue()

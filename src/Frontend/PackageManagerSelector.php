@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Frontend;
 
-use function Laravel\Prompts\warning;
-
 final class PackageManagerSelector
 {
     private ?PackageManager $selected = null;
@@ -32,7 +30,7 @@ final class PackageManagerSelector
         $demanded = $this->packageJson->demandedPackageManager();
 
         if ($demanded !== null && $demanded !== $configured) {
-            warning("package.json demands {$demanded->value}; using it instead of the configured {$configured->value}.");
+            terminal()->warning("package.json demands {$demanded->value}; using it instead of the configured {$configured->value}.");
 
             return $demanded;
         }

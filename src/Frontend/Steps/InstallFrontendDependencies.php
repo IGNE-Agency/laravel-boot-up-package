@@ -16,10 +16,6 @@ use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Support\LockfileConflictDetector;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
-use function Laravel\Prompts\warning;
-
 final class InstallFrontendDependencies implements Step
 {
     public function __construct(
@@ -33,13 +29,13 @@ final class InstallFrontendDependencies implements Step
     public function handle(ServeContext $context, Closure $next): mixed
     {
         if (! $context->options->withAssets) {
-            note('Frontend dependencies skipped (--without-assets).');
+            terminal()->note('Frontend dependencies skipped (--without-assets).');
 
             return $next($context);
         }
 
         if (! $this->packageJson->exists()) {
-            note('No package.json found — skipping frontend dependencies.');
+            terminal()->note('No package.json found — skipping frontend dependencies.');
 
             return $next($context);
         }
@@ -51,7 +47,7 @@ final class InstallFrontendDependencies implements Step
             $context->server?->commandRewrites(),
         );
 
-        info(($context->options->update ? 'Updating' : 'Installing')." frontend dependencies with {$manager->value}...");
+        terminal()->info(($context->options->update ? 'Updating' : 'Installing')." frontend dependencies with {$manager->value}...");
 
         try {
             $this->runner->run($command);
@@ -75,7 +71,7 @@ final class InstallFrontendDependencies implements Step
             throw FrontendException::installFailed($manager, $this->failureReason($exception));
         }
 
-        warning('Lockfile is out of sync with package.json — retrying once.');
+        terminal()->warning('Lockfile is out of sync with package.json — retrying once.');
 
         try {
             $this->runner->run($command);

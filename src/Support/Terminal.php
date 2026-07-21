@@ -1,0 +1,244 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Igne\LaravelBootUp\Support;
+
+use Closure;
+use Laravel\Prompts\Concerns\Colors;
+
+use function Laravel\Prompts\confirm;
+use function Laravel\Prompts\error;
+use function Laravel\Prompts\info;
+use function Laravel\Prompts\intro;
+use function Laravel\Prompts\note;
+use function Laravel\Prompts\outro;
+use function Laravel\Prompts\password;
+use function Laravel\Prompts\select;
+use function Laravel\Prompts\table;
+use function Laravel\Prompts\text;
+use function Laravel\Prompts\warning;
+
+/**
+ * The single terminal seam: every message and prompt the package emits goes
+ * through here, so styling stays consistent and an active progress bar can
+ * be suspended before foreign output and redrawn after it.
+ *
+ * Semantics: success() is a green completed state, info() a plain activity
+ * line, note() a dim skip/neutral/hint line. Block methods render as one
+ * Prompts note each (one write chunk), except list(), which writes one line
+ * per item so artisan tests can match individual bullets.
+ */
+final class Terminal
+{
+    use Colors;
+
+    private ?TrackedProgress $activeProgress = null;
+
+    public function intro(string $message): void
+    {
+        $this->suspended(fn () => intro($message));
+    }
+
+    public function outro(string $message): void
+    {
+        $this->suspended(fn () => outro($message));
+    }
+
+    /**
+     * A completed state: "X created.", "X started.", "X verified.".
+     */
+    public function success(string $message): void
+    {
+        $this->suspended(fn () => info($message));
+    }
+
+    /**
+     * An activity line: "Installing...", "Running...".
+     */
+    public function info(string $message): void
+    {
+        $this->suspended(fn () => note($message));
+    }
+
+    /**
+     * A skip, neutral, or hint line — dimmed so it fades behind the work.
+     *
+     * @param  string|list<string>  $message
+     */
+    public function note(string|array $message): void
+    {
+        $lines = \is_array($message) ? $message : explode(PHP_EOL, $message);
+
+        $this->suspended(fn () => note(implode(PHP_EOL, array_map($this->dim(...), $lines))));
+    }
+
+    public function warning(string $message): void
+    {
+        $this->suspended(fn () => warning($message));
+    }
+
+    public function error(string $message): void
+    {
+        $this->suspended(fn () => error($message));
+    }
+
+    /**
+     * One extra blank line. Prompts already pads a blank-line margin between
+     * elements, so this is only for deliberate breathing room.
+     */
+    public function blank(): void
+    {
+        $this->suspended(fn () => note(''));
+    }
+
+    public function heading(string $title): void
+    {
+        $this->suspended(fn () => note($this->bold($this->cyan($title))));
+    }
+
+    /**
+     * A visible divider before a logical group of output: bold-cyan title,
+     * optional dim description, optional indented body lines.
+     *
+     * @param  list<string>  $lines
+     */
+    public function section(string $title, array $lines = [], ?string $description = null): void
+    {
+        $block = Lines::make()->line($this->bold($this->cyan($title)));
+
+        if ($description !== null) {
+            $block->line($this->dim($description));
+        }
+
+        $block->indent(2, fn (Lines $body) => $body->lines($lines));
+
+        $this->suspended(fn () => note(implode(PHP_EOL, $block->toArray())));
+    }
+
+    /**
+     * A bullet per item, written line-by-line.
+     *
+     * @param  list<string>  $items
+     */
+    public function list(array $items): void
+    {
+        foreach ($items as $item) {
+            $this->suspended(fn () => note("• {$item}"));
+        }
+    }
+
+    /**
+     * A grouped result block: title, bulleted items, optional footer line.
+     *
+     * @param  list<string>  $items
+     */
+    public function summary(string $title, array $items, ?string $footer = null): void
+    {
+        $block = Lines::make()
+            ->line($this->bold($this->cyan($title)))
+            ->indent(2, fn (Lines $body) => $body->lines(array_map(fn (string $item): string => "• {$item}", $items)));
+
+        if ($footer !== null) {
+            $block->lineWithBreak($footer);
+        }
+
+        $this->suspended(fn () => note(implode(PHP_EOL, $block->toArray())));
+    }
+
+    /**
+     * @param  list<string>  $headers
+     * @param  list<list<string>>  $rows
+     */
+    public function table(array $headers, array $rows): void
+    {
+        $this->suspended(fn () => table($headers, $rows));
+    }
+
+    public function confirm(
+        string $label,
+        bool $default = true,
+        string $yes = 'Yes',
+        string $no = 'No',
+        bool|string $required = false,
+        mixed $validate = null,
+        string $hint = '',
+    ): bool {
+        return $this->suspended(fn () => confirm($label, $default, $yes, $no, $required, $validate, $hint));
+    }
+
+    /**
+     * @param  array<int|string, string>  $options
+     */
+    public function select(
+        string $label,
+        array $options,
+        int|string|null $default = null,
+        int $scroll = 5,
+        mixed $validate = null,
+        string $hint = '',
+        bool|string $required = true,
+    ): int|string {
+        return $this->suspended(fn () => select($label, $options, $default, $scroll, $validate, $hint, $required));
+    }
+
+    public function text(
+        string $label,
+        string $placeholder = '',
+        string $default = '',
+        bool|string $required = false,
+        mixed $validate = null,
+        string $hint = '',
+    ): string {
+        return $this->suspended(fn () => text($label, $placeholder, $default, $required, $validate, $hint));
+    }
+
+    public function password(
+        string $label,
+        string $placeholder = '',
+        bool|string $required = false,
+        mixed $validate = null,
+        string $hint = '',
+    ): string {
+        return $this->suspended(fn () => password($label, $placeholder, $required, $validate, $hint));
+    }
+
+    /**
+     * Create and register the progress bar this terminal keeps out of the
+     * way of other output. The caller drives start/advance/finish/fail.
+     */
+    public function progress(string $label, iterable|int $steps, string $hint = ''): TrackedProgress
+    {
+        return $this->activeProgress = new TrackedProgress(
+            $label,
+            $steps,
+            $hint,
+            onDetach: function (TrackedProgress $progress): void {
+                if ($this->activeProgress === $progress) {
+                    $this->activeProgress = null;
+                }
+            },
+        );
+    }
+
+    /**
+     * Run output with the active progress bar out of the way: erase its
+     * frame, write, then redraw it underneath.
+     */
+    private function suspended(Closure $callback): mixed
+    {
+        $progress = $this->activeProgress;
+
+        if ($progress === null || ! $progress->isRendered()) {
+            return $callback();
+        }
+
+        $progress->clear();
+
+        try {
+            return $callback();
+        } finally {
+            $progress->resume();
+        }
+    }
+}

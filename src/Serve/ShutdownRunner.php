@@ -11,9 +11,6 @@ use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\ServerSelector;
 use Igne\LaravelBootUp\Servers\StopServerPrompt;
 
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
-
 /**
  * The single teardown path, shared by app:down and the Ctrl-C trap on
  * app:serve. Only ever considers the server app:serve itself started, and
@@ -42,13 +39,13 @@ final class ShutdownRunner
         $active = $this->store->current();
 
         if ($active === null && $this->ledger->isEmpty()) {
-            info('Nothing to shut down.');
+            terminal()->info('Nothing to shut down.');
 
             return;
         }
 
         $this->ledger->all()->each(function (ProcessRecord $record): void {
-            note("Stopping {$record->label} (pid {$record->pid})...");
+            terminal()->info("Stopping {$record->label} (pid {$record->pid})...");
         });
 
         // reap() already forgets confirmed-dead entries; only remove the
@@ -63,13 +60,13 @@ final class ShutdownRunner
 
         $this->store->clear();
 
-        info('Shutdown complete.');
+        terminal()->success('Shutdown complete.');
     }
 
     private function stopServer(string $key, bool $startedByUs): void
     {
         if (! $startedByUs) {
-            info("Leaving {$key} running — it was already running before app:serve started.");
+            terminal()->note("Leaving {$key} running — it was already running before app:serve started.");
 
             return;
         }
@@ -82,11 +79,11 @@ final class ShutdownRunner
 
         if ($this->prompt->shouldStop($server)) {
             $server->stop();
-            info("{$server->label()} stopped.");
+            terminal()->success("{$server->label()} stopped.");
 
             return;
         }
 
-        info("Keeping {$server->label()} running.");
+        terminal()->note("Keeping {$server->label()} running.");
     }
 }

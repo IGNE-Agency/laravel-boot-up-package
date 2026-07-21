@@ -10,8 +10,6 @@ use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Servers\ActiveServer;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 
-use function Laravel\Prompts\info;
-
 /**
  * Boots the selected server. The active-server record is written BEFORE
  * start() runs (write-ahead) so a crash mid-start still leaves shutdown
@@ -41,7 +39,7 @@ final class StartServer implements Step
 
         $server->start($context);
 
-        info("{$server->label()} is running.");
+        terminal()->success("{$server->label()} is running.");
 
         return $next($context);
     }

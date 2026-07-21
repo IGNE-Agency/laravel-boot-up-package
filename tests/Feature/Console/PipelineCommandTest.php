@@ -192,6 +192,7 @@ test('prints the slim secrets table with a guidance section per secret and the n
         ->expectsOutputToContain('Add under: Settings → Environments → staging → Environment secrets (create the environment first).')
         ->expectsOutputToContain('Example: https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}')
         ->expectsOutputToContain('Next steps')
+        ->expectsOutputToContain('Pipeline generated.')
         ->assertSuccessful();
 });
 

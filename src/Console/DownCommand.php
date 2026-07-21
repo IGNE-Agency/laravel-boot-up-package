@@ -16,7 +16,11 @@ final class DownCommand extends Command implements Isolatable
 
     public function handle(ShutdownRunner $shutdown): int
     {
+        terminal()->intro('Stopping everything boot-up started...');
+
         $shutdown->run();
+
+        terminal()->outro('Done.');
 
         return self::SUCCESS;
     }

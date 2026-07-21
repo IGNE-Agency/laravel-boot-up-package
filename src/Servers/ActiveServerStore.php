@@ -6,8 +6,6 @@ namespace Igne\LaravelBootUp\Servers;
 
 use Igne\LaravelBootUp\Support\AtomicFile;
 
-use function Laravel\Prompts\warning;
-
 /**
  * Persists the active-server record across the app:serve / app:down
  * boundary as atomic JSON in storage/framework/boot-up.
@@ -52,6 +50,6 @@ final class ActiveServerStore
     {
         rename($this->path, $this->path.'.corrupt');
 
-        warning('The boot-up active-server record was corrupt — moved to '.basename($this->path).'.corrupt and reset. A previously started server may still be running.');
+        terminal()->warning('The boot-up active-server record was corrupt — moved to '.basename($this->path).'.corrupt and reset. A previously started server may still be running.');
     }
 }

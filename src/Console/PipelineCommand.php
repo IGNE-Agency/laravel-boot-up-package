@@ -15,21 +15,10 @@ use Igne\LaravelBootUp\Pipelines\PipelinePlan;
 use Igne\LaravelBootUp\Pipelines\PipelinePlanner;
 use Igne\LaravelBootUp\Pipelines\PipelineSecret;
 use Igne\LaravelBootUp\Support\AtomicFile;
-use Igne\LaravelBootUp\Support\Lines;
 use Illuminate\Console\Command;
-use Laravel\Prompts\Concerns\Colors;
-
-use function Laravel\Prompts\confirm;
-use function Laravel\Prompts\error;
-use function Laravel\Prompts\note;
-use function Laravel\Prompts\select;
-use function Laravel\Prompts\table;
-use function Laravel\Prompts\warning;
 
 final class PipelineCommand extends Command
 {
-    use Colors;
-
     private const BUILT_IN_GENERATORS = [
         'github' => GitHubActionsGenerator::class,
         'bitbucket' => BitbucketPipelinesGenerator::class,
@@ -44,12 +33,14 @@ final class PipelineCommand extends Command
 
     public function handle(PipelinePlanner $planner, PipelineConfig $config, PipelineEnvFile $envFile): int
     {
+        terminal()->intro('Generating the CI/CD pipeline...');
+
         $generators = array_merge(self::BUILT_IN_GENERATORS, $config->generators);
 
         $provider = $this->provider($generators);
 
         if (! isset($generators[$provider])) {
-            error("Unknown provider [{$provider}]. Available: ".implode(', ', array_keys($generators)));
+            terminal()->error("Unknown provider [{$provider}]. Available: ".implode(', ', array_keys($generators)));
 
             return self::FAILURE;
         }
@@ -60,7 +51,7 @@ final class PipelineCommand extends Command
         $host = $this->host();
 
         if (\is_string($host)) {
-            error("Unknown host [{$host}]. Available: ".implode(', ', array_column(DeployHookHost::cases(), 'value')));
+            terminal()->error("Unknown host [{$host}]. Available: ".implode(', ', array_column(DeployHookHost::cases(), 'value')));
 
             return self::FAILURE;
         }
@@ -82,6 +73,8 @@ final class PipelineCommand extends Command
 
         $this->instructions($generator, $plan);
 
+        terminal()->outro('Pipeline generated.');
+
         return self::SUCCESS;
     }
 
@@ -102,7 +95,7 @@ final class PipelineCommand extends Command
             $options[$key] = $this->laravel->make($class)->label();
         }
 
-        return (string) select('Which git provider should the pipeline target?', $options);
+        return (string) terminal()->select('Which git provider should the pipeline target?', $options);
     }
 
     /**
@@ -124,7 +117,7 @@ final class PipelineCommand extends Command
             $options[$host->value] = $host->label();
         }
 
-        return DeployHookHost::from((string) select(
+        return DeployHookHost::from((string) terminal()->select(
             label: 'Which host receives the deploy hook?',
             options: $options,
             default: DeployHookHost::FORTRABBIT->value,
@@ -155,15 +148,15 @@ final class PipelineCommand extends Command
 
         $confirmed = match (\count($existing)) {
             0 => true,
-            1 => confirm("{$existing[0]} already exists. Overwrite it?", default: false),
-            default => confirm(
+            1 => terminal()->confirm("{$existing[0]} already exists. Overwrite it?", default: false),
+            default => terminal()->confirm(
                 'Overwrite these '.\count($existing).' existing files? '.implode(', ', $existing),
                 default: false,
             ),
         };
 
         if (! $confirmed) {
-            warning('Nothing written — declined to overwrite existing files.');
+            terminal()->warning('Nothing written — declined to overwrite existing files.');
         }
 
         return $confirmed;
@@ -179,7 +172,7 @@ final class PipelineCommand extends Command
             chmod($path, 0755);
         }
 
-        note("Wrote {$file->path}.");
+        terminal()->success("Wrote {$file->path}.");
     }
 
     private function instructions(PipelineGenerator $generator, PipelinePlan $plan): void
@@ -187,35 +180,18 @@ final class PipelineCommand extends Command
         $secrets = $generator->secrets($plan);
 
         if ($secrets !== []) {
-            table(
+            terminal()->table(
                 ['Secret', 'Add under', 'Purpose'],
                 array_map(fn (PipelineSecret $secret) => [$secret->name, $secret->location, $secret->purpose], $secrets),
             );
         }
 
         foreach ($secrets as $secret) {
-            $this->section($this->cyan("{$secret->name} — {$secret->location}"), $secret->details);
+            if ($secret->details !== []) {
+                terminal()->section("{$secret->name} — {$secret->location}", $secret->details);
+            }
         }
 
-        $this->section($this->green('Next steps'), $generator->instructions($plan));
-    }
-
-    /**
-     * A spaced note block: colored heading, body indented beneath it.
-     *
-     * @param  list<string>  $lines
-     */
-    private function section(string $heading, array $lines): void
-    {
-        if ($lines === []) {
-            return;
-        }
-
-        $this->newLine();
-
-        note(implode("\n", Lines::make()
-            ->line($heading)
-            ->indent(2, fn (Lines $note) => $note->lines($lines))
-            ->toArray()));
+        terminal()->section('Next steps', $generator->instructions($plan));
     }
 }

@@ -13,9 +13,6 @@ use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\Facades\DB;
-
-use function Laravel\Prompts\info;
-
 use Throwable;
 
 /**
@@ -40,7 +37,7 @@ final class VerifyDatabaseConnection implements Step
             $this->verifyFromHost();
         }
 
-        info('Database connection verified.');
+        terminal()->success('Database connection verified.');
 
         return $next($context);
     }

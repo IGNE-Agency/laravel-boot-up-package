@@ -11,9 +11,6 @@ use Igne\LaravelBootUp\Serve\ServeContext;
 use Igne\LaravelBootUp\Serve\Step;
 use Illuminate\Contracts\Config\Repository;
 
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
-
 /**
  * Creates the configured database when it does not exist yet. Skipped for
  * servers that provision the database themselves (e.g. Sail's containers).
@@ -29,13 +26,13 @@ final class EnsureDatabaseExists implements Step
     public function handle(ServeContext $context, Closure $next): mixed
     {
         if (! $this->config->create) {
-            note('Database creation is disabled in configuration — skipping.');
+            terminal()->note('Database creation is disabled in configuration — skipping.');
 
             return $next($context);
         }
 
         if ($context->server?->providesDatabase() === true) {
-            note("{$context->server->label()} provisions the database itself — skipping creation.");
+            terminal()->note("{$context->server->label()} provisions the database itself — skipping creation.");
 
             return $next($context);
         }
@@ -45,9 +42,9 @@ final class EnsureDatabaseExists implements Step
         $database = (string) ($connection['database'] ?? '');
 
         if ($this->creator->createDatabaseIfMissing($connection)) {
-            info("Database [{$database}] created.");
+            terminal()->success("Database [{$database}] created.");
         } else {
-            note("Database [{$database}] already exists.");
+            terminal()->note("Database [{$database}] already exists.");
         }
 
         return $next($context);

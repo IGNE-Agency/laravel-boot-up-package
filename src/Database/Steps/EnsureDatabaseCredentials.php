@@ -13,11 +13,6 @@ use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\password;
-use function Laravel\Prompts\text;
-use function Laravel\Prompts\warning;
-
 /**
  * Prompts for DB_* values missing from .env, writes them back, and refreshes
  * the loaded config so later steps in this same process see fresh values.
@@ -56,7 +51,7 @@ final class EnsureDatabaseCredentials implements Step
             return $next($context);
         }
 
-        warning('Database credentials are missing from .env: '.implode(', ', $missing));
+        terminal()->warning('Database credentials are missing from .env: '.implode(', ', $missing));
 
         $answers = $this->promptFor($missing, $driver, $context->server?->key());
 
@@ -68,7 +63,7 @@ final class EnsureDatabaseCredentials implements Step
 
         DB::purge($driver);
 
-        info('Database credentials saved to .env.');
+        terminal()->success('Database credentials saved to .env.');
 
         return $next($context);
     }
@@ -125,8 +120,8 @@ final class EnsureDatabaseCredentials implements Step
 
         foreach ($missing as $key) {
             $answers[$key] = $key === 'DB_PASSWORD'
-                ? password(label: 'Database password (leave empty for none)', required: false)
-                : text(label: $labels[$key], default: $defaults[$key], required: true);
+                ? terminal()->password(label: 'Database password (leave empty for none)', required: false)
+                : terminal()->text(label: $labels[$key], default: $defaults[$key], required: true);
         }
 
         return $answers;
