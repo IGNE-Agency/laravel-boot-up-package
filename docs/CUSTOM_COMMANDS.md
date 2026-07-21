@@ -7,7 +7,7 @@ schema exporters, cache warmers — without touching the package.
 
 1. Create a class implementing
    `Igne\LaravelBootUp\Deploy\ProvidesProjectCommands` (see
-   [examples/ProjectCommands.php](examples/ProjectCommands.php)):
+   [examples/ProjectCommands.php](../examples/ProjectCommands.php)):
 
 ```php
 namespace App\BootUp;
