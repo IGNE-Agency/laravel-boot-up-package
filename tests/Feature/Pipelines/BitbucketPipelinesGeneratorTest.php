@@ -273,7 +273,7 @@ test('the none host renders a checks-only pipeline that still runs on branch pus
     $yaml = bitbucketPipeline(bitbucketPipelinePlan(['host' => DeployHookHost::NONE]));
 
     expect($yaml)->toContain('# Checks run on pull requests and on pushes to develop, staging and main.')
-        ->and($yaml)->toContain('# No deploy steps were generated — rerun app:pipeline with a deploy-hook host to add them.')
+        ->and($yaml)->toContain('# No deploy steps were generated — rerun generate:pipeline with a deploy-hook host to add them.')
         ->and($yaml)->toContain('    develop:')
         ->and($yaml)->toContain('- step: *test')
         ->and($yaml)->not->toContain('deployment:')
@@ -291,7 +291,7 @@ test('the none host drops deploy-hook.sh, the DEPLOY_HOOK secrets and the deploy
     expect($paths)->not->toContain('scripts/ci/deploy-hook.sh')
         ->and($names)->toBe(['COMPOSER_AUTH'])
         ->and($instructions)->toContain('Enable Pipelines once')
-        ->and($instructions)->toContain('Rerun app:pipeline with a deploy-hook host to add the deploy steps.')
+        ->and($instructions)->toContain('Rerun generate:pipeline with a deploy-hook host to add the deploy steps.')
         ->and($instructions)->not->toContain('DEPLOY_HOOK')
         ->and($instructions)->not->toContain('trigger: manual');
 });

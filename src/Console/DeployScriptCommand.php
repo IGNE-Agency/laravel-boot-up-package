@@ -20,7 +20,7 @@ final class DeployScriptCommand extends BootUpCommand
         'forge' => ForgeScriptGenerator::class,
     ];
 
-    protected $signature = 'app:deploy-script
+    protected $signature = 'generate:deploy-script
         {platform? : The hosting platform (fortrabbit, forge, or any generator registered in boot-up.deploy.script_generators)}
         {environment? : The target environment (development, staging, production)}
         {--classic : Forge only — generate for classic (non-zero-downtime) sites}
@@ -75,7 +75,7 @@ final class DeployScriptCommand extends BootUpCommand
      * Print the script to stdout. On an interactive terminal comments are
      * dimmed and section headings are bold-cyan so it's clear what to copy;
      * otherwise (redirect, pipe, non-TTY) the raw plain text goes out so
-     * `app:deploy-script forge production > deploy.sh` stays clean.
+     * `generate:deploy-script forge production > deploy.sh` stays clean.
      */
     private function printScript(Lines $script): void
     {
@@ -89,6 +89,7 @@ final class DeployScriptCommand extends BootUpCommand
 
         $styler = fn (string $kind, string $text): string => match ($kind) {
             Lines::KIND_HEADING => terminal()->bold(terminal()->cyan($text)),
+            Lines::KIND_WARNING => terminal()->orange($text),
             Lines::KIND_COMMENT => terminal()->dim($text),
             default => $text,
         };

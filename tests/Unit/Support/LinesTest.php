@@ -198,6 +198,14 @@ test('commentIf appends a comment-kind line only when the condition holds', func
         ->and($lines->toStyledArray(fn (string $kind): string => $kind))->toBe([Lines::KIND_COMMENT]);
 });
 
+test('warning renders a "#!" shell comment tagged as a warning kind', function (): void {
+    $lines = Lines::make()->warning('watch out', '')->warning('and again');
+
+    expect($lines->toArray())->toBe(['#! watch out', '#!', '#! and again'])
+        ->and($lines->toStyledArray(fn (string $kind): string => $kind))
+        ->toBe([Lines::KIND_WARNING, Lines::KIND_WARNING, Lines::KIND_WARNING]);
+});
+
 test('toStyledArray maps each line through the styler by kind and passes blanks through', function (): void {
     $lines = Lines::make()
         ->comment('provenance')

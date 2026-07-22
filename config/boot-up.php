@@ -154,7 +154,7 @@ return [
         'cache_framework_files' => env('BOOT_UP_CACHE', false),
         // Artisan commands run at the end of every boot/deploy.
         'finalize' => ['storage:link'],
-        // Extension point for app:deploy-script: 'platform' => class implementing
+        // Extension point for generate:deploy-script: 'platform' => class implementing
         // Igne\LaravelBootUp\Deploy\Scripts\ScriptGenerator (wins over built-ins).
         'script_generators' => [],
     ],
@@ -163,7 +163,7 @@ return [
     |--------------------------------------------------------------------------
     | CI/CD pipelines
     |--------------------------------------------------------------------------
-    | app:pipeline generates a provider pipeline, shared scripts/ci/*.sh and
+    | generate:pipeline generates a provider pipeline, shared scripts/ci/*.sh and
     | .env.pipeline. 'branches' maps a git branch to the deployment environment
     | (GitHub environment / Bitbucket deployment) whose DEPLOY_HOOK secret is
     | curled after a green push (an unset secret skips that deploy gracefully).

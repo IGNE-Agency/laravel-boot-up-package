@@ -7,7 +7,7 @@ namespace Igne\LaravelBootUp\Pipelines;
 /**
  * Where the DEPLOY_HOOK URL comes from. The generated pipeline and
  * scripts/ci/deploy-hook.sh work with any HTTPS POST deploy hook, so for the
- * real hosts only the app:pipeline guidance differs. NONE goes further: the
+ * real hosts only the generate:pipeline guidance differs. NONE goes further: the
  * deploy jobs, DEPLOY_HOOK secrets and deploy-hook.sh are omitted entirely —
  * the pipeline runs checks only.
  */

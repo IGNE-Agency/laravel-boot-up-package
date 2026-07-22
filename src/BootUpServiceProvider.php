@@ -7,6 +7,7 @@ namespace Igne\LaravelBootUp;
 use Igne\LaravelBootUp\Console\DeployCommand;
 use Igne\LaravelBootUp\Console\DeployScriptCommand;
 use Igne\LaravelBootUp\Console\DownCommand;
+use Igne\LaravelBootUp\Console\GenerateGitHooksCommand;
 use Igne\LaravelBootUp\Console\PipelineCommand;
 use Igne\LaravelBootUp\Console\ServeCommand;
 use Igne\LaravelBootUp\Console\StatusCommand;
@@ -145,6 +146,7 @@ final class BootUpServiceProvider extends ServiceProvider
             DeployCommand::class,
             DeployScriptCommand::class,
             PipelineCommand::class,
+            GenerateGitHooksCommand::class,
             DownCommand::class,
             StatusCommand::class,
         ]);

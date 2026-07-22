@@ -23,6 +23,8 @@ final class Lines
 
     public const KIND_HEADING = 'heading';
 
+    public const KIND_WARNING = 'warning';
+
     /** @var list<string> */
     private array $lines = [];
 
@@ -148,6 +150,20 @@ final class Lines
     {
         foreach ($headings as $heading) {
             $this->appendLine($heading === '' ? '#' : "# {$heading}", self::KIND_HEADING);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Append "#! {warning}" per argument — still a valid shell comment (the
+     * leading '#'), but the '!' flags a caution and the line is tagged as a
+     * warning so terminal rendering can colour it loudly.
+     */
+    public function warning(string ...$warnings): self
+    {
+        foreach ($warnings as $warning) {
+            $this->appendLine($warning === '' ? '#!' : "#! {$warning}", self::KIND_WARNING);
         }
 
         return $this;

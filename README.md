@@ -81,13 +81,13 @@ php artisan app:deploy
 | `--no-migrate`    | Skip running pending migrations.                         |
 | `--update` / `-u` | Update dependencies instead of installing.               |
 
-### `app:deploy-script`
+### `generate:deploy-script`
 
 Export a deployment script for a hosting platform, based on this package's
 config. See [Deployment scripts](#deployment-scripts).
 
 ```bash
-php artisan app:deploy-script
+php artisan generate:deploy-script
 ```
 
 | Argument / option | Description                                                                             |
@@ -97,13 +97,13 @@ php artisan app:deploy-script
 | `--classic`       | Forge only — generate for classic (non-zero-downtime) sites.                            |
 | `--output=`       | Write the script to a file instead of printing it.                                      |
 
-### `app:pipeline`
+### `generate:pipeline`
 
 Generate a CI/CD pipeline, its shared `scripts/ci` files and `.env.pipeline` for
 a git provider. See [CI/CD pipelines](#cicd-pipelines).
 
 ```bash
-php artisan app:pipeline
+php artisan generate:pipeline
 ```
 
 | Argument / option | Description                                                                                                         |
@@ -168,7 +168,7 @@ comes up. Tune the check with `server.herd.health.*` (see
 
 ## Deployment scripts
 
-`app:deploy-script` turns your boot-up config into a paste-ready deployment
+`generate:deploy-script` turns your boot-up config into a paste-ready deployment
 script for your hosting platform, tuned per environment: `development` keeps dev
 dependencies, `staging` and `production` optimize for release.
 
@@ -185,7 +185,7 @@ Details per platform: [docs/DEPLOYMENTS.md](docs/DEPLOYMENTS.md).
 
 ## CI/CD pipelines
 
-`app:pipeline` generates a pipeline for your git provider, plus shared shell
+`generate:pipeline` generates a pipeline for your git provider, plus shared shell
 scripts that hold all the logic — so every stage also runs locally and both
 providers behave identically. Checks run on every pull request; deploys are
 branch-scoped: a green push on a deploy branch triggers your host's deploy

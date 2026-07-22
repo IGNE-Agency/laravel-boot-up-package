@@ -93,8 +93,9 @@ final class GitHubActionsGenerator implements PipelineGenerator
                 "An unset DEPLOY_HOOK skips that environment's deploy with a notice instead of failing the run.",
                 'Deploying from other branches? Remap boot-up.pipeline.branches and regenerate.',
             ] : [
-                'Ready to deploy from this pipeline later? Rerun app:pipeline with a deploy-hook host to add the deploy jobs.',
+                'Ready to deploy from this pipeline later? Rerun generate:pipeline with a deploy-hook host to add the deploy jobs.',
             ],
+            ...$plan->pint ? ['Lint before every commit: run `php artisan generate:git-hooks` to install the pre-commit Pint hook.'] : [],
         ];
     }
 
@@ -110,7 +111,7 @@ final class GitHubActionsGenerator implements PipelineGenerator
                     'scripts/ci/deploy-hook.sh (skipped when DEPLOY_HOOK is unset).',
                 ] : [
                     "Checks run on pull requests and on pushes to {$this->scripts->branchList($plan)}.",
-                    'No deploy jobs were generated — rerun app:pipeline with a deploy-hook host to add them.',
+                    'No deploy jobs were generated — rerun generate:pipeline with a deploy-hook host to add them.',
                 ],
             )
             ->lineWithBreak('name: CI/CD')

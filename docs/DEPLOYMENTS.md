@@ -1,15 +1,15 @@
 # Deployment scripts
 
-`app:deploy-script` turns this package's config (package manager, migrations,
+`generate:deploy-script` turns this package's config (package manager, migrations,
 finalize commands, queue usage, and your bound project commands) into a
 paste-ready deployment script for your hosting platform:
 
 ```bash
-php artisan app:deploy-script forge production
-php artisan app:deploy-script forge production --classic
-php artisan app:deploy-script fortrabbit staging
-php artisan app:deploy-script                         # prompts for platform + environment
-php artisan app:deploy-script forge production --output=deploy.sh
+php artisan generate:deploy-script forge production
+php artisan generate:deploy-script forge production --classic
+php artisan generate:deploy-script fortrabbit staging
+php artisan generate:deploy-script                         # prompts for platform + environment
+php artisan generate:deploy-script forge production --output=deploy.sh
 ```
 
 ## Environments
@@ -44,7 +44,7 @@ dashboard instead of one script.
 - **Post deploy commands** — migrations, optimization, finalize commands and a
   queue restart.
 
-`app:deploy-script fortrabbit {environment}` outputs both lists, ready to paste
+`generate:deploy-script fortrabbit {environment}` outputs both lists, ready to paste
 into the matching dashboard fields.
 
 ## Project commands

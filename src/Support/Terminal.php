@@ -98,6 +98,16 @@ final class Terminal
     }
 
     /**
+     * Wrap text in an orange 256-colour foreground — for loud warnings that
+     * need to stand out from ordinary (dim) output. The Prompts Colors trait
+     * has no orange, so this is the one raw escape the seam owns.
+     */
+    public function orange(string $text): string
+    {
+        return "\e[38;5;208m{$text}\e[39m";
+    }
+
+    /**
      * A visible divider before a logical group of output: bold-cyan title,
      * optional dim description, optional indented body lines.
      *

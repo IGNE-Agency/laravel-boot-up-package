@@ -61,7 +61,7 @@ install Node via nvm).
 2. Register it under `boot-up.deploy.script_generators`, e.g.
    `'envoyer' => EnvoyerScriptGenerator::class`.
 
-It becomes selectable in `app:deploy-script` alongside Forge and fortrabbit.
+It becomes selectable in `generate:deploy-script` alongside Forge and fortrabbit.
 
 ## Custom git providers
 
@@ -73,6 +73,6 @@ It becomes selectable in `app:deploy-script` alongside Forge and fortrabbit.
 2. Register it under `boot-up.pipeline.generators`, e.g.
    `'gitlab' => GitlabPipelineGenerator::class`.
 
-It becomes selectable in `app:pipeline` alongside GitHub and Bitbucket. Reuse
+It becomes selectable in `generate:pipeline` alongside GitHub and Bitbucket. Reuse
 `Igne\LaravelBootUp\Pipelines\CiScripts` to ship the same shared scripts, and
 `Igne\LaravelBootUp\Support\Lines` to build documents.

@@ -107,7 +107,7 @@ entirely? The whole pipeline is published config — implement
 
 ## In exported deployment scripts
 
-`php artisan app:deploy-script` embeds your project commands into the generated
+`php artisan generate:deploy-script` embeds your project commands into the generated
 Forge / Fortrabbit scripts (and the CI `test.sh`) in the four-phase order above,
 with each description rendered as a `#` comment above its command. On a Forge
 zero-downtime site, `afterDeploy()` commands run inside `$ACTIVATE_RELEASE()` —

@@ -1,14 +1,14 @@
 # CI/CD pipelines
 
-`app:pipeline` writes a thin provider pipeline, the shared shell scripts it
+`generate:pipeline` writes a thin provider pipeline, the shared shell scripts it
 calls, and a `.env.pipeline` test environment — all at their canonical paths:
 
 ```bash
-php artisan app:pipeline github fortrabbit   # .github/workflows/ci.yml + scripts/ci/* + .env.pipeline
-php artisan app:pipeline bitbucket webhook   # bitbucket-pipelines.yml + scripts/ci/* + .env.pipeline
-php artisan app:pipeline github none         # checks only — no deploy steps, secrets or deploy-hook.sh
-php artisan app:pipeline                     # prompts for the provider and the deploy-hook host
-php artisan app:pipeline github fortrabbit --force   # overwrite existing files without asking
+php artisan generate:pipeline github fortrabbit   # .github/workflows/ci.yml + scripts/ci/* + .env.pipeline
+php artisan generate:pipeline bitbucket webhook   # bitbucket-pipelines.yml + scripts/ci/* + .env.pipeline
+php artisan generate:pipeline github none         # checks only — no deploy steps, secrets or deploy-hook.sh
+php artisan generate:pipeline                     # prompts for the provider and the deploy-hook host
+php artisan generate:pipeline github fortrabbit --force   # overwrite existing files without asking
 ```
 
 ## The shared scripts
@@ -67,7 +67,7 @@ generic webhook).
 No deploy-hook host yet? Pass `none` (or pick it at the prompt) to generate a
 **checks-only pipeline**: lint, build and test still run on pull requests and on
 pushes to the mapped branches, but the deploy steps, `DEPLOY_HOOK` secrets and
-`deploy-hook.sh` are omitted. Rerun `app:pipeline` with a host later to add the
+`deploy-hook.sh` are omitted. Rerun `generate:pipeline` with a host later to add the
 deploys.
 
 ## Secrets & next steps
@@ -80,7 +80,7 @@ checks, enabling Bitbucket Pipelines once).
 ## Extending the pipeline
 
 Two config surfaces let you extend a generated pipeline without replacing the
-generator. `app:pipeline` regenerates its files from this config every run, so
+generator. `generate:pipeline` regenerates its files from this config every run, so
 reruns are **idempotent** — nothing is ever duplicated, and files it does not
 manage are never touched.
 

@@ -6,7 +6,7 @@ namespace Igne\LaravelBootUp\Pipelines;
 
 /**
  * One secret/variable the generated pipeline expects. The short fields form
- * a row of the app:pipeline instructions table; the details are the long
+ * a row of the generate:pipeline instructions table; the details are the long
  * guidance (exact settings path, where the value comes from) rendered as
  * that secret's own section below the table.
  */
