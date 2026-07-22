@@ -44,25 +44,24 @@ abstract class BootUpCommand extends Command
         try {
             return (int) $this->laravel->call([$this, 'perform']);
         } catch (BootUpException|ProcessFailedException|ProcessTimedOutException $exception) {
-            return $this->reportFailure($exception->getMessage(), unexpected: false);
+            return $this->reportFailure($exception->getMessage());
         } catch (Throwable $exception) {
-            return $this->reportFailure('Unexpected error: '.$exception->getMessage(), unexpected: true);
+            return $this->reportFailure('Unexpected error: '.$exception->getMessage());
         }
     }
 
     /**
      * Settle the failure: let the command clean up (e.g. mark a progress bar
-     * failed), print the error, and — only for a truly unexpected error —
-     * append a recovery hint.
+     * failed), print the error, and append the command's recovery hint. The
+     * hint fires on every failure because a mid-boot failure can leave
+     * background processes running; it is a no-op for commands that do not
+     * override failureHint().
      */
-    private function reportFailure(string $message, bool $unexpected): int
+    private function reportFailure(string $message): int
     {
         $this->onFailure();
         terminal()->error($message);
-
-        if ($unexpected) {
-            $this->failureHint();
-        }
+        $this->failureHint();
 
         return self::FAILURE;
     }

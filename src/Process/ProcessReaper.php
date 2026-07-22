@@ -51,19 +51,26 @@ final class ProcessReaper
             return $this->settle($record);
         }
 
-        $this->signalTree($record->pid, 'TERM');
+        // Snapshot the whole tree ONCE, while everything is still alive and
+        // parented, and reuse that exact target list for both signal passes.
+        // Recomputing it after TERM would find nothing (the parent is gone and
+        // its children have reparented to init), letting a TERM-surviving
+        // descendant slip through the KILL pass.
+        $targets = [...$this->descendants($record->pid), $record->pid];
+
+        $this->signalAll($targets, 'TERM');
 
         $terminated = $this->poller->until(
-            fn (): bool => ! $this->isAlive($record),
+            fn (): bool => $this->allGone($targets),
             timeoutSeconds: $this->termGraceSeconds,
             intervalMs: 250,
         );
 
         if (! $terminated) {
-            $this->signalTree($record->pid, 'KILL');
+            $this->signalAll($targets, 'KILL');
 
             $terminated = $this->poller->until(
-                fn (): bool => ! $this->isAlive($record),
+                fn (): bool => $this->allGone($targets),
                 timeoutSeconds: $this->killGraceSeconds,
                 intervalMs: 250,
             );
@@ -110,17 +117,34 @@ final class ProcessReaper
         return true;
     }
 
-    private function signalTree(int $pid, string $signal): void
+    /**
+     * Signal a pre-collected set of pids, deepest-first (macOS has no
+     * setsid/process groups to lean on, so we cannot signal by group).
+     *
+     * @param  list<int>  $targets
+     */
+    private function signalAll(array $targets, string $signal): void
     {
-        // macOS has no setsid/process groups to lean on, so collect the whole
-        // descendant tree FIRST (while everything is still alive and still
-        // parented), then signal deepest-first — otherwise killing a parent
-        // reparents its children to init and we lose track of them.
-        $targets = [...$this->descendants($pid), $pid];
-
         foreach ($targets as $target) {
             $this->signal($target, "-{$signal}");
         }
+    }
+
+    /**
+     * Whether every pid in the snapshot is gone — a single survivor keeps the
+     * reap alive so the KILL pass still runs against it.
+     *
+     * @param  list<int>  $targets
+     */
+    private function allGone(array $targets): bool
+    {
+        foreach ($targets as $target) {
+            if ($this->signal($target, '-0')) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

@@ -143,6 +143,18 @@ test('keeps the ledger entry when a process cannot be stopped', function (): voi
     Prompt::assertStrippedOutputContains('Could not stop queue-worker (pid 4242)');
 });
 
+test('clears the active-server state and warns even when stopping the server throws', function (): void {
+    Prompt::fake();
+    ProcessFaker::fake();
+    app()->instance(RecordingServer::class, $this->server = new RecordingServer(stopThrows: true));
+    $this->store->remember(activeDouble(startedByUs: true));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: false, stopDefault: true)->run();
+
+    expect($this->store->current())->toBeNull();
+    Prompt::assertStrippedOutputContains('Could not stop Double Server');
+});
+
 test('stops only the server app:serve started', function (): void {
     Prompt::fake();
     ProcessFaker::fake();

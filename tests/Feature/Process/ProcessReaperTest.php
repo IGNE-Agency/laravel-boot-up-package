@@ -156,17 +156,19 @@ test('signals the whole descendant tree, deepest first', function (): void {
 
     $alive = true;
     ProcessFaker::fake([
-        'kill -0 4242' => function () use (&$alive) {
-            return Process::result(exitCode: $alive ? 0 : 1);
-        },
-        'ps -p 4242*' => fn () => Process::result('00:05'),
         'pgrep -P 4242' => Process::result("100\n200"),
         'pgrep -P 100' => Process::result('300'),
+        // TERM on the recorded pid takes the whole snapshotted tree down.
         'kill -TERM 4242' => function () use (&$alive) {
             $alive = false;
 
             return Process::result();
         },
+        // Liveness is checked across every pid in the snapshot, not just 4242.
+        'kill -0 *' => function () use (&$alive) {
+            return Process::result(exitCode: $alive ? 0 : 1);
+        },
+        'ps -p 4242*' => fn () => Process::result('00:05'),
     ]);
 
     $reaped = reaper($this->ledger)->reap(workerRecord());
@@ -176,6 +178,8 @@ test('signals the whole descendant tree, deepest first', function (): void {
     ProcessFaker::assertRan('kill -TERM 100');
     ProcessFaker::assertRan('kill -TERM 200');
     ProcessFaker::assertRan('kill -TERM 4242');
+    // The KILL pass never runs because the tree is gone after TERM.
+    ProcessFaker::assertDidntRun('kill -KILL*');
 });
 
 test('closes the terminal window once the process is gone', function (): void {

@@ -140,6 +140,15 @@ test('an unexpected exception fails cleanly with an app:down hint', function ():
         ->assertFailed();
 });
 
+test('a known mid-boot failure also shows the app:down hint', function (): void {
+    ProcessFaker::fake();
+    config()->set('boot-up.serve_steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\FailingStep::class]);
+
+    $this->artisan('app:serve', ['server' => 'laravel'])
+        ->expectsOutputToContain('php artisan app:down')
+        ->assertFailed();
+});
+
 test('prints the execution plan before booting', function (): void {
     ProcessFaker::fake([
         'sh -c nohup php artisan serve*' => Process::result('12345'),

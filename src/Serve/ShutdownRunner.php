@@ -48,17 +48,22 @@ final class ShutdownRunner
             terminal()->info("Stopping {$record->label} (pid {$record->pid})...");
         });
 
-        // reap() already forgets confirmed-dead entries; only remove the
-        // ledger file itself when nothing survived the signals.
-        if ($this->reaper->reapAll()) {
-            $this->ledger->clear();
-        }
+        // The active-server record is always cleared, even if reaping a process
+        // or stopping the server throws — a stale record would otherwise make
+        // the next app:serve think a server it does not own is still active.
+        try {
+            // reap() already forgets confirmed-dead entries; only remove the
+            // ledger file itself when nothing survived the signals.
+            if ($this->reaper->reapAll()) {
+                $this->ledger->clear();
+            }
 
-        if ($active !== null) {
-            $this->stopServer($active->key, $active->startedByUs);
+            if ($active !== null) {
+                $this->stopServer($active->key, $active->startedByUs);
+            }
+        } finally {
+            $this->store->clear();
         }
-
-        $this->store->clear();
 
         terminal()->success('Shutdown complete.');
     }
@@ -79,8 +84,14 @@ final class ShutdownRunner
         }
 
         if ($this->prompt->shouldStop($server, $startedByUs)) {
-            $server->stop();
-            terminal()->success("{$server->label()} stopped.");
+            // A failed stop is a warning, not a teardown-aborting error: the
+            // rest of the shutdown (clearing state) must still complete.
+            try {
+                $server->stop();
+                terminal()->success("{$server->label()} stopped.");
+            } catch (\Throwable $exception) {
+                terminal()->warning("Could not stop {$server->label()}: {$exception->getMessage()} — stop it manually.");
+            }
 
             return;
         }

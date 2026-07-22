@@ -24,6 +24,7 @@ final class RecordingServer implements Server
         public bool $providesDatabase = false,
         public bool $databaseReachableFromHost = true,
         public ?string $stopImpact = null,
+        public bool $stopThrows = false,
     ) {}
 
     public function key(): string
@@ -75,6 +76,11 @@ final class RecordingServer implements Server
     public function stop(): void
     {
         $this->stops++;
+
+        if ($this->stopThrows) {
+            throw new \RuntimeException('stop failed');
+        }
+
         $this->running = false;
     }
 
