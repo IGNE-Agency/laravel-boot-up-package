@@ -73,22 +73,30 @@ final class HerdServices
 
     /**
      * Block until the served site answers, or fail with actionable guidance.
-     * A healthy server returns on the first check without ever restarting;
-     * an unhealthy one is restarted between checks. Bounded to healthAttempts
-     * checks so a permanently broken Herd cannot hang the boot.
+     * A healthy server returns on the first check without ever restarting.
+     *
+     * Herd is restarted at most ONCE, halfway through the attempts: the first
+     * half give a running-but-slow Herd time to answer its first request
+     * (a cold PHP-FPM or TLS handshake), and only if it still will not answer
+     * do we restart to recover a genuinely stuck Nginx, leaving the remaining
+     * attempts for it to come back. Restarting on every failed check would
+     * knock over a Herd that was merely slow and never let it settle.
      */
     public function ensureReachable(string $url): void
     {
+        $restartAt = intdiv($this->healthAttempts, 2);
+
         for ($attempt = 1; $attempt <= $this->healthAttempts; $attempt++) {
             if ($this->isReachable($url)) {
                 return;
             }
 
-            // No point restarting on the final attempt — nothing re-checks it.
-            if ($attempt < $this->healthAttempts) {
+            if ($attempt === $restartAt) {
+                terminal()->info('Herd is not answering yet — restarting it...');
                 $this->restart();
-                usleep($this->healthDelayMs * 1000);
             }
+
+            usleep($this->healthDelayMs * 1000);
         }
 
         throw ServerException::unreachable($url, $this->healthAttempts);

@@ -152,14 +152,15 @@ test('start boots Herd when none of its processes are running', function (): voi
     Prompt::assertStrippedOutputContains('Herd is serving https://my-app.test.');
 });
 
-test('start restarts an unhealthy Nginx and recovers when it comes back', function (): void {
+test('start restarts an unhealthy Nginx once, halfway through, and recovers when it comes back', function (): void {
     $probe = 0;
     ProcessFaker::fake([
         'curl*' => function () use (&$probe) {
             $probe++;
 
-            // Unreachable on the first probe, reachable after one restart.
-            return $probe >= 2 ? Process::result('200') : Process::result('000', exitCode: 7);
+            // Unreachable until the mid-way restart kicks in (attempt 5 of 10),
+            // then answers on the next probe.
+            return $probe > 5 ? Process::result('200') : Process::result('000', exitCode: 7);
         },
     ]);
 
@@ -176,8 +177,8 @@ test('start fails with actionable guidance after exhausting the health attempts'
     expect(fn () => herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new ServeContext(new ServeOptions)))
         ->toThrow(ServerException::class, 'did not become reachable');
 
-    // 10 attempts means a restart between each pair of checks — nine restarts.
-    ProcessFaker::assertRanTimes('herd restart', 9);
+    // Herd is restarted at most once, not on every failed check.
+    ProcessFaker::assertRanTimes('herd restart', 1);
 });
 
 test('isRunning is true when Herd nginx is up', function (): void {

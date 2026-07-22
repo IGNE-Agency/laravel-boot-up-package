@@ -30,10 +30,27 @@ final readonly class PipelineConfig
     public static function fromRepository(Repository $config): self
     {
         return new self(
-            branchEnvironments: (array) $config->get('boot-up.pipeline.branches', self::DEFAULT_BRANCH_ENVIRONMENTS),
+            branchEnvironments: self::normalizeEnvironments(
+                (array) $config->get('boot-up.pipeline.branches', self::DEFAULT_BRANCH_ENVIRONMENTS),
+            ),
             generators: (array) $config->get('boot-up.pipeline.generators', []),
             steps: (array) $config->get('boot-up.pipeline.steps', []),
             files: (array) $config->get('boot-up.pipeline.files', []),
         );
+    }
+
+    /**
+     * Environment names are lowercased so the branch map works whether the
+     * config (and the environment the user creates on the git provider) is
+     * written lowercase, ucfirst or uppercase — "Development", "DEVELOPMENT"
+     * and "development" all resolve to the same environment. Git branch names
+     * (the keys) stay verbatim, since those are case-sensitive.
+     *
+     * @param  array<string, string>  $branchEnvironments
+     * @return array<string, string>
+     */
+    private static function normalizeEnvironments(array $branchEnvironments): array
+    {
+        return array_map(static fn (string $environment): string => strtolower(trim($environment)), $branchEnvironments);
     }
 }

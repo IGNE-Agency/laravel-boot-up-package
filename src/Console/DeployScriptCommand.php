@@ -15,12 +15,12 @@ use Igne\LaravelBootUp\Deploy\Scripts\ScriptGenerator;
 final class DeployScriptCommand extends BootUpCommand
 {
     private const BUILT_IN_GENERATORS = [
-        'forge' => ForgeScriptGenerator::class,
         'fortrabbit' => FortrabbitScriptGenerator::class,
+        'forge' => ForgeScriptGenerator::class,
     ];
 
     protected $signature = 'app:deploy-script
-        {platform? : The hosting platform (forge, fortrabbit, or any generator registered in boot-up.deploy.script_generators)}
+        {platform? : The hosting platform (fortrabbit, forge, or any generator registered in boot-up.deploy.script_generators)}
         {environment? : The target environment (development, staging, production)}
         {--classic : Forge only — generate for classic (non-zero-downtime) sites}
         {--output= : Write the script to a file instead of printing it}';

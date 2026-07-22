@@ -22,7 +22,8 @@ final class ServerException extends BootUpException
     {
         return new self(
             "Laravel Herd did not become reachable at {$url} after {$attempts} attempt(s). "
-            .'Nginx may be unhealthy — check `herd status`, then try `herd restart` (or restart Herd from its menu-bar app) and run app:serve again.'
+            .'Nginx may be unhealthy — inspect the services with `herd services:list`, then try `herd restart` '
+            .'(or restart Herd from its menu-bar app) and run app:serve again.'
         );
     }
 

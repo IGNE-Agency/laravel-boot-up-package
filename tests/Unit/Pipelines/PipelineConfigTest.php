@@ -21,6 +21,26 @@ test('fromRepository reads the boot-up.pipeline schema', function (): void {
         ->and($pipeline->generators)->toBe(['gitlab' => 'App\Pipelines\GitlabGenerator']);
 });
 
+test('environment names are lowercased so any case in the config resolves the same environment', function (): void {
+    $config = new Repository([
+        'boot-up' => [
+            'pipeline' => [
+                'branches' => ['develop' => 'Development', 'staging' => 'STAGING', 'main' => 'Production'],
+            ],
+        ],
+    ]);
+
+    $pipeline = PipelineConfig::fromRepository($config);
+
+    // Branch keys stay verbatim (git branches are case-sensitive); the
+    // environment values are normalized to lowercase.
+    expect($pipeline->branchEnvironments)->toBe([
+        'develop' => 'development',
+        'staging' => 'staging',
+        'main' => 'production',
+    ]);
+});
+
 test('fromRepository falls back to the documented defaults', function (): void {
     $pipeline = PipelineConfig::fromRepository(new Repository);
 
