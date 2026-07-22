@@ -25,14 +25,14 @@ final class ForgeScriptGenerator implements ScriptGenerator
         return 'Laravel Forge';
     }
 
-    public function generate(DeploymentPlan $plan): string
+    public function generate(DeploymentPlan $plan): Lines
     {
         return $plan->zeroDowntime
             ? $this->zeroDowntime($plan)
             : $this->classic($plan);
     }
 
-    private function zeroDowntime(DeploymentPlan $plan): string
+    private function zeroDowntime(DeploymentPlan $plan): Lines
     {
         return Lines::make()
             ->comment(
@@ -52,11 +52,10 @@ final class ForgeScriptGenerator implements ScriptGenerator
             ->when($plan->afterDeploy !== [], fn (Lines $script) => $script
                 ->blank()
                 ->lines($this->projectCommands($plan->afterDeploy, $plan)))
-            ->lineWithBreakIf($plan->restartQueues, '$RESTART_QUEUES()')
-            ->render();
+            ->lineWithBreakIf($plan->restartQueues, '$RESTART_QUEUES()');
     }
 
-    private function classic(DeploymentPlan $plan): string
+    private function classic(DeploymentPlan $plan): Lines
     {
         return Lines::make()
             ->comment(
@@ -81,8 +80,7 @@ final class ForgeScriptGenerator implements ScriptGenerator
                 ->line('flock -w 10 9 || exit 1')
                 ->lineWithBreak("echo 'Reloading PHP-FPM...'")
                 ->line('sudo -S service $FORGE_PHP_FPM reload'))
-            ->line(') 9</tmp/fpmlock')
-            ->render();
+            ->line(') 9</tmp/fpmlock');
     }
 
     private function composerInstall(DeploymentPlan $plan): string
@@ -118,7 +116,7 @@ final class ForgeScriptGenerator implements ScriptGenerator
     private function projectCommand(ProjectCommand $command, DeploymentPlan $plan): Lines
     {
         return Lines::make()
-            ->lineIf($command->description !== null, "# {$command->description}")
+            ->commentIf($command->description !== null, (string) $command->description)
             ->line($command->shellLine('$FORGE_PHP artisan', '$FORGE_COMPOSER', $plan->packageManager->value));
     }
 }

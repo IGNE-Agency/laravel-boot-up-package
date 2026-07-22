@@ -11,6 +11,7 @@ use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlanner;
 use Igne\LaravelBootUp\Deploy\Scripts\ForgeScriptGenerator;
 use Igne\LaravelBootUp\Deploy\Scripts\FortrabbitScriptGenerator;
 use Igne\LaravelBootUp\Deploy\Scripts\ScriptGenerator;
+use Igne\LaravelBootUp\Support\Lines;
 
 final class DeployScriptCommand extends BootUpCommand
 {
@@ -59,19 +60,42 @@ final class DeployScriptCommand extends BootUpCommand
 
         if (\is_string($output) && $output !== '') {
             terminal()->intro('Generating a deployment script...');
-            file_put_contents($output, $script);
+            file_put_contents($output, $script->render());
             terminal()->outro("Deployment script written to {$output}.");
 
             return self::SUCCESS;
         }
 
-        // No intro/outro here on purpose: the raw script goes to stdout, so
-        // `app:deploy-script forge production > deploy.sh` must stay clean.
-        foreach (explode("\n", rtrim($script, "\n")) as $line) {
-            $this->line($line);
-        }
+        $this->printScript($script);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Print the script to stdout. On an interactive terminal comments are
+     * dimmed and section headings are bold-cyan so it's clear what to copy;
+     * otherwise (redirect, pipe, non-TTY) the raw plain text goes out so
+     * `app:deploy-script forge production > deploy.sh` stays clean.
+     */
+    private function printScript(Lines $script): void
+    {
+        if (! $this->output->isDecorated()) {
+            foreach (explode("\n", rtrim($script->render(), "\n")) as $line) {
+                $this->line($line);
+            }
+
+            return;
+        }
+
+        $styler = fn (string $kind, string $text): string => match ($kind) {
+            Lines::KIND_HEADING => terminal()->bold(terminal()->cyan($text)),
+            Lines::KIND_COMMENT => terminal()->dim($text),
+            default => $text,
+        };
+
+        foreach ($script->toStyledArray($styler) as $line) {
+            $this->line($line);
+        }
     }
 
     /**

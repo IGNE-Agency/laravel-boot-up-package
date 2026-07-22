@@ -25,7 +25,7 @@ final class FortrabbitScriptGenerator implements ScriptGenerator
         return 'Fortrabbit';
     }
 
-    public function generate(DeploymentPlan $plan): string
+    public function generate(DeploymentPlan $plan): Lines
     {
         return Lines::make()
             ->comment(
@@ -35,14 +35,13 @@ final class FortrabbitScriptGenerator implements ScriptGenerator
                 "Deployment settings for the {$plan->environment->value} environment.",
             )
             ->blank()
-            ->comment('─── Build commands ────────────────────────────────────────────')
+            ->heading('─── Build commands ────────────────────────────────────────────')
             ->line($this->composerInstall($plan))
             ->when($plan->frontend, fn (Lines $script) => $script
                 ->lines($plan->packageManager->buildScriptLines(ensureInstalled: true)))
             ->blank()
-            ->comment('─── Post deploy commands ──────────────────────────────────────')
-            ->lines($this->postDeployCommands($plan))
-            ->render();
+            ->heading('─── Post deploy commands ──────────────────────────────────────')
+            ->lines($this->postDeployCommands($plan));
     }
 
     private function composerInstall(DeploymentPlan $plan): string
@@ -80,7 +79,7 @@ final class FortrabbitScriptGenerator implements ScriptGenerator
     private function projectCommand(ProjectCommand $command, DeploymentPlan $plan): Lines
     {
         return Lines::make()
-            ->lineIf($command->description !== null, "# {$command->description}")
+            ->commentIf($command->description !== null, (string) $command->description)
             ->line($command->shellLine('php artisan', 'composer', $plan->packageManager->value));
     }
 }

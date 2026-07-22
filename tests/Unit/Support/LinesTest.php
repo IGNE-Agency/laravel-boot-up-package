@@ -182,3 +182,64 @@ test('toArray spreads alongside plain string lists', function (): void {
 
     expect(['a', ...$built->toArray(), 'd'])->toBe(['a', 'b', 'c', 'd']);
 });
+
+test('heading renders like a comment in plain text but carries its own kind', function (): void {
+    $lines = Lines::make()->heading('─── Build ───')->heading('');
+
+    expect($lines->toArray())->toBe(['# ─── Build ───', '#'])
+        ->and($lines->toStyledArray(fn (string $kind): string => $kind))
+        ->toBe([Lines::KIND_HEADING, Lines::KIND_HEADING]);
+});
+
+test('commentIf appends a comment-kind line only when the condition holds', function (): void {
+    $lines = Lines::make()->commentIf(true, 'kept')->commentIf(false, 'dropped');
+
+    expect($lines->toArray())->toBe(['# kept'])
+        ->and($lines->toStyledArray(fn (string $kind): string => $kind))->toBe([Lines::KIND_COMMENT]);
+});
+
+test('toStyledArray maps each line through the styler by kind and passes blanks through', function (): void {
+    $lines = Lines::make()
+        ->comment('provenance')
+        ->heading('─── Build ───')
+        ->line('composer install')
+        ->blank()
+        ->line('php artisan migrate');
+
+    expect($lines->toStyledArray(fn (string $kind, string $text): string => "{$kind}|{$text}"))->toBe([
+        Lines::KIND_COMMENT.'|# provenance',
+        Lines::KIND_HEADING.'|# ─── Build ───',
+        Lines::KIND_COMMAND.'|composer install',
+        '',
+        Lines::KIND_COMMAND.'|php artisan migrate',
+    ]);
+});
+
+test('lines(self) carries the source kinds so composed comments keep their styling', function (): void {
+    $child = Lines::make()->comment('desc')->line('php artisan foo');
+
+    $parent = Lines::make()->heading('─── Post ───')->lines($child);
+
+    expect($parent->toStyledArray(fn (string $kind, string $text): string => "{$kind}:{$text}"))->toBe([
+        Lines::KIND_HEADING.':# ─── Post ───',
+        Lines::KIND_COMMENT.':# desc',
+        Lines::KIND_COMMAND.':php artisan foo',
+    ]);
+});
+
+test('lines(iterable) of plain strings are all command kind', function (): void {
+    $lines = Lines::make()->lines(['a', 'b']);
+
+    expect($lines->toStyledArray(fn (string $kind): string => $kind))->toBe([Lines::KIND_COMMAND, Lines::KIND_COMMAND]);
+});
+
+test('an injected separator blank keeps the kind array aligned with the lines', function (): void {
+    $lines = Lines::make()->line('a')->lineWithBreak('b');
+
+    // A misaligned kinds array would mislabel 'b' or error on the missing index.
+    expect($lines->toStyledArray(fn (string $kind, string $text): string => $kind))->toBe([
+        Lines::KIND_COMMAND,
+        '',
+        Lines::KIND_COMMAND,
+    ]);
+});

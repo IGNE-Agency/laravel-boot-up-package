@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Tests\Feature\Console\Fixtures;
 
 use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlan;
 use Igne\LaravelBootUp\Deploy\Scripts\ScriptGenerator;
+use Igne\LaravelBootUp\Support\Lines;
 
 /**
  * A project-registered custom platform, as the extension API allows.
@@ -22,8 +23,8 @@ final class StaticScriptGenerator implements ScriptGenerator
         return 'Static Platform';
     }
 
-    public function generate(DeploymentPlan $plan): string
+    public function generate(DeploymentPlan $plan): Lines
     {
-        return "static-script for {$plan->environment->value}\n";
+        return Lines::make()->line("static-script for {$plan->environment->value}");
     }
 }

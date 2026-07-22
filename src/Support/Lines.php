@@ -17,8 +17,17 @@ use Closure;
  */
 final class Lines
 {
+    public const KIND_COMMAND = 'command';
+
+    public const KIND_COMMENT = 'comment';
+
+    public const KIND_HEADING = 'heading';
+
     /** @var list<string> */
     private array $lines = [];
+
+    /** @var list<self::KIND_*> One kind per rendered line, same order and count. */
+    private array $kinds = [];
 
     private int $indent = 0;
 
@@ -35,11 +44,7 @@ final class Lines
      */
     public function line(string $line): self
     {
-        foreach (explode("\n", $line) as $part) {
-            $this->append($part);
-        }
-
-        return $this;
+        return $this->appendLine($line, self::KIND_COMMAND);
     }
 
     /**
@@ -52,12 +57,22 @@ final class Lines
 
     /**
      * Append many lines (or another builder's lines) at the current indent.
+     * A source builder's per-line kinds are carried over so composed
+     * comments/headings keep their styling; a plain iterable is all commands.
      *
      * @param  iterable<string>|self  $lines
      */
     public function lines(iterable|self $lines): self
     {
-        foreach ($lines instanceof self ? $lines->toArray() : $lines as $line) {
+        if ($lines instanceof self) {
+            foreach ($lines->lines as $index => $line) {
+                $this->appendLine($line, $lines->kinds[$index]);
+            }
+
+            return $this;
+        }
+
+        foreach ($lines as $line) {
             $this->line($line);
         }
 
@@ -104,12 +119,35 @@ final class Lines
     }
 
     /**
-     * Append "# {comment}" per argument ("#" alone for an empty string).
+     * Append "# {comment}" per argument ("#" alone for an empty string),
+     * tagged as a comment so terminal rendering can de-emphasise it.
      */
     public function comment(string ...$comments): self
     {
         foreach ($comments as $comment) {
-            $this->line($comment === '' ? '#' : "# {$comment}");
+            $this->appendLine($comment === '' ? '#' : "# {$comment}", self::KIND_COMMENT);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Append the comment only when the condition holds.
+     */
+    public function commentIf(bool $condition, string $comment): self
+    {
+        return $condition ? $this->comment($comment) : $this;
+    }
+
+    /**
+     * Append "# {heading}" per argument — rendered identically to a comment
+     * in plain text, but tagged as a heading so terminal rendering can make
+     * section titles stand out.
+     */
+    public function heading(string ...$headings): self
+    {
+        foreach ($headings as $heading) {
+            $this->appendLine($heading === '' ? '#' : "# {$heading}", self::KIND_HEADING);
         }
 
         return $this;
@@ -182,16 +220,55 @@ final class Lines
         return $this->lines === [] ? '' : implode("\n", $this->lines)."\n";
     }
 
-    private function append(string $line): void
+    /**
+     * The lines mapped through a per-kind styler — for terminal output that
+     * colours comments and headings differently from commands. Blank lines
+     * pass through untouched; the styler owns all formatting decisions.
+     *
+     * @param  Closure(self::KIND_*, string): string  $style  receives ($kind, $text)
+     * @return list<string>
+     */
+    public function toStyledArray(Closure $style): array
+    {
+        $styled = [];
+
+        foreach ($this->lines as $index => $line) {
+            $styled[] = $line === '' ? '' : $style($this->kinds[$index], $line);
+        }
+
+        return $styled;
+    }
+
+    /**
+     * Split embedded "\n" into physical lines so indentation stays correct
+     * per line, then append each with the given kind.
+     *
+     * @param  self::KIND_*  $kind
+     */
+    private function appendLine(string $line, string $kind): self
+    {
+        foreach (explode("\n", $line) as $part) {
+            $this->append($part, $kind);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param  self::KIND_*  $kind
+     */
+    private function append(string $line, string $kind): void
     {
         if ($this->pendingBlank) {
             $this->pendingBlank = false;
 
             if ($this->lines !== [] && end($this->lines) !== '') {
                 $this->lines[] = '';
+                $this->kinds[] = self::KIND_COMMAND;
             }
         }
 
         $this->lines[] = $line === '' ? '' : str_repeat(' ', $this->indent).$line;
+        $this->kinds[] = $kind;
     }
 }

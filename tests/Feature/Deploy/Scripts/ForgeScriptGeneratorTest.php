@@ -25,10 +25,15 @@ function forgePlan(array $overrides = []): DeploymentPlan
     return new DeploymentPlan(...array_merge($defaults, $overrides));
 }
 
+function forgeScript(array $overrides = []): string
+{
+    return (new ForgeScriptGenerator)->generate(forgePlan($overrides))->render();
+}
+
 test('renders the full zero-downtime production script', function (): void {
-    $script = (new ForgeScriptGenerator)->generate(forgePlan([
+    $script = forgeScript([
         'beforeMigrations' => [ProjectCommand::artisan('wayfinder:generate', 'Generating routes...')],
-    ]));
+    ]);
 
     expect($script)->toBe(<<<'SCRIPT'
 # Laravel Forge deployment script (production, zero-downtime)
@@ -59,7 +64,7 @@ SCRIPT);
 });
 
 test('each package manager gets its lockfile-strict install line', function (PackageManager $manager, string $line): void {
-    $script = (new ForgeScriptGenerator)->generate(forgePlan(['packageManager' => $manager]));
+    $script = forgeScript(['packageManager' => $manager]);
 
     expect($script)->toContain($line)
         ->and($script)->toContain("{$manager->value} run build");
@@ -71,9 +76,9 @@ test('each package manager gets its lockfile-strict install line', function (Pac
 ]);
 
 test('development keeps dev dependencies and skips framework caching', function (): void {
-    $script = (new ForgeScriptGenerator)->generate(forgePlan([
+    $script = forgeScript([
         'environment' => DeploymentEnvironment::DEVELOPMENT,
-    ]));
+    ]);
 
     expect($script)->toContain('$FORGE_COMPOSER install --no-interaction')
         ->and($script)->not->toContain('--no-dev')
@@ -81,12 +86,12 @@ test('development keeps dev dependencies and skips framework caching', function 
 });
 
 test('config toggles drop their lines', function (): void {
-    $script = (new ForgeScriptGenerator)->generate(forgePlan([
+    $script = forgeScript([
         'migrate' => false,
         'frontend' => false,
         'restartQueues' => false,
         'finalize' => [],
-    ]));
+    ]);
 
     expect($script)->not->toContain('migrate --force')
         ->and($script)->not->toContain('run build')
@@ -95,13 +100,13 @@ test('config toggles drop their lines', function (): void {
 });
 
 test('after-migration project commands render after migrate with composer and package-manager types', function (): void {
-    $script = (new ForgeScriptGenerator)->generate(forgePlan([
+    $script = forgeScript([
         'afterMigrations' => [
             ProjectCommand::composer('dump-autoload --optimize'),
             ProjectCommand::packageManager('run zodgen'),
         ],
         'packageManager' => PackageManager::PNPM,
-    ]));
+    ]);
 
     $migratePosition = strpos($script, 'migrate --force');
 
@@ -110,10 +115,10 @@ test('after-migration project commands render after migrate with composer and pa
 });
 
 test('the classic variant uses git pull and the fpm reload block instead of macros', function (): void {
-    $script = (new ForgeScriptGenerator)->generate(forgePlan([
+    $script = forgeScript([
         'frontend' => false,
         'zeroDowntime' => false,
-    ]));
+    ]);
 
     expect($script)->toBe(<<<'SCRIPT'
 # Laravel Forge deployment script (production, classic)

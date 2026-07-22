@@ -24,8 +24,13 @@ function fortrabbitPlan(array $overrides = []): DeploymentPlan
     return new DeploymentPlan(...array_merge($defaults, $overrides));
 }
 
+function fortrabbitScript(array $overrides = []): string
+{
+    return (new FortrabbitScriptGenerator)->generate(fortrabbitPlan($overrides))->render();
+}
+
 test('renders build and post-deploy sections for production with pnpm', function (): void {
-    $script = (new FortrabbitScriptGenerator)->generate(fortrabbitPlan());
+    $script = fortrabbitScript();
 
     expect($script)->toBe(<<<'SCRIPT'
 # Fortrabbit deployment commands (production)
@@ -49,12 +54,12 @@ SCRIPT);
 });
 
 test('renders bound commands for all four phases in the canonical order', function (): void {
-    $script = (new FortrabbitScriptGenerator)->generate(fortrabbitPlan([
+    $script = fortrabbitScript([
         'beforeDeploy' => [ProjectCommand::artisan('pennant:purge')],
         'beforeMigrations' => [ProjectCommand::artisan('wayfinder:generate')],
         'afterMigrations' => [ProjectCommand::artisan('model:typer')],
         'afterDeploy' => [ProjectCommand::artisan('cache:warm')],
-    ]));
+    ]);
 
     expect($script)
         ->toContain('php artisan pennant:purge')
@@ -68,18 +73,18 @@ test('renders bound commands for all four phases in the canonical order', functi
 });
 
 test('npm needs no global install line, non-npm managers do', function (): void {
-    $npm = (new FortrabbitScriptGenerator)->generate(fortrabbitPlan(['packageManager' => PackageManager::NPM]));
-    $bun = (new FortrabbitScriptGenerator)->generate(fortrabbitPlan(['packageManager' => PackageManager::BUN]));
+    $npm = fortrabbitScript(['packageManager' => PackageManager::NPM]);
+    $bun = fortrabbitScript(['packageManager' => PackageManager::BUN]);
 
     expect($npm)->not->toContain('npm i -g')
         ->and($bun)->toContain('npm i -g bun');
 });
 
 test('project commands wrap the migrate line in the post-deploy section', function (): void {
-    $script = (new FortrabbitScriptGenerator)->generate(fortrabbitPlan([
+    $script = fortrabbitScript([
         'beforeMigrations' => [ProjectCommand::artisan('wayfinder:generate', 'Generating routes...')],
         'afterMigrations' => [ProjectCommand::composer('dump-autoload --optimize')],
-    ]));
+    ]);
 
     $before = strpos($script, 'php artisan wayfinder:generate');
     $migrate = strpos($script, 'php artisan migrate --force');
@@ -91,13 +96,13 @@ test('project commands wrap the migrate line in the post-deploy section', functi
 });
 
 test('development drops no-dev and optimize; toggles drop their lines', function (): void {
-    $script = (new FortrabbitScriptGenerator)->generate(fortrabbitPlan([
+    $script = fortrabbitScript([
         'environment' => DeploymentEnvironment::DEVELOPMENT,
         'migrate' => false,
         'frontend' => false,
         'restartQueues' => false,
         'finalize' => [],
-    ]));
+    ]);
 
     expect($script)->toContain('composer install --prefer-dist')
         ->and($script)->not->toContain('--no-dev')

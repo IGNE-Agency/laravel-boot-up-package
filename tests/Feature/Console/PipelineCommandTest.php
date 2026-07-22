@@ -24,6 +24,14 @@ function pinDefaultBranches(): void
     ]);
 }
 
+/** The APP_KEY currently written into the generated .env.pipeline. */
+function pipelineAppKey(): string
+{
+    preg_match('/^APP_KEY=(.*)$/m', (string) file_get_contents(base_path('.env.pipeline')), $matches);
+
+    return $matches[1] ?? '';
+}
+
 test('github writes the workflow, the ci scripts and .env.pipeline at their canonical paths', function (): void {
     pinDefaultBranches();
 
@@ -227,6 +235,32 @@ test('--force overwrites existing files without asking', function (): void {
 
     expect((string) file_get_contents(base_path('.github/workflows/ci.yml')))->toContain('# CI/CD pipeline (GitHub Actions)')
         ->and((string) file_get_contents(base_path('.env.pipeline')))->toContain('APP_ENV=testing');
+});
+
+test('regenerating keeps the existing .env.pipeline APP_KEY so it does not churn in git', function (): void {
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])->assertSuccessful();
+
+    $first = (string) file_get_contents(base_path('.env.pipeline'));
+    $key = pipelineAppKey();
+
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit', '--force' => true])->assertSuccessful();
+
+    expect($key)->toStartWith('base64:')
+        ->and((string) file_get_contents(base_path('.env.pipeline')))->toBe($first);
+});
+
+test('--regenerate-app-key mints a fresh APP_KEY on regeneration', function (): void {
+    $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])->assertSuccessful();
+    $firstKey = pipelineAppKey();
+
+    $this->artisan('app:pipeline', [
+        'provider' => 'github',
+        'host' => 'fortrabbit',
+        '--force' => true,
+        '--regenerate-app-key' => true,
+    ])->assertSuccessful();
+
+    expect(pipelineAppKey())->toStartWith('base64:')->not->toBe($firstKey);
 });
 
 test('a nova project gets composer auth in the workflow, nova publish in bootstrap.sh and its php version', function (): void {
