@@ -149,6 +149,21 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Background processes
+    |--------------------------------------------------------------------------
+    | Services launched in their own terminal window (run_in => 'terminal')
+    | report their PID back through a pid file. A cold Terminal.app or a heavy
+    | shell startup profile (nvm, oh-my-zsh, ...) can delay that; this bounds
+    | the wait in seconds before boot-up recovers the PID from the process
+    | table or, failing that, restarts the process in the background — it never
+    | aborts the boot.
+    */
+    'process' => [
+        'terminal_pid_timeout' => (int) env('BOOT_UP_TERMINAL_PID_TIMEOUT', 20),
+    ],
+
     'deploy' => [
         // config:cache breaks env() lookups in local development — off by default.
         'cache_framework_files' => env('BOOT_UP_CACHE', false),

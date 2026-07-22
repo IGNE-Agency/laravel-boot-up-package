@@ -109,6 +109,7 @@ final class BootUpServiceProvider extends ServiceProvider
             poller: $app->make(Poller::class),
             logDirectory: $app->storagePath('logs/boot-up'),
             runtimeDirectory: $app->storagePath('framework/boot-up'),
+            terminalPidTimeout: (int) $app['config']->get('boot-up.process.terminal_pid_timeout', 20),
         ));
 
         $this->app->singleton(EnvFile::class, fn (Application $app) => new EnvFile(

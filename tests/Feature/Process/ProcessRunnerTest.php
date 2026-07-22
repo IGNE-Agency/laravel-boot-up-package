@@ -6,10 +6,38 @@ use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Process\ShellCommand;
 use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Process\Terminal\TerminalLauncher;
 use Igne\LaravelBootUp\Support\Poller;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
+
+/**
+ * A terminal launcher that opens a window (returns a fixed handle) but never
+ * writes the pid file, so the runner always exercises its timeout path.
+ */
+function fakeTerminal(): TerminalLauncher
+{
+    return new class implements TerminalLauncher
+    {
+        public array $closed = [];
+
+        public function available(): bool
+        {
+            return true;
+        }
+
+        public function open(string $command, ?string $directory = null): ?string
+        {
+            return '42';
+        }
+
+        public function close(?string $handle): void
+        {
+            $this->closed[] = $handle;
+        }
+    };
+}
 
 beforeEach(function (): void {
     $this->workDir = sys_get_temp_dir().'/boot-up-runner-test-'.bin2hex(random_bytes(4));
@@ -79,6 +107,59 @@ test('startInTerminal degrades to a tracked background start when no terminal ex
         ->startInTerminal(ShellCommand::make('bun run dev'), 'assets-watch');
 
     expect($record->pid)->toBe(77)
+        ->and($this->ledger->withLabel('assets-watch'))->toHaveCount(1);
+});
+
+test('startInTerminal recovers the PID from the process table when the pid file is not written in time', function (): void {
+    // The only OS process the recover path runs is the pgrep probe.
+    Process::fake(['*' => Process::result(output: "9999\n")]);
+
+    $runner = new ProcessRunner(
+        processes: app(Factory::class),
+        ledger: $this->ledger,
+        terminal: fakeTerminal(),
+        poller: new Poller,
+        logDirectory: $this->workDir.'/logs',
+        runtimeDirectory: $this->workDir.'/runtime',
+        terminalPidTimeout: 0,
+    );
+
+    $record = $runner->startInTerminal(ShellCommand::make('php artisan queue:work database'), 'queue-worker');
+
+    expect($record->pid)->toBe(9999)
+        ->and($record->window)->toBe('42')
+        ->and($this->ledger->withLabel('queue-worker'))->toHaveCount(1);
+
+    Process::assertRan(fn ($process): bool => str_contains(
+        is_array($process->command) ? implode(' ', $process->command) : $process->command,
+        'pgrep -fn',
+    ));
+});
+
+test('startInTerminal closes the window and falls back to background when no PID can be recovered', function (): void {
+    // First OS call = the pgrep probe (no match); second = the nohup start().
+    Process::fake([
+        '*' => Process::sequence()
+            ->push(Process::result(exitCode: 1))
+            ->push(Process::result(output: "555\n")),
+    ]);
+
+    $terminal = fakeTerminal();
+
+    $runner = new ProcessRunner(
+        processes: app(Factory::class),
+        ledger: $this->ledger,
+        terminal: $terminal,
+        poller: new Poller,
+        logDirectory: $this->workDir.'/logs',
+        runtimeDirectory: $this->workDir.'/runtime',
+        terminalPidTimeout: 0,
+    );
+
+    $record = $runner->startInTerminal(ShellCommand::make('bun run dev'), 'assets-watch');
+
+    expect($record->pid)->toBe(555)
+        ->and($terminal->closed)->toBe(['42'])
         ->and($this->ledger->withLabel('assets-watch'))->toHaveCount(1);
 });
 

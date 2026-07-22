@@ -17,7 +17,9 @@ use Illuminate\Process\PendingProcess;
  *  - run():             synchronous, output streamed live, throws on failure
  *  - runSilently():     synchronous, output captured, never throws on failure
  *  - start():           detached background process, PID persisted to the ledger
- *  - startInTerminal(): new terminal window, real PID captured via pid file
+ *  - startInTerminal(): new terminal window, real PID captured via pid file,
+ *                       degrading to a background start() rather than aborting
+ *                       when the window cannot be opened or does not report a PID
  */
 final class ProcessRunner
 {
@@ -28,6 +30,7 @@ final class ProcessRunner
         private readonly Poller $poller,
         private readonly string $logDirectory,
         private readonly string $runtimeDirectory,
+        private readonly int $terminalPidTimeout = 20,
     ) {}
 
     public function run(ShellCommand $command): ProcessResult
@@ -78,7 +81,15 @@ final class ProcessRunner
     /**
      * Run the command in a new terminal window. The command is wrapped in a
      * pid-file shim (`echo $$ > pidfile; exec ...`) so the ledger records the
-     * real PID. Falls back to start() when no terminal emulator is available.
+     * real PID.
+     *
+     * A slow terminal launch never aborts the boot. Degrades, in order:
+     *  - no terminal emulator available -> start() (background);
+     *  - the window cannot be opened      -> start() (background);
+     *  - the PID is not reported in time  -> recover it from the process table,
+     *    and only if that also fails, close the window and start() (background).
+     * The pid-file poll waits up to `terminalPidTimeout` seconds, because a new
+     * window's shell may source a heavy startup profile before the shim runs.
      */
     public function startInTerminal(ShellCommand $command, string $label): ProcessRecord
     {
@@ -95,32 +106,78 @@ final class ProcessRunner
             $command->toString(),
         );
 
-        $window = $this->terminal->open($shim, $command->cwd ?? getcwd() ?: null);
+        try {
+            $window = $this->terminal->open($shim, $command->cwd ?? getcwd() ?: null);
+        } catch (\Throwable $exception) {
+            @unlink($pidFile);
+            terminal()->warning("Could not open a terminal window for [{$label}] ({$exception->getMessage()}) — starting it in the background instead.");
+
+            return $this->start($command, $label);
+        }
 
         $captured = $this->poller->until(
             fn (): bool => is_file($pidFile) && trim((string) file_get_contents($pidFile)) !== '',
-            timeoutSeconds: 5,
+            timeoutSeconds: $this->terminalPidTimeout,
             intervalMs: 100,
         );
 
-        if (! $captured) {
-            throw ProcessException::terminalPidNotCaptured($label);
-        }
-
-        $pid = (int) trim((string) file_get_contents($pidFile));
+        $pid = $captured ? (int) trim((string) file_get_contents($pidFile)) : 0;
         @unlink($pidFile);
 
-        if ($pid <= 0) {
-            throw ProcessException::terminalPidNotCaptured($label);
+        if ($pid > 0) {
+            return $this->remember($pid, $label, $command, $window);
         }
 
-        return $this->remember($pid, $label, $command, $window);
+        // The window is open and the process may well be running; it just did
+        // not write its PID in time (usually a slow shell startup). Recover the
+        // real PID from the process table so the process stays tracked.
+        $recovered = $this->recoverPid($command);
+
+        if ($recovered !== null) {
+            terminal()->warning("The terminal window for [{$label}] was slow to report its PID — recovered it from the process table.");
+
+            return $this->remember($recovered, $label, $command, $window);
+        }
+
+        // Nothing to recover: close the window we opened and fall back to a
+        // plain background process so the boot is never left with an untracked
+        // window and never aborts.
+        terminal()->warning("Could not capture a PID for [{$label}] from its terminal window — starting it in the background instead. (Tip: set its run_in option to 'background' to skip terminal windows.)");
+        $this->terminal->close($window);
+
+        return $this->start($command, $label);
     }
 
     public function isCommandAvailable(string $binary): bool
     {
         return $this->runSilently(ShellCommand::make(['sh', '-c', 'command -v '.escapeshellarg($binary)]))
             ->successful();
+    }
+
+    /**
+     * Best-effort PID recovery for a process just launched in a terminal window
+     * whose pid file was not written in time. Matches the command against the
+     * process table, newest match first (`pgrep -fn`), so the process we just
+     * started wins over any older look-alike. Null when nothing matches — e.g.
+     * the window's shell has not exec'd the command yet, or it never started.
+     */
+    private function recoverPid(ShellCommand $command): ?int
+    {
+        $signature = implode(' ', $command->tokens);
+
+        if ($signature === '') {
+            return null;
+        }
+
+        $result = $this->processes->command(['pgrep', '-fn', $signature])->run();
+
+        if (! $result->successful()) {
+            return null;
+        }
+
+        $pid = (int) trim($result->output());
+
+        return $pid > 0 ? $pid : null;
     }
 
     /**
