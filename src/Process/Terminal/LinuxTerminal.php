@@ -19,7 +19,7 @@ final class LinuxTerminal implements TerminalLauncher
         return $this->platform->isLinux() && $this->emulator() !== null;
     }
 
-    public function open(string $command, ?string $directory = null): void
+    public function open(string $command, ?string $directory = null): ?string
     {
         $inner = $directory !== null
             ? 'cd '.escapeshellarg($directory).' && '.$command
@@ -33,6 +33,15 @@ final class LinuxTerminal implements TerminalLauncher
         };
 
         $this->processes->command($tokens)->run()->throw();
+
+        // gnome-terminal/xterm windows close on their own when the shell they
+        // run exits; we do not track and close individual Linux windows.
+        return null;
+    }
+
+    public function close(?string $handle): void
+    {
+        // No-op: see open().
     }
 
     private function emulator(): ?string

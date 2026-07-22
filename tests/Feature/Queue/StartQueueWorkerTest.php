@@ -30,7 +30,7 @@ function bindQueueServices(string $dir, ?QueueConfig $config = null): ProcessLed
     app()->instance(QueueConfig::class, $config ?? new QueueConfig);
     app()->instance(EnvFile::class, new EnvFile($dir.'/.env', $dir.'/.env.example'));
     app()->instance(ProcessLedger::class, $ledger);
-    app()->instance(ProcessReaper::class, new ProcessReaper(app(Factory::class), $ledger, new Poller));
+    app()->instance(ProcessReaper::class, new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminal));
     app()->instance(ProcessRunner::class, new ProcessRunner(
         processes: app(Factory::class),
         ledger: $ledger,

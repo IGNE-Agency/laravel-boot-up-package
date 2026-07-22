@@ -13,18 +13,22 @@ final class StopServerPrompt
 {
     public function __construct(private readonly ServersConfig $config) {}
 
-    public function shouldStop(Server $server): bool
+    public function shouldStop(Server $server, bool $startedByUs = true): bool
     {
         $impact = $server->stopImpact();
 
+        // A server boot-up did not start is never stopped by default; it can
+        // only be stopped with an explicit yes.
+        $stopByDefault = $startedByUs && $this->config->stopServerByDefault;
+
         if (! $this->config->promptStopServer) {
-            if ($impact !== null && $this->config->stopServerByDefault) {
+            if ($impact !== null && $stopByDefault) {
                 terminal()->note("Leaving {$server->label()} running — stopping it needs an explicit yes: {$impact}");
 
                 return false;
             }
 
-            return $this->config->stopServerByDefault;
+            return $stopByDefault;
         }
 
         if ($impact !== null) {
@@ -33,7 +37,7 @@ final class StopServerPrompt
 
         return terminal()->confirm(
             label: "Stop {$server->label()}? Other projects may be using it.",
-            default: $impact === null && $this->config->stopServerByDefault,
+            default: $impact === null && $stopByDefault,
         );
     }
 }

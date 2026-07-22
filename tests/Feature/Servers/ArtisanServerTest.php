@@ -42,7 +42,7 @@ function artisanServer(ProcessLedger $ledger, string $workDir, ?ServersConfig $c
     return new ArtisanServer(
         $runner,
         $ledger,
-        new ProcessReaper(app(Factory::class), $ledger, new Poller),
+        new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminal),
         $config ?? new ServersConfig,
     );
 }
@@ -115,7 +115,6 @@ test('stop terminates a live tracked process', function (): void {
 
     artisanServer($this->ledger, $this->workDir)->stop();
 
-    ProcessFaker::assertRan('pkill -TERM -P 4242');
     ProcessFaker::assertRan('kill -TERM 4242');
     expect($this->ledger->withLabel('artisan-serve'))->toHaveCount(0);
 });

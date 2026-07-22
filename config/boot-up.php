@@ -230,6 +230,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Auto-accept the plan
+    |--------------------------------------------------------------------------
+    | app:serve and app:deploy print what they will do and ask to continue.
+    | Set this true (or pass --yes) to skip that prompt and run straight away.
+    */
+    'auto_accept' => env('BOOT_UP_AUTO_ACCEPT', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | The app:serve pipeline
     |--------------------------------------------------------------------------
     | The full boot, in order. Insert your own Serve\Step classes anywhere,

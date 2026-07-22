@@ -37,12 +37,12 @@ final class Terminal
 
     public function intro(string $message): void
     {
-        $this->suspended(fn () => intro($message));
+        $this->suspend(fn () => intro($message));
     }
 
     public function outro(string $message): void
     {
-        $this->suspended(fn () => outro($message));
+        $this->suspend(fn () => outro($message));
     }
 
     /**
@@ -50,7 +50,7 @@ final class Terminal
      */
     public function success(string $message): void
     {
-        $this->suspended(fn () => info($message));
+        $this->suspend(fn () => info($message));
     }
 
     /**
@@ -58,7 +58,7 @@ final class Terminal
      */
     public function info(string $message): void
     {
-        $this->suspended(fn () => note($message));
+        $this->suspend(fn () => note($message));
     }
 
     /**
@@ -70,17 +70,17 @@ final class Terminal
     {
         $lines = \is_array($message) ? $message : explode(PHP_EOL, $message);
 
-        $this->suspended(fn () => note(implode(PHP_EOL, array_map($this->dim(...), $lines))));
+        $this->suspend(fn () => note(implode(PHP_EOL, array_map($this->dim(...), $lines))));
     }
 
     public function warning(string $message): void
     {
-        $this->suspended(fn () => warning($message));
+        $this->suspend(fn () => warning($message));
     }
 
     public function error(string $message): void
     {
-        $this->suspended(fn () => error($message));
+        $this->suspend(fn () => error($message));
     }
 
     /**
@@ -89,12 +89,12 @@ final class Terminal
      */
     public function blank(): void
     {
-        $this->suspended(fn () => note(''));
+        $this->suspend(fn () => note(''));
     }
 
     public function heading(string $title): void
     {
-        $this->suspended(fn () => note($this->bold($this->cyan($title))));
+        $this->suspend(fn () => note($this->bold($this->cyan($title))));
     }
 
     /**
@@ -113,7 +113,7 @@ final class Terminal
 
         $block->indent(2, fn (Lines $body) => $body->lines($lines));
 
-        $this->suspended(fn () => note(implode(PHP_EOL, $block->toArray())));
+        $this->suspend(fn () => note(implode(PHP_EOL, $block->toArray())));
     }
 
     /**
@@ -124,7 +124,7 @@ final class Terminal
     public function list(array $items): void
     {
         foreach ($items as $item) {
-            $this->suspended(fn () => note("• {$item}"));
+            $this->suspend(fn () => note("• {$item}"));
         }
     }
 
@@ -143,7 +143,27 @@ final class Terminal
             $block->lineWithBreak($footer);
         }
 
-        $this->suspended(fn () => note(implode(PHP_EOL, $block->toArray())));
+        $this->suspend(fn () => note(implode(PHP_EOL, $block->toArray())));
+    }
+
+    /**
+     * A numbered section: bold-cyan title, then items rendered 1., 2., 3.….
+     *
+     * @param  list<string>  $items
+     */
+    public function orderedList(string $title, array $items): void
+    {
+        $numbered = [];
+
+        foreach (array_values($items) as $index => $item) {
+            $numbered[] = ($index + 1).'. '.$item;
+        }
+
+        $block = Lines::make()
+            ->line($this->bold($this->cyan($title)))
+            ->indent(2, fn (Lines $body) => $body->lines($numbered));
+
+        $this->suspend(fn () => note(implode(PHP_EOL, $block->toArray())));
     }
 
     /**
@@ -152,7 +172,7 @@ final class Terminal
      */
     public function table(array $headers, array $rows): void
     {
-        $this->suspended(fn () => table($headers, $rows));
+        $this->suspend(fn () => table($headers, $rows));
     }
 
     public function confirm(
@@ -164,7 +184,7 @@ final class Terminal
         mixed $validate = null,
         string $hint = '',
     ): bool {
-        return $this->suspended(fn () => confirm($label, $default, $yes, $no, $required, $validate, $hint));
+        return $this->suspend(fn () => confirm($label, $default, $yes, $no, $required, $validate, $hint));
     }
 
     /**
@@ -179,7 +199,7 @@ final class Terminal
         string $hint = '',
         bool|string $required = true,
     ): int|string {
-        return $this->suspended(fn () => select($label, $options, $default, $scroll, $validate, $hint, $required));
+        return $this->suspend(fn () => select($label, $options, $default, $scroll, $validate, $hint, $required));
     }
 
     public function text(
@@ -190,7 +210,7 @@ final class Terminal
         mixed $validate = null,
         string $hint = '',
     ): string {
-        return $this->suspended(fn () => text($label, $placeholder, $default, $required, $validate, $hint));
+        return $this->suspend(fn () => text($label, $placeholder, $default, $required, $validate, $hint));
     }
 
     public function password(
@@ -200,7 +220,7 @@ final class Terminal
         mixed $validate = null,
         string $hint = '',
     ): string {
-        return $this->suspended(fn () => password($label, $placeholder, $required, $validate, $hint));
+        return $this->suspend(fn () => password($label, $placeholder, $required, $validate, $hint));
     }
 
     /**
@@ -222,10 +242,12 @@ final class Terminal
     }
 
     /**
-     * Run output with the active progress bar out of the way: erase its
-     * frame, write, then redraw it underneath.
+     * Run a callback with the active progress bar out of the way: erase its
+     * frame, run the callback, then redraw it underneath. Used both for the
+     * package's own output and to wrap foreign streamed sub-process output
+     * (ProcessRunner::run) that would otherwise corrupt the bar's frame.
      */
-    private function suspended(Closure $callback): mixed
+    public function suspend(Closure $callback): mixed
     {
         $progress = $this->activeProgress;
 

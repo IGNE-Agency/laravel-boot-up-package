@@ -20,7 +20,8 @@ final class DeployCommand extends BootUpCommand implements Isolatable
         {--s|seed : Seed the database after migrating}
         {--no-migrate : Skip running pending migrations}
         {--fresh : Drop all tables and re-run every migration (asks first)}
-        {--u|update : Update dependencies instead of installing}';
+        {--u|update : Update dependencies instead of installing}
+        {--y|yes : Run without the confirmation prompt}';
 
     protected $description = 'Install dependencies, run project commands and migrate — without booting a server';
 
@@ -39,8 +40,11 @@ final class DeployCommand extends BootUpCommand implements Isolatable
 
         $plan = StepSequence::for($config->deploySteps, $options);
 
-        terminal()->section('What app:deploy will do');
-        terminal()->list($plan->summary());
+        if (! $this->confirmPlan($plan, 'app:deploy', $config->autoAccept)) {
+            terminal()->note('Aborted — nothing was changed.');
+
+            return self::SUCCESS;
+        }
 
         $this->reporter = $reporter;
         $pipes = $reporter->begin($plan);

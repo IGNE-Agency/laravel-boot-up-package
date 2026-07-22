@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRecord;
+use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Serve\ShutdownRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerRecord;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
@@ -46,7 +47,7 @@ function shutdownRunner(ProcessLedger $ledger, ActiveServerStore $store, bool $p
 
     return new ShutdownRunner(
         $ledger,
-        new ProcessReaper(app(Factory::class), $ledger, new Poller),
+        new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminal),
         $store,
         new ServerSelector(app(), $config),
         new StopServerPrompt($config),
@@ -69,7 +70,7 @@ test('is a friendly no-op when nothing was started', function (): void {
     expect($this->server->stops)->toBe(0);
 });
 
-test('reaps tracked processes with TERM (children first) and clears the ledger', function (): void {
+test('reaps tracked processes with TERM and clears the ledger', function (): void {
     Prompt::fake();
     $this->ledger->record(new ProcessRecord(4242, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM)));
 
@@ -78,18 +79,16 @@ test('reaps tracked processes with TERM (children first) and clears the ledger',
         'kill -0 4242' => function () use (&$alive) {
             return Process::result(exitCode: $alive ? 0 : 1);
         },
-        'ps -p 4242*' => fn () => Process::result('php artisan queue:work database'),
-        'pkill -TERM -P 4242' => function () use (&$alive) {
+        'ps -p 4242*' => fn () => Process::result('00:05'),
+        'kill -TERM 4242' => function () use (&$alive) {
             $alive = false;
 
             return Process::result();
         },
-        'kill -TERM 4242' => Process::result(),
     ]);
 
     shutdownRunner($this->ledger, $this->store, promptStop: false, stopDefault: true)->run();
 
-    ProcessFaker::assertRan('pkill -TERM -P 4242');
     ProcessFaker::assertRan('kill -TERM 4242');
     ProcessFaker::assertDidntRun('*KILL*');
     expect($this->ledger->isEmpty())->toBeTrue();
@@ -97,19 +96,20 @@ test('reaps tracked processes with TERM (children first) and clears the ledger',
     Prompt::assertStrippedOutputContains('Shutdown complete.');
 });
 
-test('does not signal a recycled pid whose command no longer matches', function (): void {
+test('does not signal a recycled pid that started after the record', function (): void {
     Prompt::fake();
-    $this->ledger->record(new ProcessRecord(4242, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM)));
+    $record = new ProcessRecord(4242, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM, time() - 3600));
+    $this->ledger->record($record);
 
     ProcessFaker::fake([
         'kill -0 4242' => Process::result(),
-        'ps -p 4242*' => Process::result('some-unrelated-daemon --serve'),
+        'ps -p 4242*' => Process::result('00:10'),
     ]);
 
     shutdownRunner($this->ledger, $this->store, promptStop: false, stopDefault: true)->run();
 
     ProcessFaker::assertDidntRun('kill -TERM 4242');
-    ProcessFaker::assertDidntRun('pkill*');
+    ProcessFaker::assertDidntRun('pgrep*');
     expect($this->ledger->isEmpty())->toBeTrue();
 });
 
@@ -133,7 +133,7 @@ test('keeps the ledger entry when a process cannot be stopped', function (): voi
 
     (new ShutdownRunner(
         $this->ledger,
-        new ProcessReaper(app(Factory::class), $this->ledger, new Poller, termGraceSeconds: 0, killGraceSeconds: 0),
+        new ProcessReaper(app(Factory::class), $this->ledger, new Poller, new NullTerminal, termGraceSeconds: 0, killGraceSeconds: 0),
         $this->store,
         new ServerSelector(app(), $config),
         new StopServerPrompt($config),
@@ -178,16 +178,28 @@ test('keeps the server when the prompt is declined', function (): void {
     Prompt::assertStrippedOutputContains('Keeping Double Server running.');
 });
 
-test('leaves a server alone that was already running before app:serve', function (): void {
-    Prompt::fake();
+test('prompts before stopping a server that was already running, keeping it by default', function (): void {
+    Prompt::fake([Key::ENTER]);
     ProcessFaker::fake();
     $this->store->remember(activeDouble(startedByUs: false));
 
     shutdownRunner($this->ledger, $this->store, promptStop: true, stopDefault: false)->run();
 
+    Prompt::assertStrippedOutputContains('Double Server was already running before app:serve started.');
+    Prompt::assertStrippedOutputContains('Stop Double Server?');
     expect($this->server->stops)->toBe(0)
         ->and($this->store->current())->toBeNull();
-    Prompt::assertStrippedOutputContains('Leaving double running');
+});
+
+test('stops a server that was already running when explicitly confirmed', function (): void {
+    Prompt::fake(['y', Key::ENTER]);
+    ProcessFaker::fake();
+    $this->store->remember(activeDouble(startedByUs: false));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: true, stopDefault: false)->run();
+
+    expect($this->server->stops)->toBe(1);
+    Prompt::assertStrippedOutputContains('Double Server stopped.');
 });
 
 test('a second invocation on the same instance is a silent no-op', function (): void {

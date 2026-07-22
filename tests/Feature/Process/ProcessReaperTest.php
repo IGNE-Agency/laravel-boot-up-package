@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRecord;
+use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Process\Terminal\TerminalLauncher;
 use Igne\LaravelBootUp\Support\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
@@ -25,14 +27,50 @@ afterEach(function (): void {
  * Zero grace periods so a surviving process fails fast instead of
  * sleeping through the real TERM/KILL windows.
  */
-function reaper(ProcessLedger $ledger): ProcessReaper
+function reaper(ProcessLedger $ledger, ?TerminalLauncher $terminal = null): ProcessReaper
 {
-    return new ProcessReaper(app(Factory::class), $ledger, new Poller, termGraceSeconds: 0, killGraceSeconds: 0);
+    return new ProcessReaper(
+        app(Factory::class),
+        $ledger,
+        new Poller,
+        $terminal ?? new NullTerminal,
+        termGraceSeconds: 0,
+        killGraceSeconds: 0,
+    );
 }
 
-function workerRecord(int $pid = 4242): ProcessRecord
+/**
+ * A terminal launcher that records the window handles it is asked to close.
+ */
+function recordingTerminal(): TerminalLauncher
 {
-    return new ProcessRecord($pid, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM));
+    return new class implements TerminalLauncher
+    {
+        /** @var list<string> */
+        public array $closed = [];
+
+        public function available(): bool
+        {
+            return true;
+        }
+
+        public function open(string $command, ?string $directory = null): ?string
+        {
+            return null;
+        }
+
+        public function close(?string $handle): void
+        {
+            if ($handle !== null) {
+                $this->closed[] = $handle;
+            }
+        }
+    };
+}
+
+function workerRecord(int $pid = 4242, ?string $startedAt = null, ?string $window = null): ProcessRecord
+{
+    return new ProcessRecord($pid, 'queue-worker', 'php artisan queue:work database', $startedAt ?? date(DATE_ATOM), $window);
 }
 
 test('a process that survives KILL stays in the ledger with a warning', function (): void {
@@ -41,8 +79,7 @@ test('a process that survives KILL stays in the ledger with a warning', function
 
     ProcessFaker::fake([
         'kill -0 4242' => Process::result(),
-        'ps -p 4242*' => Process::result('php artisan queue:work database'),
-        'pkill*' => Process::result(),
+        'ps -p 4242*' => Process::result('00:10'),
         'kill -TERM 4242' => Process::result(),
         'kill -KILL 4242' => Process::result(),
     ]);
@@ -64,13 +101,12 @@ test('a confirmed kill forgets the ledger entry and reports success', function (
         'kill -0 4242' => function () use (&$alive) {
             return Process::result(exitCode: $alive ? 0 : 1);
         },
-        'ps -p 4242*' => fn () => Process::result('php artisan queue:work database'),
-        'pkill -TERM -P 4242' => function () use (&$alive) {
+        'ps -p 4242*' => fn () => Process::result('00:05'),
+        'kill -TERM 4242' => function () use (&$alive) {
             $alive = false;
 
             return Process::result();
         },
-        'kill -TERM 4242' => Process::result(),
     ]);
 
     $reaped = reaper($this->ledger)->reap(workerRecord());
@@ -80,33 +116,89 @@ test('a confirmed kill forgets the ledger entry and reports success', function (
     ProcessFaker::assertDidntRun('*KILL*');
 });
 
-test('a recycled pid running the same binary with other arguments is not signalled', function (): void {
+test('a recycled pid that started after the record is treated as gone, not signalled', function (): void {
     Prompt::fake();
-    $this->ledger->record(workerRecord());
+    $record = workerRecord(startedAt: date(DATE_ATOM, time() - 3600));
+    $this->ledger->record($record);
 
+    // Alive, but only running for 10s — it cannot be the process we recorded
+    // an hour ago, so the pid was reused and ours is gone.
     ProcessFaker::fake([
         'kill -0 4242' => Process::result(),
-        'ps -p 4242*' => Process::result('php /usr/local/bin/some-other-tool --daemon'),
+        'ps -p 4242*' => Process::result('00:10'),
     ]);
 
-    $reaped = reaper($this->ledger)->reap(workerRecord());
+    $reaped = reaper($this->ledger)->reap($record);
 
     ProcessFaker::assertDidntRun('kill -TERM*');
-    ProcessFaker::assertDidntRun('pkill*');
+    ProcessFaker::assertDidntRun('pgrep*');
     expect($reaped)->toBeTrue()
         ->and($this->ledger->isEmpty())->toBeTrue();
 });
 
-test('a rewritten command line that contains the recorded arguments still matches', function (): void {
+test('a live process is identified by its start time, not its command line', function (): void {
     Prompt::fake();
     $this->ledger->record(workerRecord());
 
+    // No command is ever inspected; a recent start time consistent with the
+    // record is enough to treat the pid as ours.
     ProcessFaker::fake([
         'kill -0 4242' => Process::result(),
-        'ps -p 4242*' => Process::result('/opt/homebrew/bin/php artisan queue:work database'),
+        'ps -p 4242*' => Process::result('00:30'),
     ]);
 
     expect(reaper($this->ledger)->isAlive(workerRecord()))->toBeTrue();
+});
+
+test('signals the whole descendant tree, deepest first', function (): void {
+    Prompt::fake();
+    $this->ledger->record(workerRecord());
+
+    $alive = true;
+    ProcessFaker::fake([
+        'kill -0 4242' => function () use (&$alive) {
+            return Process::result(exitCode: $alive ? 0 : 1);
+        },
+        'ps -p 4242*' => fn () => Process::result('00:05'),
+        'pgrep -P 4242' => Process::result("100\n200"),
+        'pgrep -P 100' => Process::result('300'),
+        'kill -TERM 4242' => function () use (&$alive) {
+            $alive = false;
+
+            return Process::result();
+        },
+    ]);
+
+    $reaped = reaper($this->ledger)->reap(workerRecord());
+
+    expect($reaped)->toBeTrue();
+    ProcessFaker::assertRan('kill -TERM 300');
+    ProcessFaker::assertRan('kill -TERM 100');
+    ProcessFaker::assertRan('kill -TERM 200');
+    ProcessFaker::assertRan('kill -TERM 4242');
+});
+
+test('closes the terminal window once the process is gone', function (): void {
+    Prompt::fake();
+    $terminal = recordingTerminal();
+    $this->ledger->record(workerRecord(window: '55'));
+
+    $alive = true;
+    ProcessFaker::fake([
+        'kill -0 4242' => function () use (&$alive) {
+            return Process::result(exitCode: $alive ? 0 : 1);
+        },
+        'ps -p 4242*' => fn () => Process::result('00:05'),
+        'kill -TERM 4242' => function () use (&$alive) {
+            $alive = false;
+
+            return Process::result();
+        },
+    ]);
+
+    reaper($this->ledger, $terminal)->reap(workerRecord(window: '55'));
+
+    expect($terminal->closed)->toBe(['55']);
 });
 
 test('prune drops dead entries and keeps live ones without signalling', function (): void {
@@ -117,13 +209,13 @@ test('prune drops dead entries and keeps live ones without signalling', function
     ProcessFaker::fake([
         'kill -0 1000' => Process::result(exitCode: 1),
         'kill -0 2000' => Process::result(),
-        'ps -p 2000*' => Process::result('bun run dev'),
+        'ps -p 2000*' => Process::result('00:10'),
     ]);
 
     reaper($this->ledger)->prune();
 
     ProcessFaker::assertDidntRun('kill -TERM*');
-    ProcessFaker::assertDidntRun('pkill*');
+    ProcessFaker::assertDidntRun('pgrep*');
     expect($this->ledger->all())->toHaveCount(1)
         ->and($this->ledger->all()->first()->pid)->toBe(2000);
 });

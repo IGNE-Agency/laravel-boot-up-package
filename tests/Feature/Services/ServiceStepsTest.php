@@ -36,7 +36,7 @@ function bindServiceDeps(string $dir, ?ServicesConfig $config = null, array $com
     app()->instance(ServicesConfig::class, $config ?? new ServicesConfig);
     app()->instance(ComposerJson::class, new ComposerJson($dir.'/composer.json'));
     app()->instance(ProcessLedger::class, $ledger);
-    app()->instance(ProcessReaper::class, new ProcessReaper(app(Factory::class), $ledger, new Poller));
+    app()->instance(ProcessReaper::class, new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminal));
     app()->instance(ProcessRunner::class, new ProcessRunner(
         processes: app(Factory::class),
         ledger: $ledger,
@@ -65,14 +65,18 @@ function fakeServiceTerminal(): TerminalLauncher
             return true;
         }
 
-        public function open(string $command, ?string $directory = null): void
+        public function open(string $command, ?string $directory = null): ?string
         {
             $this->opened[] = $command;
 
             if (preg_match("/echo \\\$\\\$ > '([^']+)'/", $command, $matches) === 1) {
                 file_put_contents($matches[1], "4242\n");
             }
+
+            return null;
         }
+
+        public function close(?string $handle): void {}
     };
 }
 

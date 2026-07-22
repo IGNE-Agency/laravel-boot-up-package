@@ -65,19 +65,20 @@ final class ShutdownRunner
 
     private function stopServer(string $key, bool $startedByUs): void
     {
-        if (! $startedByUs) {
-            terminal()->note("Leaving {$key} running — it was already running before app:serve started.");
-
-            return;
-        }
-
         $server = $this->selector->driver($key);
 
         if (! $server->isRunning()) {
             return;
         }
 
-        if ($this->prompt->shouldStop($server)) {
+        // Even a server that was already running before app:serve is offered
+        // for shutdown — the prompt is impact-aware and, for a server we did
+        // not start, never stops by default.
+        if (! $startedByUs) {
+            terminal()->note("{$server->label()} was already running before app:serve started.");
+        }
+
+        if ($this->prompt->shouldStop($server, $startedByUs)) {
             $server->stop();
             terminal()->success("{$server->label()} stopped.");
 

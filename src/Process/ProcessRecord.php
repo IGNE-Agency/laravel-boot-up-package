@@ -11,10 +11,11 @@ final readonly class ProcessRecord
         public string $label,
         public string $command,
         public string $startedAt,
+        public ?string $window = null,
     ) {}
 
     /**
-     * @param  array{pid: int, label: string, command: string, started_at: string}  $data
+     * @param  array{pid: int, label: string, command: string, started_at: string, window?: string|null}  $data
      */
     public static function fromArray(array $data): self
     {
@@ -23,11 +24,12 @@ final readonly class ProcessRecord
             label: (string) $data['label'],
             command: (string) $data['command'],
             startedAt: (string) $data['started_at'],
+            window: isset($data['window']) && $data['window'] !== null ? (string) $data['window'] : null,
         );
     }
 
     /**
-     * @return array{pid: int, label: string, command: string, started_at: string}
+     * @return array{pid: int, label: string, command: string, started_at: string, window: string|null}
      */
     public function toArray(): array
     {
@@ -36,6 +38,7 @@ final readonly class ProcessRecord
             'label' => $this->label,
             'command' => $this->command,
             'started_at' => $this->startedAt,
+            'window' => $this->window,
         ];
     }
 }

@@ -321,9 +321,9 @@ test('prints the slim secrets table with a guidance section per secret and the n
     $this->artisan('app:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])
         ->expectsOutputToContain('deploys on push to develop')
         ->expectsOutputToContain('DEPLOY_HOOK — development environment')
-        ->expectsOutputToContain('Add under: Settings → Environments → staging → Environment secrets (create the environment first).')
+        ->expectsOutputToContain('Add under, in your GitHub repository: Settings → Environments → staging → Environment secrets (create the environment first).')
         ->expectsOutputToContain('Example: https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}')
-        ->expectsOutputToContain('Next steps')
+        ->expectsOutputToContain('1. Commit .github/workflows/ci.yml')
         ->expectsOutputToContain('Pipeline generated.')
         ->assertSuccessful();
 });

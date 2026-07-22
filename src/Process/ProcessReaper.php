@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Process;
 
+use Igne\LaravelBootUp\Process\Terminal\TerminalLauncher;
 use Igne\LaravelBootUp\Support\Poller;
 use Illuminate\Process\Factory;
 
 /**
- * Terminates ledger-tracked processes: TERM (including children), a grace
- * period, then KILL. Guards against PID reuse by comparing the running
- * command against the recorded snapshot before signalling.
+ * Terminates ledger-tracked processes: TERM the whole descendant tree,
+ * a grace period, then KILL. Guards against PID reuse by comparing the
+ * running process's start time against the recorded snapshot before
+ * signalling, and closes each process's terminal window once it is gone.
  */
 final class ProcessReaper
 {
@@ -18,6 +20,7 @@ final class ProcessReaper
         private readonly Factory $processes,
         private readonly ProcessLedger $ledger,
         private readonly Poller $poller,
+        private readonly TerminalLauncher $terminal,
         private readonly int $termGraceSeconds = 5,
         private readonly int $killGraceSeconds = 2,
     ) {}
@@ -28,12 +31,13 @@ final class ProcessReaper
             return false;
         }
 
-        $running = trim($this->processes
-            ->command(['ps', '-p', (string) $record->pid, '-o', 'command='])
-            ->run()
-            ->output());
-
-        return $running !== '' && $this->commandsMatch($running, $record->command);
+        // The PID exists. Guard against PID reuse (after a reboot, or after
+        // our process exited and the OS handed the number to something else):
+        // a reused PID necessarily started AFTER we recorded ours, so a live
+        // process that started later than the record is not ours. When the
+        // start time cannot be read we err toward "alive" so a still-running
+        // process is never silently abandoned.
+        return $this->startedAfterRecord($record) !== true;
     }
 
     /**
@@ -44,9 +48,7 @@ final class ProcessReaper
     public function reap(ProcessRecord $record): bool
     {
         if (! $this->isAlive($record)) {
-            $this->ledger->forget($record->pid);
-
-            return true;
+            return $this->settle($record);
         }
 
         $this->signalTree($record->pid, 'TERM');
@@ -73,9 +75,7 @@ final class ProcessReaper
             return false;
         }
 
-        $this->ledger->forget($record->pid);
-
-        return true;
+        return $this->settle($record);
     }
 
     /**
@@ -99,13 +99,64 @@ final class ProcessReaper
             ->each(fn (ProcessRecord $record) => $this->ledger->forget($record->pid));
     }
 
+    /**
+     * The process is gone: close its terminal window (if any) and forget it.
+     */
+    private function settle(ProcessRecord $record): bool
+    {
+        $this->terminal->close($record->window);
+        $this->ledger->forget($record->pid);
+
+        return true;
+    }
+
     private function signalTree(int $pid, string $signal): void
     {
-        // Children first (vite/esbuild under a watcher), then the parent.
-        // A failing pkill just means no children; a failing parent kill is
-        // caught by the isAlive() re-poll after each signal round.
-        $this->processes->command(['pkill', "-{$signal}", '-P', (string) $pid])->run();
-        $this->signal($pid, "-{$signal}");
+        // macOS has no setsid/process groups to lean on, so collect the whole
+        // descendant tree FIRST (while everything is still alive and still
+        // parented), then signal deepest-first — otherwise killing a parent
+        // reparents its children to init and we lose track of them.
+        $targets = [...$this->descendants($pid), $pid];
+
+        foreach ($targets as $target) {
+            $this->signal($target, "-{$signal}");
+        }
+    }
+
+    /**
+     * All descendant pids of the given pid, deepest-first.
+     *
+     * @return list<int>
+     */
+    private function descendants(int $pid): array
+    {
+        $descendants = [];
+
+        foreach ($this->childrenOf($pid) as $child) {
+            $descendants = [...$descendants, ...$this->descendants($child), $child];
+        }
+
+        return $descendants;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function childrenOf(int $pid): array
+    {
+        $output = trim($this->processes
+            ->command(['pgrep', '-P', (string) $pid])
+            ->run()
+            ->output());
+
+        if ($output === '') {
+            return [];
+        }
+
+        return array_values(array_filter(
+            array_map(static fn (string $line): int => (int) trim($line), explode(PHP_EOL, $output)),
+            static fn (int $child): bool => $child > 0,
+        ));
     }
 
     private function signal(int $pid, string $signal): bool
@@ -117,27 +168,61 @@ final class ProcessReaper
     }
 
     /**
-     * PID-reuse guard: after a reboot the recorded PID may belong to an
-     * unrelated process. Only treat it as ours when the running command
-     * resembles the recorded one.
+     * Whether the live process holding this PID started clearly after the
+     * record was written — the signature of a reused PID. Null when the start
+     * time cannot be determined (treated as "not reused" by the caller).
      */
-    private function commandsMatch(string $running, string $recorded): bool
+    private function startedAfterRecord(ProcessRecord $record): ?bool
     {
-        if (str_contains($running, $recorded)) {
-            return true;
+        $recordedAt = strtotime($record->startedAt);
+
+        if ($recordedAt === false) {
+            return null;
         }
 
-        $runningBinary = basename(strtok($running, ' ') ?: '');
-        $recordedBinary = basename(strtok($recorded, ' ') ?: '');
+        $elapsed = $this->elapsedSeconds($record->pid);
 
-        if ($runningBinary === '' || $runningBinary !== $recordedBinary) {
-            return false;
+        if ($elapsed === null) {
+            return null;
         }
 
-        // A matching binary alone is too loose after PID reuse: any `php`
-        // would match any other `php`. The recorded arguments must appear too.
-        $recordedArguments = trim((string) strstr($recorded, ' '));
+        // etime is second-resolution and startedAt is stamped just after the
+        // spawn, so allow a small tolerance before calling a PID reused.
+        return (time() - $elapsed) > ($recordedAt + 5);
+    }
 
-        return $recordedArguments === '' || str_contains($running, $recordedArguments);
+    /**
+     * Seconds the process holding this PID has been running, from
+     * `ps -o etime=` (portable across macOS and Linux), or null if unknown.
+     */
+    private function elapsedSeconds(int $pid): ?int
+    {
+        $etime = trim($this->processes
+            ->command(['ps', '-p', (string) $pid, '-o', 'etime='])
+            ->run()
+            ->output());
+
+        if ($etime === '') {
+            return null;
+        }
+
+        // Format: [[dd-]hh:]mm:ss
+        $days = 0;
+
+        if (str_contains($etime, '-')) {
+            [$dayPart, $etime] = explode('-', $etime, 2);
+            $days = (int) $dayPart;
+        }
+
+        $parts = array_map('intval', explode(':', $etime));
+
+        $seconds = match (\count($parts)) {
+            3 => $parts[0] * 3600 + $parts[1] * 60 + $parts[2],
+            2 => $parts[0] * 60 + $parts[1],
+            1 => $parts[0],
+            default => null,
+        };
+
+        return $seconds === null ? null : $days * 86400 + $seconds;
     }
 }

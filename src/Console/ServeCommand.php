@@ -29,7 +29,8 @@ final class ServeCommand extends BootUpCommand implements Isolatable
         {--fresh : Drop all tables and re-run every migration (asks first)}
         {--u|update : Update dependencies instead of installing}
         {--without-queue : Do not start a queue worker}
-        {--without-assets : Skip frontend dependencies and assets}';
+        {--without-assets : Skip frontend dependencies and assets}
+        {--y|yes : Run without the confirmation prompt}';
 
     protected $description = 'Boot everything the application needs and serve it locally';
 
@@ -57,8 +58,11 @@ final class ServeCommand extends BootUpCommand implements Isolatable
 
         $plan = StepSequence::for($config->serveSteps, $context->options, $context->server?->label());
 
-        terminal()->section('What app:serve will do');
-        terminal()->list($plan->summary());
+        if (! $this->confirmPlan($plan, 'app:serve', $config->autoAccept)) {
+            terminal()->note('Aborted — nothing was changed.');
+
+            return self::SUCCESS;
+        }
 
         $this->reporter = $reporter;
         $pipes = $reporter->begin($plan);

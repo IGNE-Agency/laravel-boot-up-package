@@ -210,7 +210,7 @@ test('secrets list one deployment-scoped DEPLOY_HOOK per branch and COMPOSER_AUT
         ->toBe(['DEPLOY_HOOK', 'DEPLOY_HOOK', 'DEPLOY_HOOK', 'COMPOSER_AUTH'])
         ->and($secrets[0]->location)->toBe('development deployment')
         ->and($secrets[0]->purpose)->toBe('deploys on push to develop')
-        ->and(implode("\n", $secrets[0]->details))->toContain('Add under: Repository settings → Deployments → development → Variables')
+        ->and(implode("\n", $secrets[0]->details))->toContain('Add under, in your Bitbucket repository: Repository settings → Deployments → development → Variables')
         ->and(implode("\n", $secrets[0]->details))->toContain('https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}')
         ->and($secrets[3]->location)->toBe('repository variables')
         ->and(implode("\n", $secrets[3]->details))->toContain('Repository settings → Repository variables (mark as secured)')

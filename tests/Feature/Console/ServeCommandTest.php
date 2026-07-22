@@ -37,6 +37,7 @@ beforeEach(function (): void {
         AnnounceApplication::class,
     ]);
     config()->set('boot-up.browser.open', false);
+    config()->set('boot-up.auto_accept', true);
 });
 
 afterEach(function (): void {
@@ -157,6 +158,33 @@ test('the plan names the selected server', function (): void {
     $this->artisan('app:serve', ['server' => 'laravel'])
         ->expectsOutputToContain('development server')
         ->assertSuccessful();
+});
+
+test('asks to continue and aborts without changing anything when declined', function (): void {
+    config()->set('boot-up.auto_accept', false);
+    ProcessFaker::fake();
+
+    $this->artisan('app:serve', ['server' => 'laravel'])
+        ->expectsConfirmation('Continue?', 'no')
+        ->expectsOutputToContain('Aborted — nothing was changed.')
+        ->assertSuccessful();
+
+    ProcessFaker::assertDidntRun('sh -c nohup*');
+    expect($this->ledger->all())->toBeEmpty()
+        ->and($this->store->current())->toBeNull();
+});
+
+test('the --yes flag skips the confirmation prompt', function (): void {
+    config()->set('boot-up.auto_accept', false);
+    ProcessFaker::fake([
+        'sh -c nohup php artisan serve*' => Process::result('12345'),
+    ]);
+
+    // No expectsConfirmation: the run would fail on an unhandled prompt if
+    // --yes did not skip it.
+    $this->artisan('app:serve', ['server' => 'laravel', '--yes' => true])->assertSuccessful();
+
+    ProcessFaker::assertRan('sh -c nohup php artisan serve*');
 });
 
 test('renders a stage divider when the pipeline enters a stage', function (): void {

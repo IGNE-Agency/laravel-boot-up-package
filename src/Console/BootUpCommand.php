@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Console;
 
 use Igne\LaravelBootUp\Facades\Platform;
+use Igne\LaravelBootUp\Serve\StepSequence;
 use Igne\LaravelBootUp\Support\BootUpException;
 use Illuminate\Console\Command;
 use Illuminate\Process\Exceptions\ProcessFailedException;
@@ -64,6 +65,23 @@ abstract class BootUpCommand extends Command
         }
 
         return self::FAILURE;
+    }
+
+    /**
+     * Show what the command is about to do and ask to continue. Returns false
+     * only when the user actively declines; auto-accept (the boot-up config
+     * flag or the --yes flag) and non-interactive contexts skip the prompt.
+     */
+    protected function confirmPlan(StepSequence $plan, string $command, bool $autoAccept): bool
+    {
+        terminal()->section("What {$command} will do");
+        terminal()->list($plan->summary());
+
+        if ($autoAccept || (bool) $this->option('yes')) {
+            return true;
+        }
+
+        return terminal()->confirm('Continue?', default: true);
     }
 
     /**

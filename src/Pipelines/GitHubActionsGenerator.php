@@ -56,7 +56,7 @@ final class GitHubActionsGenerator implements PipelineGenerator
                     "{$environment} environment",
                     "deploys on push to {$branch}",
                     [
-                        "Add under: Settings → Environments → {$environment} → Environment secrets (create the environment first).",
+                        "Add under, in your GitHub repository: Settings → Environments → {$environment} → Environment secrets (create the environment first).",
                         ...$plan->host->hookValueGuidance($environment),
                     ],
                 );
@@ -69,7 +69,7 @@ final class GitHubActionsGenerator implements PipelineGenerator
                 'repository secrets',
                 'lets composer install Nova',
                 [
-                    'Add under: Settings → Secrets and variables → Actions → Repository secrets.',
+                    'Add under, in your GitHub repository: Settings → Secrets and variables → Actions → Repository secrets.',
                     'Value: composer auth JSON for nova.laravel.com, e.g.',
                     '{"http-basic":{"nova.laravel.com":{"username":"you@example.com","password":"<license key>"}}}',
                 ],

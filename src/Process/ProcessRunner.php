@@ -32,11 +32,14 @@ final class ProcessRunner
 
     public function run(ShellCommand $command): ProcessResult
     {
-        return $this->pending($command, $command->tokens)
+        // Stream sub-process output with the active progress bar out of the
+        // way: it is erased before the output and redrawn once afterward, so
+        // the live stream never corrupts the bar's frame diffing.
+        return terminal()->suspend(fn (): ProcessResult => $this->pending($command, $command->tokens)
             ->run(null, function (string $type, string $buffer): void {
                 fwrite($type === 'err' ? STDERR : STDOUT, $buffer);
             })
-            ->throw();
+            ->throw());
     }
 
     public function runSilently(ShellCommand $command): ProcessResult
@@ -92,7 +95,7 @@ final class ProcessRunner
             $command->toString(),
         );
 
-        $this->terminal->open($shim, $command->cwd ?? getcwd() ?: null);
+        $window = $this->terminal->open($shim, $command->cwd ?? getcwd() ?: null);
 
         $captured = $this->poller->until(
             fn (): bool => is_file($pidFile) && trim((string) file_get_contents($pidFile)) !== '',
@@ -111,7 +114,7 @@ final class ProcessRunner
             throw ProcessException::terminalPidNotCaptured($label);
         }
 
-        return $this->remember($pid, $label, $command);
+        return $this->remember($pid, $label, $command, $window);
     }
 
     public function isCommandAvailable(string $binary): bool
@@ -140,13 +143,14 @@ final class ProcessRunner
             : $pending->timeout($command->timeout);
     }
 
-    private function remember(int $pid, string $label, ShellCommand $command): ProcessRecord
+    private function remember(int $pid, string $label, ShellCommand $command, ?string $window = null): ProcessRecord
     {
         $record = new ProcessRecord(
             pid: $pid,
             label: $label,
             command: $command->toString(),
             startedAt: date(DATE_ATOM),
+            window: $window,
         );
 
         $this->ledger->record($record);

@@ -16,6 +16,7 @@ final readonly class ServeConfig
         public array $serveSteps,
         public array $deploySteps,
         public bool $openBrowser,
+        public bool $autoAccept,
     ) {}
 
     public static function fromRepository(Repository $config): self
@@ -24,6 +25,7 @@ final readonly class ServeConfig
             serveSteps: (array) $config->get('boot-up.serve_steps', []),
             deploySteps: (array) $config->get('boot-up.deploy_steps', []),
             openBrowser: (bool) $config->get('boot-up.browser.open', true),
+            autoAccept: (bool) $config->get('boot-up.auto_accept', false),
         );
     }
 }

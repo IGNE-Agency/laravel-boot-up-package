@@ -28,6 +28,7 @@ beforeEach(function (): void {
     ));
 
     config()->set('boot-up.deploy_steps', [FinalizeApplication::class]);
+    config()->set('boot-up.auto_accept', true);
 });
 
 afterEach(function (): void {
@@ -55,6 +56,29 @@ test('shows the execution plan and a progress bar like app:serve', function (): 
         ->expectsOutputToContain('Boot progress')
         ->expectsOutputToContain('Deploy complete.')
         ->assertSuccessful();
+});
+
+test('asks to continue and aborts when declined', function (): void {
+    config()->set('boot-up.auto_accept', false);
+    ProcessFaker::fake();
+
+    $this->artisan('app:deploy')
+        ->expectsConfirmation('Continue?', 'no')
+        ->expectsOutputToContain('Aborted — nothing was changed.')
+        ->assertSuccessful();
+
+    ProcessFaker::assertDidntRun('php artisan storage:link');
+});
+
+test('the --yes flag skips the confirmation prompt', function (): void {
+    config()->set('boot-up.auto_accept', false);
+    ProcessFaker::fake([
+        'php artisan storage:link' => Process::result('The links have been created.'),
+    ]);
+
+    $this->artisan('app:deploy', ['--yes' => true])->assertSuccessful();
+
+    ProcessFaker::assertRan('php artisan storage:link');
 });
 
 test('a failing finalize command fails the deploy cleanly', function (): void {

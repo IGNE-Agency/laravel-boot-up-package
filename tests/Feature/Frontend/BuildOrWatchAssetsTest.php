@@ -28,7 +28,7 @@ function bindAssetServices(string $dir, string $assets = 'watch', string $watchI
     app()->instance(PackageJson::class, new PackageJson($dir.'/package.json'));
     app()->instance(FrontendConfig::class, new FrontendConfig(PackageManager::BUN, $assets, $watchIn));
     app()->instance(ProcessLedger::class, $ledger);
-    app()->instance(ProcessReaper::class, new ProcessReaper(app(Factory::class), $ledger, new Poller));
+    app()->instance(ProcessReaper::class, new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminal));
     app()->instance(ProcessRunner::class, new ProcessRunner(
         processes: app(Factory::class),
         ledger: $ledger,

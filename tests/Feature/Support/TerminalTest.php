@@ -97,6 +97,29 @@ test('summary renders title, bullets and footer', function (): void {
     Prompt::assertStrippedOutputContains('All required dependencies are installed.');
 });
 
+test('orderedList renders a numbered list under a title', function (): void {
+    Prompt::fake();
+
+    (new Terminal)->orderedList('Next steps', ['Commit the files', 'Enable pipelines', 'Add the secret']);
+
+    Prompt::assertStrippedOutputContains('Next steps');
+    Prompt::assertStrippedOutputContains('1. Commit the files');
+    Prompt::assertStrippedOutputContains('2. Enable pipelines');
+    Prompt::assertStrippedOutputContains('3. Add the secret');
+});
+
+test('suspend returns the callback result whether or not a bar is active', function (): void {
+    Prompt::fake();
+    $terminal = new Terminal;
+
+    expect($terminal->suspend(fn (): int => 42))->toBe(42);
+
+    $progress = $terminal->progress('Boot progress', 2);
+    $progress->start();
+
+    expect($terminal->suspend(fn (): string => 'ok'))->toBe('ok');
+});
+
 test('table renders headers and rows', function (): void {
     Prompt::fake();
 

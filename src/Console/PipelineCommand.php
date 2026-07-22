@@ -184,7 +184,7 @@ final class PipelineCommand extends BootUpCommand
 
         if ($secrets !== []) {
             terminal()->table(
-                ['Secret', 'Add under', 'Purpose'],
+                ['Secret', 'Add under (git provider)', 'Purpose'],
                 array_map(fn (PipelineSecret $secret) => [$secret->name, $secret->location, $secret->purpose], $secrets),
             );
         }
@@ -195,6 +195,6 @@ final class PipelineCommand extends BootUpCommand
             }
         }
 
-        terminal()->section('Next steps', $generator->instructions($plan));
+        terminal()->orderedList('Next steps', $generator->instructions($plan));
     }
 }

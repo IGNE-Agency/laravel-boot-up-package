@@ -307,7 +307,7 @@ test('secrets list one environment-scoped DEPLOY_HOOK per branch and COMPOSER_AU
         ->toBe(['DEPLOY_HOOK', 'DEPLOY_HOOK', 'DEPLOY_HOOK', 'COMPOSER_AUTH'])
         ->and($secrets[0]->location)->toBe('development environment')
         ->and($secrets[0]->purpose)->toBe('deploys on push to develop')
-        ->and(implode("\n", $secrets[0]->details))->toContain('Add under: Settings → Environments → development → Environment secrets')
+        ->and(implode("\n", $secrets[0]->details))->toContain('Add under, in your GitHub repository: Settings → Environments → development → Environment secrets')
         ->and(implode("\n", $secrets[0]->details))->toContain('https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}')
         ->and($secrets[3]->location)->toBe('repository secrets')
         ->and(implode("\n", $secrets[3]->details))->toContain('Settings → Secrets and variables → Actions → Repository secrets')

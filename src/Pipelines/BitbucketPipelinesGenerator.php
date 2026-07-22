@@ -56,7 +56,7 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
                     "{$environment} deployment",
                     "deploys on push to {$branch}",
                     [
-                        "Add under: Repository settings → Deployments → {$environment} → Variables (mark as secured; create the environment first).",
+                        "Add under, in your Bitbucket repository: Repository settings → Deployments → {$environment} → Variables (mark as secured; create the environment first).",
                         ...$plan->host->hookValueGuidance($environment),
                     ],
                 );
@@ -69,7 +69,7 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
                 'repository variables',
                 'lets composer install Nova',
                 [
-                    'Add under: Repository settings → Repository variables (mark as secured).',
+                    'Add under, in your Bitbucket repository: Repository settings → Repository variables (mark as secured).',
                     'Value: composer auth JSON for nova.laravel.com, e.g.',
                     '{"http-basic":{"nova.laravel.com":{"username":"you@example.com","password":"<license key>"}}}',
                     'Composer reads COMPOSER_AUTH straight from the environment — no auth.json step is needed.',
