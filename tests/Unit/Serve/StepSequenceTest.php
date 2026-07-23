@@ -65,13 +65,13 @@ test('assigns every default step to its stage, in order', function (): void {
             ServeStage::Server, ServeStage::Install, ServeStage::Install,
             ServeStage::Database, ServeStage::Database, ServeStage::Database,
             ServeStage::Database, ServeStage::Database, ServeStage::Database,
-            ServeStage::Finalize, ServeStage::Finalize, ServeStage::Finalize,
-            ServeStage::Finalize, ServeStage::Finalize, ServeStage::Finalize,
-            ServeStage::Finalize, ServeStage::Finalize,
+            ServeStage::Cache, ServeStage::Finalize,
+            ServeStage::Services, ServeStage::Services, ServeStage::Services, ServeStage::Services,
+            ServeStage::Assets, ServeStage::Announce,
         ]);
 });
 
-test('the default pipeline summarizes into eleven readable lines', function (): void {
+test('the default pipeline summarizes into twelve readable lines', function (): void {
     $plan = StepSequence::for(defaultServeSteps(), new ServeOptions, 'Herd');
 
     expect($plan->summary())->toBe([
@@ -82,7 +82,8 @@ test('the default pipeline summarizes into eleven readable lines', function (): 
         'Prepare the database and verify the connection',
         "Run the project's configured commands",
         'Run pending migrations',
-        'Cache and finalize the application',
+        'Cache the framework files',
+        'Finalize the application',
         'Start long-running services when enabled: queue worker, Horizon, Reverb, scheduler',
         'Build or watch frontend assets',
         'Announce the application URL',
@@ -106,7 +107,7 @@ test('unknown classes inherit the preceding stage; leading unknowns are custom',
     ], new ServeOptions);
 
     expect(array_map(fn ($step) => $step->stage, $plan->steps))
-        ->toBe([ServeStage::Custom, ServeStage::Server, ServeStage::Server, ServeStage::Finalize])
+        ->toBe([ServeStage::Custom, ServeStage::Server, ServeStage::Server, ServeStage::Announce])
         ->and($plan->steps[0]->label)->toBe('Std Class');
 });
 

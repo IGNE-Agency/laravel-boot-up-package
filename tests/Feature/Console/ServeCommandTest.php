@@ -206,13 +206,13 @@ test('renders a stage divider when the pipeline enters a stage', function (): vo
         ->assertSuccessful();
 });
 
-test('the finalize stage gets its own divider', function (): void {
+test('a later stage gets its own divider', function (): void {
     ProcessFaker::fake([
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
 
     $this->artisan('app:serve', ['server' => 'laravel'])
-        ->expectsOutputToContain('Finalize the application')
+        ->expectsOutputToContain('Announce the application')
         ->assertSuccessful();
 });
 

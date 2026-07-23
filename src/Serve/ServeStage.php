@@ -15,6 +15,10 @@ enum ServeStage: string
     case Server = 'Start server';
     case Install = 'Install dependencies';
     case Database = 'Prepare database';
+    case Cache = 'Cache framework files';
     case Finalize = 'Finalize the application';
+    case Services = 'Start services';
+    case Assets = 'Build or watch assets';
+    case Announce = 'Announce the application';
     case Custom = 'Custom steps';
 }
