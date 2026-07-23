@@ -38,6 +38,11 @@ final class StaticPipelineGenerator implements PipelineGenerator
         return [];
     }
 
+    public function notes(PipelinePlan $plan): array
+    {
+        return [];
+    }
+
     public function instructions(PipelinePlan $plan): array
     {
         return ['Static provider instructions.'];

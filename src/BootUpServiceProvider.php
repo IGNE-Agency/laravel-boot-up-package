@@ -12,6 +12,7 @@ use Igne\LaravelBootUp\Console\PipelineCommand;
 use Igne\LaravelBootUp\Console\ServeCommand;
 use Igne\LaravelBootUp\Console\StatusCommand;
 use Igne\LaravelBootUp\Database\DatabaseConfig;
+use Igne\LaravelBootUp\Deploy\Composer;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Environment\EnvironmentConfig;
 use Igne\LaravelBootUp\Environment\ShellProfile;
@@ -32,6 +33,7 @@ use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Herd\HerdServices;
 use Igne\LaravelBootUp\Servers\Herd\HerdSites;
 use Igne\LaravelBootUp\Servers\ServersConfig;
+use Igne\LaravelBootUp\Support\LockfileConflictDetector;
 use Igne\LaravelBootUp\Support\Platform;
 use Igne\LaravelBootUp\Support\Poller;
 use Igne\LaravelBootUp\Support\Terminal;
@@ -110,6 +112,12 @@ final class BootUpServiceProvider extends ServiceProvider
             logDirectory: $app->storagePath('logs/boot-up'),
             runtimeDirectory: $app->storagePath('framework/boot-up'),
             terminalPidTimeout: (int) $app['config']->get('boot-up.process.terminal_pid_timeout', 20),
+        ));
+
+        $this->app->singleton(Composer::class, fn (Application $app) => new Composer(
+            processes: $app->make(ProcessRunner::class),
+            conflicts: $app->make(LockfileConflictDetector::class),
+            basePath: $app->basePath(),
         ));
 
         $this->app->singleton(EnvFile::class, fn (Application $app) => new EnvFile(

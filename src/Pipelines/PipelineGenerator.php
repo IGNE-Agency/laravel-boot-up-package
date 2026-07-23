@@ -47,7 +47,17 @@ interface PipelineGenerator
     public function secrets(PipelinePlan $plan): array;
 
     /**
-     * The "Next steps" list, printed after the secrets table and sections.
+     * Informational "Good to know" notes — things that are true about the
+     * generated pipeline but are NOT actions the user must take. Printed as an
+     * unnumbered block before the Next steps.
+     *
+     * @return list<string>
+     */
+    public function notes(PipelinePlan $plan): array;
+
+    /**
+     * The actionable "Next steps" list, printed after the notes block — only
+     * things the user must actually do to finish wiring the pipeline up.
      *
      * @return list<string>
      */

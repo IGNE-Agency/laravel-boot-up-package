@@ -50,27 +50,22 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
         $secrets = [];
 
         if ($plan->host->deploys()) {
-            foreach ($plan->branchEnvironments as $branch => $environment) {
-                $secrets[] = new PipelineSecret(
-                    'DEPLOY_HOOK',
-                    "{$environment} deployment",
-                    "deploys on push to {$branch}",
-                    [
-                        "Add under, in your Bitbucket repository: Repository settings → Deployments → {$environment} → Variables (mark as secured; create the environment first).",
-                        ...$plan->host->hookValueGuidance($environment),
-                    ],
-                );
-            }
+            $secrets[] = new PipelineSecret(
+                'DEPLOY_HOOK',
+                'each deployment',
+                'triggers the deploy on a green push',
+                $this->deployHookDetails($plan),
+            );
         }
 
-        if ($plan->nova) {
+        if ($plan->composerAuth) {
             $secrets[] = new PipelineSecret(
                 'COMPOSER_AUTH',
                 'repository variables',
-                'lets composer install Nova',
+                'authenticates Composer for private/licensed packages',
                 [
                     'Add under, in your Bitbucket repository: Repository settings → Repository variables (mark as secured).',
-                    'Value: composer auth JSON for nova.laravel.com, e.g.',
+                    'Value: composer auth JSON for the private registry your packages need — e.g. Laravel Nova:',
                     '{"http-basic":{"nova.laravel.com":{"username":"you@example.com","password":"<license key>"}}}',
                     'Composer reads COMPOSER_AUTH straight from the environment — no auth.json step is needed.',
                 ],
@@ -80,23 +75,57 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
         return $secrets;
     }
 
+    public function notes(PipelinePlan $plan): array
+    {
+        return [
+            ...$plan->host->notes(),
+            ...$plan->host->deploys() ? [
+                "An unset DEPLOY_HOOK skips that environment's deploy with a notice instead of failing the run.",
+                'Deploying from other branches? Remap boot-up.pipeline.branches and regenerate.',
+            ] : [],
+        ];
+    }
+
     public function instructions(PipelinePlan $plan): array
     {
-        $approval = $plan->approvalEnvironment();
-
         return [
             'Commit bitbucket-pipelines.yml, scripts/ci/* and .env.pipeline — every script also runs locally, e.g. `bash scripts/ci/test.sh`.',
             'Enable Pipelines once under Repository settings → Pipelines → Settings.',
-            ...$plan->host->notes(),
-            ...$plan->host->deploys() ? [
-                ...$approval === null ? [] : ["Optional approval gate: add `trigger: manual` to the {$approval} deploy step."],
-                "An unset DEPLOY_HOOK skips that environment's deploy with a notice instead of failing the run.",
-                'Deploying from other branches? Remap boot-up.pipeline.branches and regenerate.',
-            ] : [
+            ...$this->secrets($plan) === [] ? [] : [
+                'Add the variables above to your Bitbucket repository (repository/deployment variables — each section lists the exact path).',
+            ],
+            ...$plan->host->deploys() ? [] : [
                 'Ready to deploy from this pipeline later? Rerun generate:pipeline with a deploy-hook host to add the deploy steps.',
             ],
             ...$plan->pint ? ['Lint before every commit: run `php artisan generate:git-hooks` to install the pre-commit Pint hook.'] : [],
         ];
+    }
+
+    /**
+     * One DEPLOY_HOOK entry covering every deployment environment: a "set one
+     * per deployment" instruction, the generic settings path, then the host's
+     * value guidance labelled per environment (the URL differs per env).
+     *
+     * @return list<string>
+     */
+    private function deployHookDetails(PipelinePlan $plan): array
+    {
+        $environments = array_values($plan->branchEnvironments);
+
+        $details = [
+            'Configure a DEPLOY_HOOK for EACH deployment environment: '.implode(', ', $environments).'.',
+            'Add under, in your Bitbucket repository: Repository settings → Deployments → <environment> → Variables (mark as secured; create each environment first).',
+        ];
+
+        foreach ($plan->branchEnvironments as $branch => $environment) {
+            $details[] = "{$environment} (deploys on push to {$branch}):";
+
+            foreach ($plan->host->hookValueGuidance($environment) as $line) {
+                $details[] = '  '.$line;
+            }
+        }
+
+        return $details;
     }
 
     private function pipeline(PipelinePlan $plan): string

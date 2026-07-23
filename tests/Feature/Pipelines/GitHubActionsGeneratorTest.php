@@ -28,6 +28,7 @@ function githubPipelinePlan(array $overrides = [], array $deploymentOverrides = 
     $defaults = [
         'deployment' => new DeploymentPlan(...array_merge($deploymentDefaults, $deploymentOverrides)),
         'nova' => true,
+        'composerAuth' => true,
         'pint' => true,
         'phpVersion' => '8.4',
         'branchEnvironments' => [
@@ -271,8 +272,13 @@ test('files lists the workflow first, then every shared script', function (): vo
     ]);
 });
 
-test('a project without nova gets no composer auth', function (): void {
-    expect(githubWorkflow(githubPipelinePlan(['nova' => false])))->not->toContain('COMPOSER_AUTH');
+test('a project without composer auth gets no COMPOSER_AUTH env block', function (): void {
+    expect(githubWorkflow(githubPipelinePlan(['composerAuth' => false])))->not->toContain('COMPOSER_AUTH');
+});
+
+test('composer auth is wired in for any project when enabled, without nova', function (): void {
+    expect(githubWorkflow(githubPipelinePlan(['nova' => false, 'composerAuth' => true])))
+        ->toContain('COMPOSER_AUTH: ${{ secrets.COMPOSER_AUTH }}');
 });
 
 test('a project without pint gets no lint job and deploys wait on build and test only', function (): void {
@@ -300,22 +306,32 @@ test('the php version from composer.json lands in setup-php', function (): void 
     expect(githubWorkflow(githubPipelinePlan(['phpVersion' => '8.3'])))->toContain("php-version: '8.3'");
 });
 
-test('secrets list one environment-scoped DEPLOY_HOOK per branch and COMPOSER_AUTH for nova', function (): void {
+test('secrets list a single DEPLOY_HOOK covering every environment plus COMPOSER_AUTH', function (): void {
     $secrets = githubGenerator()->secrets(githubPipelinePlan());
 
     expect(array_map(fn ($secret) => $secret->name, $secrets))
-        ->toBe(['DEPLOY_HOOK', 'DEPLOY_HOOK', 'DEPLOY_HOOK', 'COMPOSER_AUTH'])
-        ->and($secrets[0]->location)->toBe('development environment')
-        ->and($secrets[0]->purpose)->toBe('deploys on push to develop')
-        ->and(implode("\n", $secrets[0]->details))->toContain('Add under, in your GitHub repository: Settings → Environments → development → Environment secrets')
-        ->and(implode("\n", $secrets[0]->details))->toContain('https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}')
-        ->and($secrets[3]->location)->toBe('repository secrets')
-        ->and(implode("\n", $secrets[3]->details))->toContain('Settings → Secrets and variables → Actions → Repository secrets')
-        ->and(implode("\n", $secrets[3]->details))->toContain('"nova.laravel.com"');
+        ->toBe(['DEPLOY_HOOK', 'COMPOSER_AUTH'])
+        ->and($secrets[0]->location)->toBe('each environment')
+        ->and($secrets[0]->purpose)->toBe('triggers the deploy on a green push');
+
+    $deployHook = implode("\n", $secrets[0]->details);
+
+    expect($deployHook)->toContain('Configure a DEPLOY_HOOK for EACH environment: development, staging, production.')
+        ->and($deployHook)->toContain('Settings → Environments → <environment> → Environment secrets')
+        // Every environment's own value guidance is still listed under the one entry.
+        ->and($deployHook)->toContain('development (deploys on push to develop):')
+        ->and($deployHook)->toContain('staging (deploys on push to staging):')
+        ->and($deployHook)->toContain('production (deploys on push to main):')
+        ->and($deployHook)->toContain('https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}');
+
+    expect($secrets[1]->location)->toBe('repository secrets')
+        ->and($secrets[1]->purpose)->toBe('authenticates Composer for private/licensed packages')
+        ->and(implode("\n", $secrets[1]->details))->toContain('Settings → Secrets and variables → Actions → Repository secrets')
+        ->and(implode("\n", $secrets[1]->details))->toContain('"nova.laravel.com"');
 });
 
-test('a project without nova lists no COMPOSER_AUTH secret', function (): void {
-    $names = array_map(fn ($secret) => $secret->name, githubGenerator()->secrets(githubPipelinePlan(['nova' => false])));
+test('a project without composer auth lists no COMPOSER_AUTH secret', function (): void {
+    $names = array_map(fn ($secret) => $secret->name, githubGenerator()->secrets(githubPipelinePlan(['composerAuth' => false])));
 
     expect($names)->not->toContain('COMPOSER_AUTH');
 });
@@ -323,7 +339,8 @@ test('a project without nova lists no COMPOSER_AUTH secret', function (): void {
 function githubGuidance(PipelinePlan $plan): string
 {
     return implode("\n", [
-        ...array_merge(...array_map(fn ($secret) => $secret->details, githubGenerator()->secrets($plan))),
+        ...array_merge([], ...array_map(fn ($secret) => $secret->details, githubGenerator()->secrets($plan))),
+        ...githubGenerator()->notes($plan),
         ...githubGenerator()->instructions($plan),
     ]);
 }
@@ -352,21 +369,21 @@ test('the webhook host gets neutral guidance naming no host', function (): void 
         ->and($guidance)->not->toContain('Forge');
 });
 
-test('the approval-gate instruction names the last configured environment', function (): void {
-    $instructions = implode("\n", githubGenerator()->instructions(githubPipelinePlan([
-        'branchEnvironments' => ['develop' => 'dev', 'master' => 'live'],
-    ])));
+test('informational lines live in the notes block, not the next steps', function (): void {
+    $plan = githubPipelinePlan(['host' => DeployHookHost::FORTRABBIT]);
 
-    expect($instructions)->toContain('add required reviewers to the live environment')
-        ->and($instructions)->toContain('Deploying from other branches? Remap boot-up.pipeline.branches and regenerate.')
-        ->and($instructions)->not->toContain('production')
-        ->and($instructions)->not->toContain('(e.g. main)');
-});
+    $notes = implode("\n", githubGenerator()->notes($plan));
+    $instructions = implode("\n", githubGenerator()->instructions($plan));
 
-test('an empty branch map drops the approval-gate instruction', function (): void {
-    $instructions = implode("\n", githubGenerator()->instructions(githubPipelinePlan(['branchEnvironments' => []])));
+    expect($notes)->toContain('Branch protection: require the Lint, Build and Test checks.')
+        ->and($notes)->toContain('User-Agent: fortrabbit')
+        ->and($notes)->toContain("An unset DEPLOY_HOOK skips that environment's deploy")
+        ->and($notes)->toContain('Deploying from other branches? Remap boot-up.pipeline.branches and regenerate.');
 
-    expect($instructions)->not->toContain('approval gate');
+    expect($instructions)->toContain('Add the secrets above to your GitHub repository')
+        ->and($instructions)->not->toContain('Branch protection')
+        ->and($instructions)->not->toContain('Deploying from other branches')
+        ->and($instructions)->not->toContain('approval gate');
 });
 
 test('the none host renders a checks-only workflow that still runs on pushes', function (): void {
@@ -388,11 +405,13 @@ test('the none host drops deploy-hook.sh, the DEPLOY_HOOK secrets and the deploy
 
     $paths = array_map(fn ($file) => $file->path, githubGenerator()->files($plan));
     $names = array_map(fn ($secret) => $secret->name, githubGenerator()->secrets($plan));
+    $notes = implode("\n", githubGenerator()->notes($plan));
     $instructions = implode("\n", githubGenerator()->instructions($plan));
 
     expect($paths)->not->toContain('scripts/ci/deploy-hook.sh')
         ->and($names)->toBe(['COMPOSER_AUTH'])
-        ->and($instructions)->toContain('Branch protection: require the Lint, Build and Test checks.')
+        ->and($notes)->toContain('Branch protection: require the Lint, Build and Test checks.')
+        ->and($notes)->not->toContain('DEPLOY_HOOK')
         ->and($instructions)->toContain('Rerun generate:pipeline with a deploy-hook host to add the deploy jobs.')
         ->and($instructions)->not->toContain('DEPLOY_HOOK')
         ->and($instructions)->not->toContain('approval gate');

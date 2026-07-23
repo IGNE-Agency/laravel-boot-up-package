@@ -11,7 +11,7 @@ final class DownCommand extends BootUpCommand implements Isolatable
 {
     protected $signature = 'app:down';
 
-    protected $description = 'Stop tracked background processes and the server app:serve started';
+    protected $description = 'Stop tracked background processes and the server that app:serve started';
 
     public function perform(ShutdownRunner $shutdown): int
     {

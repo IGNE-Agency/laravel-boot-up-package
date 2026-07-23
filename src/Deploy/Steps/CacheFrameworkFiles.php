@@ -27,7 +27,7 @@ final class CacheFrameworkFiles implements Step
     public function handle(ServeContext $context, Closure $next): mixed
     {
         if (! $this->config->cacheFrameworkFiles) {
-            terminal()->note('Framework file caching is disabled; skipping.');
+            terminal()->note('Framework file caching is disabled in configuration — skipping.');
 
             return $next($context);
         }

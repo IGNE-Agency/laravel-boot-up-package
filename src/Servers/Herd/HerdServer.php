@@ -68,13 +68,16 @@ final class HerdServer implements Server
         $linked = $this->sites->nameFor($project);
 
         if ($linked !== null) {
-            terminal()->note("Project already linked to Herd as https://{$linked}.test.");
-            $this->secure($linked);
+            // An already-linked site is already secured — re-running `herd
+            // secure` on every serve regenerates the cert and reloads Nginx,
+            // which briefly refuses connections right as the reachability probe
+            // starts and made app:serve wrongly report Herd as "not answering".
+            terminal()->note("Project already linked to Laravel Herd as https://{$linked}.test.");
         } else {
             $name = $this->claimSiteName($project);
 
             $this->runOrFail(['herd', 'link', $name]);
-            terminal()->success("Project linked to Herd as https://{$name}.test.");
+            terminal()->success("Project linked to Laravel Herd as https://{$name}.test.");
 
             $this->secure($name);
         }
@@ -100,9 +103,9 @@ final class HerdServer implements Server
             $this->services->boot();
         }
 
-        terminal()->info('Verifying Herd is reachable...');
+        terminal()->info('Verifying Laravel Herd is reachable...');
         $this->services->ensureReachable($this->url());
-        terminal()->success("Herd is serving {$this->url()}.");
+        terminal()->success("Laravel Herd is serving {$this->url()}.");
     }
 
     public function stop(): void

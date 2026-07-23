@@ -25,10 +25,13 @@ final readonly class PipelineConfig
         public array $generators = [],
         public array $steps = [],
         public array $files = [],
+        public ?bool $composerAuth = null,
     ) {}
 
     public static function fromRepository(Repository $config): self
     {
+        $composerAuth = $config->get('boot-up.pipeline.composer_auth');
+
         return new self(
             branchEnvironments: self::normalizeEnvironments(
                 (array) $config->get('boot-up.pipeline.branches', self::DEFAULT_BRANCH_ENVIRONMENTS),
@@ -36,6 +39,8 @@ final readonly class PipelineConfig
             generators: (array) $config->get('boot-up.pipeline.generators', []),
             steps: (array) $config->get('boot-up.pipeline.steps', []),
             files: (array) $config->get('boot-up.pipeline.files', []),
+            // null = auto-detect (Nova); an explicit bool forces it on/off.
+            composerAuth: $composerAuth === null ? null : (bool) $composerAuth,
         );
     }
 

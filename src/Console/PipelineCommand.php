@@ -217,6 +217,12 @@ final class PipelineCommand extends BootUpCommand
             }
         }
 
+        $notes = $generator->notes($plan);
+
+        if ($notes !== []) {
+            terminal()->summary('Good to know', $notes);
+        }
+
         terminal()->orderedList('Next steps', $generator->instructions($plan));
     }
 }

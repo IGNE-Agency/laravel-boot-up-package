@@ -21,11 +21,17 @@ final class PipelinePlanner
 
     public function plan(DeployHookHost $host): PipelinePlan
     {
+        $nova = $this->composerJson->requires('laravel/nova');
+
         return new PipelinePlan(
             // CI needs dev dependencies (the test framework) and must not
             // `artisan optimize` — exactly the DEVELOPMENT plan semantics.
             deployment: $this->deployments->plan(environment: DeploymentEnvironment::DEVELOPMENT),
-            nova: $this->composerJson->requires('laravel/nova'),
+            nova: $nova,
+            // COMPOSER_AUTH is offered whenever config opts in; absent an
+            // explicit setting it defaults to on for Nova projects (the one
+            // private dependency we can detect) and off otherwise.
+            composerAuth: $this->config->composerAuth ?? $nova,
             pint: $this->composerJson->requires('laravel/pint') || $this->composerJson->requiresDev('laravel/pint'),
             phpVersion: $this->composerJson->phpVersion(),
             branchEnvironments: $this->config->branchEnvironments,

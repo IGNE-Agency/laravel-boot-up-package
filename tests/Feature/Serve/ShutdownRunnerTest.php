@@ -96,6 +96,28 @@ test('reaps tracked processes with TERM and clears the ledger', function (): voi
     Prompt::assertStrippedOutputContains('Shutdown complete.');
 });
 
+test('removes a stale public/hot when a tracked asset watcher is torn down', function (): void {
+    Prompt::fake();
+    $this->ledger->record(new ProcessRecord(2000, 'assets-watch', 'bun run dev', date(DATE_ATOM)));
+
+    // The watcher is already gone, so reap settles it and clears the ledger.
+    ProcessFaker::fake(['kill -0 2000' => Process::result(exitCode: 1)]);
+
+    $public = base_path('public');
+    $createdPublic = ! is_dir($public);
+    $createdPublic && mkdir($public, 0755, true);
+    file_put_contents($public.'/hot', 'https://vite.example.test:5173');
+
+    try {
+        shutdownRunner($this->ledger, $this->store, promptStop: false, stopDefault: true)->run();
+
+        expect(is_file($public.'/hot'))->toBeFalse();
+    } finally {
+        @unlink($public.'/hot');
+        $createdPublic && @rmdir($public);
+    }
+});
+
 test('does not signal a recycled pid that started after the record', function (): void {
     Prompt::fake();
     $record = new ProcessRecord(4242, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM, time() - 3600));

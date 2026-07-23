@@ -50,13 +50,32 @@ final class TrackedProgress extends Progress
             return;
         }
 
-        $height = \count(explode(PHP_EOL, $this->prevFrame));
+        $height = $this->frameHeight();
 
         $this->moveCursorToColumn(1);
         $this->moveCursorUp(min(self::terminal()->lines(), $height) - 1);
         $this->eraseDown();
 
         $this->prevFrame = '';
+    }
+
+    /**
+     * The frame's height in VISUAL rows, not logical lines: a label or hint
+     * wider than the terminal wraps onto extra rows, so counting newlines
+     * would move the cursor up too few rows and leave stale bar fragments
+     * behind streamed output.
+     */
+    private function frameHeight(): int
+    {
+        $columns = max(1, self::terminal()->cols());
+        $rows = 0;
+
+        foreach (explode(PHP_EOL, $this->prevFrame) as $line) {
+            $width = mb_strwidth((string) preg_replace('/\e\[[0-9;]*m/', '', $line));
+            $rows += max(1, (int) ceil($width / $columns));
+        }
+
+        return $rows;
     }
 
     /**

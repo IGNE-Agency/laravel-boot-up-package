@@ -62,7 +62,7 @@ test('assigns every default step to its stage, in order', function (): void {
         ->and($stages)->toBe([
             ServeStage::Prepare, ServeStage::Prepare, ServeStage::Prepare,
             ServeStage::Tools,
-            ServeStage::Start, ServeStage::Start, ServeStage::Start,
+            ServeStage::Server, ServeStage::Install, ServeStage::Install,
             ServeStage::Database, ServeStage::Database, ServeStage::Database,
             ServeStage::Database, ServeStage::Database, ServeStage::Database,
             ServeStage::Finalize, ServeStage::Finalize, ServeStage::Finalize,
@@ -106,7 +106,7 @@ test('unknown classes inherit the preceding stage; leading unknowns are custom',
     ], new ServeOptions);
 
     expect(array_map(fn ($step) => $step->stage, $plan->steps))
-        ->toBe([ServeStage::Custom, ServeStage::Start, ServeStage::Start, ServeStage::Finalize])
+        ->toBe([ServeStage::Custom, ServeStage::Server, ServeStage::Server, ServeStage::Finalize])
         ->and($plan->steps[0]->label)->toBe('Std Class');
 });
 
@@ -118,7 +118,7 @@ test('a reordered list may repeat stages', function (): void {
     ], new ServeOptions);
 
     expect(array_map(fn ($step) => $step->stage, $plan->steps))
-        ->toBe([ServeStage::Start, ServeStage::Prepare, ServeStage::Start]);
+        ->toBe([ServeStage::Server, ServeStage::Prepare, ServeStage::Install]);
 });
 
 test('--no-migrate hides the migrations line, even combined with --fresh', function (): void {

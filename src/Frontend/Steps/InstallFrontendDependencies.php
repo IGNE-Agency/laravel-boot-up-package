@@ -18,6 +18,13 @@ use Illuminate\Process\Exceptions\ProcessFailedException;
 
 final class InstallFrontendDependencies implements Step
 {
+    /**
+     * Installing node modules can take minutes on a slow network or a large
+     * project; the default per-command timeout is meant for quick commands and
+     * would abort a real install mid-way, so it is lifted well clear here.
+     */
+    private const INSTALL_TIMEOUT_SECONDS = 1800;
+
     public function __construct(
         private readonly PackageManagerSelector $selector,
         private readonly PackageJson $packageJson,
@@ -43,7 +50,8 @@ final class InstallFrontendDependencies implements Step
         $manager = $this->selector->selected();
 
         $command = $this->rewriter->rewrite(
-            ShellCommand::make($context->options->update ? $manager->updateCommand() : $manager->installCommand()),
+            ShellCommand::make($context->options->update ? $manager->updateCommand() : $manager->installCommand())
+                ->withTimeout(self::INSTALL_TIMEOUT_SECONDS),
             $context->server?->commandRewrites(),
         );
 

@@ -18,6 +18,7 @@ final readonly class PipelinePlan
     public function __construct(
         public DeploymentPlan $deployment,
         public bool $nova,
+        public bool $composerAuth,
         public bool $pint,
         public string $phpVersion,
         public array $branchEnvironments,
@@ -34,6 +35,7 @@ final readonly class PipelinePlan
         return new self(
             $this->deployment,
             $this->nova,
+            $this->composerAuth,
             $this->pint,
             $this->phpVersion,
             $this->branchEnvironments,
@@ -41,17 +43,5 @@ final readonly class PipelinePlan
             $this->host,
             $extensions,
         );
-    }
-
-    /**
-     * The environment worth an approval gate — the last mapping in
-     * branchEnvironments, which is the most production-like by the map's
-     * dev → prod convention. Null when no branches are mapped.
-     */
-    public function approvalEnvironment(): ?string
-    {
-        $key = array_key_last($this->branchEnvironments);
-
-        return $key === null ? null : $this->branchEnvironments[$key];
     }
 }

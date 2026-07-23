@@ -12,8 +12,9 @@ enum ServeStage: string
 {
     case Prepare = 'Prepare project';
     case Tools = 'Check required tools';
-    case Start = 'Start and install';
+    case Server = 'Start server';
+    case Install = 'Install dependencies';
     case Database = 'Prepare database';
-    case Finalize = 'Finalize development environment';
+    case Finalize = 'Finalize the application';
     case Custom = 'Custom steps';
 }

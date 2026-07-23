@@ -29,6 +29,19 @@ final readonly class ProcessRecord
     }
 
     /**
+     * Where this process's output goes, for the "started"/status lines: its
+     * own terminal window when one was opened, otherwise the background log
+     * file. A terminal-run process writes no log file, so advertising one
+     * would point the user at a path that does not exist.
+     */
+    public function outputLocation(): string
+    {
+        return $this->window !== null
+            ? 'output is in its terminal window'
+            : "logs: storage/logs/boot-up/{$this->label}.log";
+    }
+
+    /**
      * @return array{pid: int, label: string, command: string, started_at: string, window: string|null}
      */
     public function toArray(): array

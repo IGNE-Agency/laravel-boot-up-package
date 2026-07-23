@@ -58,10 +58,11 @@ return [
             'site' => env('BOOT_UP_HERD_SITE'),
 
             // app:serve does not trust "Herd started" — it verifies Nginx
-            // actually answers the served site, restarting an unhealthy Herd
-            // between checks. 'attempts' bounds the checks (a permanently
-            // broken Herd fails fast with guidance rather than hanging);
-            // 'delay_ms' waits between a restart and the next check;
+            // actually answers the served site. A running Herd is never
+            // restarted (only a down one, once, halfway through the checks),
+            // so a healthy Herd is never disrupted. 'attempts' bounds the
+            // checks (a permanently broken Herd fails fast with guidance
+            // rather than hanging); 'delay_ms' waits between checks;
             // 'timeout_seconds' caps each reachability request.
             'health' => [
                 'attempts' => (int) env('BOOT_UP_HERD_HEALTH_ATTEMPTS', 10),
@@ -193,6 +194,13 @@ return [
             'main' => 'production',
         ],
         'generators' => [],
+
+        // A COMPOSER_AUTH secret authenticates composer against private or
+        // licensed registries (Laravel Nova, a private Satis, ...). Leave null
+        // to auto-detect (on when laravel/nova is required), or force it:
+        //   true  — always wire COMPOSER_AUTH into the pipeline
+        //   false — never offer it, even with Nova installed
+        'composer_auth' => env('BOOT_UP_PIPELINE_COMPOSER_AUTH'),
 
         // Extra steps injected into the generated pipeline jobs. Each is
         // spliced into its 'job' anchor (lint/build/test/deploy) 'before' or

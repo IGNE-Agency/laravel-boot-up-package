@@ -41,7 +41,7 @@ final class BuildOrWatchAssets implements Step
         }
 
         if ($this->config->assets === 'skip') {
-            terminal()->note('Assets disabled in configuration.');
+            terminal()->note('Assets disabled in configuration — skipping.');
 
             return $next($context);
         }
@@ -94,7 +94,7 @@ final class BuildOrWatchAssets implements Step
             ? $this->runner->startInTerminal($command, self::LABEL)
             : $this->runner->start($command, self::LABEL);
 
-        terminal()->success("Asset watcher started (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
+        terminal()->success("Asset watcher started (PID {$record->pid}) — {$record->outputLocation()}");
     }
 
     private function watcherIsRunning(): bool

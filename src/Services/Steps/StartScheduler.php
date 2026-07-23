@@ -53,7 +53,7 @@ final class StartScheduler implements Step
             ? $this->runner->startInTerminal($command, self::LABEL)
             : $this->runner->start($command, self::LABEL);
 
-        terminal()->success("Scheduler started (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
+        terminal()->success("Scheduler started (PID {$record->pid}) — {$record->outputLocation()}");
 
         return $next($context);
     }

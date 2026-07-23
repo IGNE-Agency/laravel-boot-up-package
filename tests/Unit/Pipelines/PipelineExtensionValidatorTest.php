@@ -26,6 +26,7 @@ function validatorPlan(bool $pint = true, DeployHookHost $host = DeployHookHost:
             restartQueues: false,
         ),
         nova: false,
+        composerAuth: false,
         pint: $pint,
         phpVersion: '8.4',
         branchEnvironments: ['main' => 'production'],

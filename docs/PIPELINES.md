@@ -18,10 +18,12 @@ providers run byte-identical sequences and every stage reproduces locally
 (`bash scripts/ci/test.sh`):
 
 - `bootstrap.sh` — composer install, `cp .env.pipeline .env`, Nova publish (only
-  with `laravel/nova`; composer auth comes from a `COMPOSER_AUTH` secret), then
-  a lockfile-strict Node install. The package manager is **detected from the
-  committed lockfile at run time**, so switching from npm to pnpm never requires
-  regenerating.
+  with `laravel/nova`), then a lockfile-strict Node install. When the pipeline
+  needs to authenticate composer against a private or licensed registry it reads
+  a `COMPOSER_AUTH` secret — offered automatically for Nova projects, or forced
+  on/off for any project with `boot-up.pipeline.composer_auth`. The package
+  manager is **detected from the committed lockfile at run time**, so switching
+  from npm to pnpm never requires regenerating.
 - `lint.sh` / `build.sh` / `test.sh` — three parallel status checks: Pint (only
   when installed), frontend build + an `artisan optimize` round-trip (mirrors
   what the deploy scripts run, so un-cacheable config or routes fail CI instead
@@ -53,16 +55,15 @@ to a deployment environment. The defaults:
 | `main`    | `production`  |
 
 Create each environment on your provider (GitHub → Settings → Environments;
-Bitbucket → Repository settings → Deployments) and give it a `DEPLOY_HOOK`
-secret holding your host's deploy trigger URL — the command output shows exactly
-where to find it for the host you picked (fortrabbit, Laravel Forge, or a
-generic webhook).
+Bitbucket → Repository settings → Deployments) and give **each one** a
+`DEPLOY_HOOK` secret holding that environment's deploy trigger URL. The command
+prints a single `DEPLOY_HOOK` entry that lists every environment and where to
+find its value for the host you picked (fortrabbit, Laravel Forge, or a generic
+webhook).
 
 - An unset hook skips that deploy with a notice.
 - A green push deploys only its own branch's environment; in-flight deploys are
   never cancelled.
-- Want production approvals? Add required reviewers to the GitHub environment,
-  or `trigger: manual` to the Bitbucket step.
 
 No deploy-hook host yet? Pass `none` (or pick it at the prompt) to generate a
 **checks-only pipeline**: lint, build and test still run on pull requests and on
@@ -72,10 +73,25 @@ deploys.
 
 ## Secrets & next steps
 
-After generating, the command prints a table of the secrets to create, a
-guidance section per secret (the exact settings path and where its value comes
-from on your deploy-hook host), and a "Next steps" list (branch protection
-checks, enabling Bitbucket Pipelines once).
+After generating, the command prints, in order:
+
+- a **table** of the secrets/variables to create (one `DEPLOY_HOOK` row covering
+  every environment, plus `COMPOSER_AUTH` when applicable);
+- a **guidance section per secret** — the exact settings path and, for
+  `DEPLOY_HOOK`, where each environment's value comes from on your deploy-hook
+  host;
+- a **"Good to know"** block of informational notes (branch-protection checks,
+  the fortrabbit `User-Agent` requirement, how an unset `DEPLOY_HOOK` behaves,
+  how to remap branches);
+- a **"Next steps"** list of the actions to take — commit the files, add the
+  secrets to your repository, and (Bitbucket) enable Pipelines once.
+
+## Commit-time checks
+
+`php artisan generate:git-hooks` installs a tracked pre-commit hook that runs the
+pipeline's Pint check locally before each commit (requires `laravel/pint`). The
+hook lives in `.githooks/` and is shared by pointing `git config core.hooksPath`
+at it — commit `.githooks/` so the whole team gets it.
 
 ## Extending the pipeline
 

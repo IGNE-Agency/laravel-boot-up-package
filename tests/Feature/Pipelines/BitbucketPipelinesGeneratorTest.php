@@ -29,6 +29,7 @@ function bitbucketPipelinePlan(array $overrides = [], array $deploymentOverrides
     $defaults = [
         'deployment' => new DeploymentPlan(...array_merge($deploymentDefaults, $deploymentOverrides)),
         'nova' => true,
+        'composerAuth' => true,
         'pint' => true,
         'phpVersion' => '8.4',
         'branchEnvironments' => [
@@ -203,24 +204,32 @@ test('custom branches drive the branch pipelines and deployment environments', f
         ->and($yaml)->not->toContain('deployment: development');
 });
 
-test('secrets list one deployment-scoped DEPLOY_HOOK per branch and COMPOSER_AUTH for nova', function (): void {
+test('secrets list a single DEPLOY_HOOK covering every deployment plus COMPOSER_AUTH', function (): void {
     $secrets = bitbucketGenerator()->secrets(bitbucketPipelinePlan());
 
     expect(array_map(fn ($secret) => $secret->name, $secrets))
-        ->toBe(['DEPLOY_HOOK', 'DEPLOY_HOOK', 'DEPLOY_HOOK', 'COMPOSER_AUTH'])
-        ->and($secrets[0]->location)->toBe('development deployment')
-        ->and($secrets[0]->purpose)->toBe('deploys on push to develop')
-        ->and(implode("\n", $secrets[0]->details))->toContain('Add under, in your Bitbucket repository: Repository settings → Deployments → development → Variables')
-        ->and(implode("\n", $secrets[0]->details))->toContain('https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}')
-        ->and($secrets[3]->location)->toBe('repository variables')
-        ->and(implode("\n", $secrets[3]->details))->toContain('Repository settings → Repository variables (mark as secured)')
-        ->and(implode("\n", $secrets[3]->details))->toContain('Composer reads COMPOSER_AUTH straight from the environment');
+        ->toBe(['DEPLOY_HOOK', 'COMPOSER_AUTH'])
+        ->and($secrets[0]->location)->toBe('each deployment')
+        ->and($secrets[0]->purpose)->toBe('triggers the deploy on a green push');
+
+    $deployHook = implode("\n", $secrets[0]->details);
+
+    expect($deployHook)->toContain('Configure a DEPLOY_HOOK for EACH deployment environment: development, staging, production.')
+        ->and($deployHook)->toContain('Repository settings → Deployments → <environment> → Variables')
+        ->and($deployHook)->toContain('development (deploys on push to develop):')
+        ->and($deployHook)->toContain('production (deploys on push to main):')
+        ->and($deployHook)->toContain('https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}');
+
+    expect($secrets[1]->location)->toBe('repository variables')
+        ->and(implode("\n", $secrets[1]->details))->toContain('Repository settings → Repository variables (mark as secured)')
+        ->and(implode("\n", $secrets[1]->details))->toContain('Composer reads COMPOSER_AUTH straight from the environment');
 });
 
 function bitbucketGuidance(PipelinePlan $plan): string
 {
     return implode("\n", [
-        ...array_merge(...array_map(fn ($secret) => $secret->details, bitbucketGenerator()->secrets($plan))),
+        ...array_merge([], ...array_map(fn ($secret) => $secret->details, bitbucketGenerator()->secrets($plan))),
+        ...bitbucketGenerator()->notes($plan),
         ...bitbucketGenerator()->instructions($plan),
     ]);
 }
@@ -228,13 +237,13 @@ function bitbucketGuidance(PipelinePlan $plan): string
 test('the fortrabbit host gets the dashboard path, the hook example and the user-agent note', function (): void {
     $plan = bitbucketPipelinePlan(['host' => DeployHookHost::FORTRABBIT]);
     $guidance = bitbucketGuidance($plan);
+    $notes = implode("\n", bitbucketGenerator()->notes($plan));
     $instructions = implode("\n", bitbucketGenerator()->instructions($plan));
 
     expect($guidance)->toContain('fortrabbit dashboard')
         ->and($guidance)->toContain('https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}')
-        ->and($instructions)->toContain('User-Agent: fortrabbit')
-        ->and($instructions)->toContain('Enable Pipelines once')
-        ->and($instructions)->toContain('trigger: manual');
+        ->and($notes)->toContain('User-Agent: fortrabbit')
+        ->and($instructions)->toContain('Enable Pipelines once');
 });
 
 test('the forge host gets the deployment trigger URL and no fortrabbit mentions', function (): void {
@@ -252,21 +261,19 @@ test('the webhook host gets neutral guidance naming no host', function (): void 
         ->and($guidance)->not->toContain('Forge');
 });
 
-test('the approval-gate instruction names the last configured environment', function (): void {
-    $instructions = implode("\n", bitbucketGenerator()->instructions(bitbucketPipelinePlan([
-        'branchEnvironments' => ['develop' => 'dev', 'master' => 'live'],
-    ])));
+test('informational lines live in the notes block, not the next steps', function (): void {
+    $plan = bitbucketPipelinePlan(['host' => DeployHookHost::FORTRABBIT]);
+    $notes = implode("\n", bitbucketGenerator()->notes($plan));
+    $instructions = implode("\n", bitbucketGenerator()->instructions($plan));
 
-    expect($instructions)->toContain('add `trigger: manual` to the live deploy step')
-        ->and($instructions)->toContain('Deploying from other branches? Remap boot-up.pipeline.branches and regenerate.')
-        ->and($instructions)->not->toContain('production')
-        ->and($instructions)->not->toContain('(e.g. main)');
-});
+    expect($notes)->toContain('User-Agent: fortrabbit')
+        ->and($notes)->toContain("An unset DEPLOY_HOOK skips that environment's deploy")
+        ->and($notes)->toContain('Deploying from other branches? Remap boot-up.pipeline.branches and regenerate.');
 
-test('an empty branch map drops the approval-gate instruction', function (): void {
-    $instructions = implode("\n", bitbucketGenerator()->instructions(bitbucketPipelinePlan(['branchEnvironments' => []])));
-
-    expect($instructions)->not->toContain('trigger: manual');
+    expect($instructions)->toContain('Add the variables above to your Bitbucket repository')
+        ->and($instructions)->not->toContain('Deploying from other branches')
+        ->and($instructions)->not->toContain('trigger: manual')
+        ->and($instructions)->not->toContain('approval gate');
 });
 
 test('the none host renders a checks-only pipeline that still runs on branch pushes', function (): void {

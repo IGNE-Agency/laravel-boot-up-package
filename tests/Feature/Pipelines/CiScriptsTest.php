@@ -26,6 +26,7 @@ function ciScriptsPlan(array $overrides = [], array $deploymentOverrides = []): 
     $defaults = [
         'deployment' => new DeploymentPlan(...array_merge($deploymentDefaults, $deploymentOverrides)),
         'nova' => true,
+        'composerAuth' => true,
         'pint' => true,
         'phpVersion' => '8.4',
         'branchEnvironments' => [

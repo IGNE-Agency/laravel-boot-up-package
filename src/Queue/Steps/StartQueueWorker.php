@@ -44,7 +44,7 @@ final class StartQueueWorker implements Step
         }
 
         if (! $this->config->enabled) {
-            terminal()->note('Queue worker disabled in configuration.');
+            terminal()->note('Queue worker disabled in configuration — skipping.');
 
             return $next($context);
         }
@@ -80,7 +80,7 @@ final class StartQueueWorker implements Step
             ? $this->runner->startInTerminal($command, self::LABEL)
             : $this->runner->start($command, self::LABEL);
 
-        terminal()->success("Queue worker started on [{$connection}] (PID {$record->pid}) — logs: storage/logs/boot-up/".self::LABEL.'.log');
+        terminal()->success("Queue worker started on [{$connection}] (PID {$record->pid}) — {$record->outputLocation()}");
 
         return $next($context);
     }

@@ -50,27 +50,22 @@ final class GitHubActionsGenerator implements PipelineGenerator
         $secrets = [];
 
         if ($plan->host->deploys()) {
-            foreach ($plan->branchEnvironments as $branch => $environment) {
-                $secrets[] = new PipelineSecret(
-                    'DEPLOY_HOOK',
-                    "{$environment} environment",
-                    "deploys on push to {$branch}",
-                    [
-                        "Add under, in your GitHub repository: Settings → Environments → {$environment} → Environment secrets (create the environment first).",
-                        ...$plan->host->hookValueGuidance($environment),
-                    ],
-                );
-            }
+            $secrets[] = new PipelineSecret(
+                'DEPLOY_HOOK',
+                'each environment',
+                'triggers the deploy on a green push',
+                $this->deployHookDetails($plan),
+            );
         }
 
-        if ($plan->nova) {
+        if ($plan->composerAuth) {
             $secrets[] = new PipelineSecret(
                 'COMPOSER_AUTH',
                 'repository secrets',
-                'lets composer install Nova',
+                'authenticates Composer for private/licensed packages',
                 [
                     'Add under, in your GitHub repository: Settings → Secrets and variables → Actions → Repository secrets.',
-                    'Value: composer auth JSON for nova.laravel.com, e.g.',
+                    'Value: composer auth JSON for the private registry your packages need — e.g. Laravel Nova:',
                     '{"http-basic":{"nova.laravel.com":{"username":"you@example.com","password":"<license key>"}}}',
                 ],
             );
@@ -79,24 +74,59 @@ final class GitHubActionsGenerator implements PipelineGenerator
         return $secrets;
     }
 
-    public function instructions(PipelinePlan $plan): array
+    public function notes(PipelinePlan $plan): array
     {
         $checks = $plan->pint ? 'Lint, Build and Test' : 'Build and Test';
-        $approval = $plan->approvalEnvironment();
 
         return [
-            'Commit .github/workflows/ci.yml, scripts/ci/* and .env.pipeline — every script also runs locally, e.g. `bash scripts/ci/test.sh`.',
-            ...$plan->host->notes(),
             "Branch protection: require the {$checks} checks.",
+            ...$plan->host->notes(),
             ...$plan->host->deploys() ? [
-                ...$approval === null ? [] : ["Optional approval gate: add required reviewers to the {$approval} environment (Settings → Environments)."],
                 "An unset DEPLOY_HOOK skips that environment's deploy with a notice instead of failing the run.",
                 'Deploying from other branches? Remap boot-up.pipeline.branches and regenerate.',
-            ] : [
+            ] : [],
+        ];
+    }
+
+    public function instructions(PipelinePlan $plan): array
+    {
+        return [
+            'Commit .github/workflows/ci.yml, scripts/ci/* and .env.pipeline — every script also runs locally, e.g. `bash scripts/ci/test.sh`.',
+            ...$this->secrets($plan) === [] ? [] : [
+                'Add the secrets above to your GitHub repository (repository/environment secrets — each secret\'s section lists the exact path).',
+            ],
+            ...$plan->host->deploys() ? [] : [
                 'Ready to deploy from this pipeline later? Rerun generate:pipeline with a deploy-hook host to add the deploy jobs.',
             ],
             ...$plan->pint ? ['Lint before every commit: run `php artisan generate:git-hooks` to install the pre-commit Pint hook.'] : [],
         ];
+    }
+
+    /**
+     * One DEPLOY_HOOK entry covering every environment: a "set one per
+     * environment" instruction, the generic settings path, then the host's
+     * value guidance labelled per environment (the URL differs per env).
+     *
+     * @return list<string>
+     */
+    private function deployHookDetails(PipelinePlan $plan): array
+    {
+        $environments = array_values($plan->branchEnvironments);
+
+        $details = [
+            'Configure a DEPLOY_HOOK for EACH environment: '.implode(', ', $environments).'.',
+            'Add under, in your GitHub repository: Settings → Environments → <environment> → Environment secrets (create each environment first).',
+        ];
+
+        foreach ($plan->branchEnvironments as $branch => $environment) {
+            $details[] = "{$environment} (deploys on push to {$branch}):";
+
+            foreach ($plan->host->hookValueGuidance($environment) as $line) {
+                $details[] = '  '.$line;
+            }
+        }
+
+        return $details;
     }
 
     private function workflow(PipelinePlan $plan): string
@@ -275,7 +305,7 @@ final class GitHubActionsGenerator implements PipelineGenerator
 
     private function composerAuth(Lines $yaml, PipelinePlan $plan): void
     {
-        if (! $plan->nova) {
+        if (! $plan->composerAuth) {
             return;
         }
 

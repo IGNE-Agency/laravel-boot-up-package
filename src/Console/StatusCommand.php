@@ -51,7 +51,7 @@ final class StatusCommand extends BootUpCommand
         $records->each(function (ProcessRecord $record) use ($reaper): void {
             $state = $reaper->isAlive($record) ? 'running' : 'dead';
 
-            terminal()->info("{$record->label} (pid {$record->pid}): {$state} — logs: storage/logs/boot-up/{$record->label}.log");
+            terminal()->info("{$record->label} (pid {$record->pid}): {$state} — {$record->outputLocation()}");
         });
 
         terminal()->outro('Stop everything with: php artisan app:down');
@@ -75,7 +75,7 @@ final class StatusCommand extends BootUpCommand
         terminal()->info("Server: {$name}");
         terminal()->info($active->startedByUs
             ? 'The server was started by app:serve.'
-            : 'The server was already running before app:serve.');
+            : 'The server was already running before app:serve started.');
         terminal()->info($probe->isServing($active->servePid)
             ? "app:serve is running (pid {$active->servePid})."
             : "Its app:serve (pid {$active->servePid}) is no longer running.");

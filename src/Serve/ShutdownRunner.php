@@ -18,6 +18,9 @@ use Igne\LaravelBootUp\Servers\StopServerPrompt;
  */
 final class ShutdownRunner
 {
+    /** Mirrors BuildOrWatchAssets::LABEL — the ledger label for the Vite watcher. */
+    private const ASSET_WATCHER_LABEL = 'assets-watch';
+
     private bool $hasRun = false;
 
     public function __construct(
@@ -44,6 +47,10 @@ final class ShutdownRunner
             return;
         }
 
+        // Captured before reaping clears the ledger: a Vite watcher killed with
+        // SIGKILL cannot remove its own public/hot marker.
+        $hadAssetWatcher = $this->ledger->withLabel(self::ASSET_WATCHER_LABEL)->isNotEmpty();
+
         $this->ledger->all()->each(function (ProcessRecord $record): void {
             terminal()->info("Stopping {$record->label} (pid {$record->pid})...");
         });
@@ -63,9 +70,28 @@ final class ShutdownRunner
             }
         } finally {
             $this->store->clear();
+            $this->cleanUpStaleHotFile($hadAssetWatcher);
         }
 
         terminal()->success('Shutdown complete.');
+    }
+
+    /**
+     * Vite writes public/hot while its dev server runs and removes it on a
+     * clean exit; a SIGKILLed watcher cannot, leaving the app pointing at a
+     * now-dead dev server. Best-effort cleanup, only when we tracked a watcher.
+     */
+    private function cleanUpStaleHotFile(bool $hadAssetWatcher): void
+    {
+        if (! $hadAssetWatcher) {
+            return;
+        }
+
+        $hot = base_path('public/hot');
+
+        if (is_file($hot)) {
+            @unlink($hot);
+        }
     }
 
     private function stopServer(string $key, bool $startedByUs): void

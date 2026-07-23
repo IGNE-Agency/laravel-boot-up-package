@@ -17,7 +17,12 @@ use Laravel\Prompts\Prompt;
 
 beforeEach(function (): void {
     $this->dir = sys_get_temp_dir().'/boot-up-install-composer-'.bin2hex(random_bytes(4));
-    mkdir($this->dir, 0755, true);
+    mkdir($this->dir.'/vendor/composer', 0755, true);
+    // vendor present but stale relative to the lock, so install() runs.
+    touch($this->dir.'/vendor/autoload.php', time() - 100);
+    touch($this->dir.'/vendor/composer/installed.json', time() - 100);
+    touch($this->dir.'/composer.json', time() - 100);
+    touch($this->dir.'/composer.lock', time());
     Prompt::fake();
 });
 
@@ -38,6 +43,7 @@ function installComposerStep(string $dir): InstallComposerDependencies
             runtimeDirectory: $dir.'/runtime',
         ),
         new LockfileConflictDetector,
+        $dir,
     ));
 }
 

@@ -106,11 +106,24 @@ a git provider. See [CI/CD pipelines](#cicd-pipelines).
 php artisan generate:pipeline
 ```
 
-| Argument / option | Description                                                                                                         |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `provider`        | The git provider: `github` or `bitbucket`. Prompts when omitted.                                                    |
-| `host`            | The deploy-hook host: `fortrabbit`, `forge` or `webhook` — or `none` to skip the deploy step. Prompts when omitted. |
-| `--force`         | Overwrite existing pipeline, `scripts/ci` and `.env.pipeline` files without asking.                                 |
+| Argument / option | Description |
+| --- | --- |
+| `provider` | The git provider: `github` or `bitbucket`. Prompts when omitted. |
+| `host` | The deploy-hook host: `fortrabbit`, `forge` or `webhook` — or `none` to skip the deploy step. Prompts when omitted. |
+| `--force` | Overwrite existing pipeline, `scripts/ci` and `.env.pipeline` files without asking. |
+| `--regenerate-app-key` | Generate a fresh `APP_KEY` in `.env.pipeline` instead of keeping the existing one. |
+
+### `generate:git-hooks`
+
+Install a tracked pre-commit hook that runs the pipeline's Pint check locally
+before each commit (requires `laravel/pint`). See [CI/CD pipelines](#cicd-pipelines).
+
+```bash
+php artisan generate:git-hooks
+```
+
+The hook lives in `.githooks/` and is shared by pointing `git config core.hooksPath`
+at it — commit `.githooks/` so your whole team gets it.
 
 ## What `app:serve` does
 
@@ -198,7 +211,7 @@ webhook for that branch's environment only.
 
 Extend a generated pipeline without replacing the generator: inject extra steps
 into a job or emit extra files verbatim via `boot-up.pipeline.steps` /
-`pipeline.files`. Regeneration is idempotent and validated.
+`boot-up.pipeline.files`. Regeneration is idempotent and validated.
 
 Details, secrets, extensions and branch mapping:
 [docs/PIPELINES.md](docs/PIPELINES.md).
@@ -210,7 +223,7 @@ None of these require touching package code:
 | Extension point                    | Implement                        | Register                                           |
 | ---------------------------------- | -------------------------------- | -------------------------------------------------- |
 | Project commands around migrations | `Deploy\ProvidesProjectCommands` | Bind as singleton in your `AppServiceProvider`     |
-| Custom pipeline steps              | `Serve\Step`                     | Insert into `boot-up.serve_steps` / `deploy_steps` |
+| Custom serve/deploy steps          | `Serve\Step`                     | Insert into `boot-up.serve_steps` / `deploy_steps` |
 | Custom servers                     | `Servers\Server`                 | `boot-up.server.drivers`                           |
 | Custom tools                       | `Tools\InstallsTool`             | `boot-up.tools.installers` + `tools.required`      |
 | Custom deployment platforms        | `Deploy\Scripts\ScriptGenerator` | `boot-up.deploy.script_generators`                 |

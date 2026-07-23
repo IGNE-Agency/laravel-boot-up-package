@@ -202,7 +202,7 @@ test('renders a stage divider when the pipeline enters a stage', function (): vo
     ]);
 
     $this->artisan('app:serve', ['server' => 'laravel'])
-        ->expectsOutputToContain('Start and install')
+        ->expectsOutputToContain('Start server')
         ->assertSuccessful();
 });
 
@@ -212,7 +212,7 @@ test('the finalize stage gets its own divider', function (): void {
     ]);
 
     $this->artisan('app:serve', ['server' => 'laravel'])
-        ->expectsOutputToContain('Finalize development environment')
+        ->expectsOutputToContain('Finalize the application')
         ->assertSuccessful();
 });
 

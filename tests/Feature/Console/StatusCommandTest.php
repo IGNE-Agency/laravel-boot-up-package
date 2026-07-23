@@ -77,7 +77,7 @@ test('a dead serve pid is reported, not hidden', function (): void {
     $this->store->remember(new ActiveServerRecord('laravel', false, 99999, date(DATE_ATOM)));
 
     $this->artisan('app:status')
-        ->expectsOutputToContain('The server was already running before app:serve.')
+        ->expectsOutputToContain('The server was already running before app:serve started.')
         ->expectsOutputToContain('Its app:serve (pid 99999) is no longer running.')
         ->assertSuccessful();
 });

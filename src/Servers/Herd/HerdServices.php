@@ -47,13 +47,16 @@ final class HerdServices
     /**
      * Nginx is reachable when curl gets any HTTP response back (even a 5xx
      * proves nginx + php-fpm answered). A refused/timed-out connection exits
-     * non-zero and reports "000", which is not reachable.
+     * non-zero and reports "000", which is not reachable. --retry-connrefused
+     * rides out a momentary Nginx reload (e.g. right after `herd secure`)
+     * instead of counting it as a hard failure.
      */
     public function isReachable(string $url): bool
     {
         $result = $this->runner->runSilently(ShellCommand::make([
             'curl', '--silent', '--insecure', '--output', '/dev/null',
             '--write-out', '%{http_code}',
+            '--retry', '3', '--retry-connrefused', '--retry-delay', '1',
             '--max-time', (string) $this->healthTimeoutSeconds,
             $url,
         ]));
@@ -75,12 +78,12 @@ final class HerdServices
      * Block until the served site answers, or fail with actionable guidance.
      * A healthy server returns on the first check without ever restarting.
      *
-     * Herd is restarted at most ONCE, halfway through the attempts: the first
-     * half give a running-but-slow Herd time to answer its first request
-     * (a cold PHP-FPM or TLS handshake), and only if it still will not answer
-     * do we restart to recover a genuinely stuck Nginx, leaving the remaining
-     * attempts for it to come back. Restarting on every failed check would
-     * knock over a Herd that was merely slow and never let it settle.
+     * A running Herd is NEVER restarted here: if its own daemons are up, a
+     * failing probe means a cold PHP-FPM, a TLS handshake or a momentary reload
+     * that the remaining attempts (and the probe's own connect-refused retries)
+     * ride out — knocking it over would only disrupt every other Herd site on
+     * the machine. Only a Herd whose services are genuinely down gets a single
+     * midpoint restart to try to recover it.
      */
     public function ensureReachable(string $url): void
     {
@@ -91,8 +94,8 @@ final class HerdServices
                 return;
             }
 
-            if ($attempt === $restartAt) {
-                terminal()->info('Herd is not answering yet — restarting it...');
+            if ($attempt === $restartAt && ! $this->isRunning()) {
+                terminal()->info('Laravel Herd is not answering and its services are down — restarting all Herd sites on this machine...');
                 $this->restart();
             }
 

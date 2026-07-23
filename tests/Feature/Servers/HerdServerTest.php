@@ -61,7 +61,7 @@ test('start links the project under the configured site name and secures it', fu
 
     ProcessFaker::assertRan('herd link dashboard');
     ProcessFaker::assertRan('herd secure dashboard');
-    Prompt::assertStrippedOutputContains('Project linked to Herd as https://dashboard.test.');
+    Prompt::assertStrippedOutputContains('Project linked to Laravel Herd as https://dashboard.test.');
     Prompt::assertStrippedOutputContains('HTTPS certificate configured.');
 });
 
@@ -75,15 +75,16 @@ test('start prompts for the site name, defaulting to the project folder', functi
     ProcessFaker::assertRan('herd secure my-app');
 });
 
-test('an already-linked project skips linking and keeps its site name', function (): void {
+test('an already-linked project skips linking and does not re-secure', function (): void {
     ProcessFaker::fake(['curl*' => Process::result('200')]);
     symlink($this->projectDir, $this->sitesDir.'/custom-name');
 
     herdServer($this->workDir, $this->projectDir)->start(new ServeContext(new ServeOptions));
 
     ProcessFaker::assertDidntRun('herd link*');
-    ProcessFaker::assertRan('herd secure custom-name');
-    Prompt::assertStrippedOutputContains('Project already linked to Herd as https://custom-name.test.');
+    // Re-securing on every serve reloads Nginx and caused false "not answering".
+    ProcessFaker::assertDidntRun('herd secure*');
+    Prompt::assertStrippedOutputContains('Project already linked to Laravel Herd as https://custom-name.test.');
 });
 
 test('a stale link to a moved project is replaced automatically', function (): void {
@@ -137,7 +138,7 @@ test('start reports the server ready once Nginx answers, without restarting a he
     ProcessFaker::assertRan('curl* https://my-app.test');
     ProcessFaker::assertDidntRun('herd start');
     ProcessFaker::assertDidntRun('herd restart');
-    Prompt::assertStrippedOutputContains('Herd is serving https://my-app.test.');
+    Prompt::assertStrippedOutputContains('Laravel Herd is serving https://my-app.test.');
 });
 
 test('start boots Herd when none of its processes are running', function (): void {
@@ -149,12 +150,33 @@ test('start boots Herd when none of its processes are running', function (): voi
     herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new ServeContext(new ServeOptions));
 
     ProcessFaker::assertRan('herd start');
-    Prompt::assertStrippedOutputContains('Herd is serving https://my-app.test.');
+    Prompt::assertStrippedOutputContains('Laravel Herd is serving https://my-app.test.');
 });
 
-test('start restarts an unhealthy Nginx once, halfway through, and recovers when it comes back', function (): void {
+test('a running Herd that is briefly slow is never restarted', function (): void {
     $probe = 0;
     ProcessFaker::fake([
+        'pgrep*' => Process::result(),  // Herd services are up throughout
+        'curl*' => function () use (&$probe) {
+            $probe++;
+
+            // Refused on the first couple of probes, then answers — a running
+            // Herd finishing a reload, not a stuck one.
+            return $probe >= 3 ? Process::result('200') : Process::result('000', exitCode: 7);
+        },
+    ]);
+
+    herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new ServeContext(new ServeOptions));
+
+    ProcessFaker::assertDidntRun('herd restart');
+    ProcessFaker::assertDidntRun('herd start');
+    Prompt::assertStrippedOutputContains('Laravel Herd is serving https://my-app.test.');
+});
+
+test('start restarts Herd once at the midpoint only when its services are down', function (): void {
+    $probe = 0;
+    ProcessFaker::fake([
+        'pgrep*' => Process::result(exitCode: 1), // Herd services down throughout
         'curl*' => function () use (&$probe) {
             $probe++;
 
@@ -166,19 +188,23 @@ test('start restarts an unhealthy Nginx once, halfway through, and recovers when
 
     herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new ServeContext(new ServeOptions));
 
-    ProcessFaker::assertRanTimes('herd restart', 1);
-    Prompt::assertStrippedOutputContains('Herd is serving https://my-app.test.');
+    ProcessFaker::assertRan('herd start');            // booted because down
+    ProcessFaker::assertRanTimes('herd restart', 1);  // then one midpoint restart
+    Prompt::assertStrippedOutputContains('Laravel Herd is serving https://my-app.test.');
 });
 
 test('start fails with actionable guidance after exhausting the health attempts', function (): void {
-    // Nginx never answers: connection refused on every probe.
-    ProcessFaker::fake(['curl*' => Process::result('000', exitCode: 7)]);
+    // Herd services are up but Nginx never answers: connection refused on every probe.
+    ProcessFaker::fake([
+        'pgrep*' => Process::result(),
+        'curl*' => Process::result('000', exitCode: 7),
+    ]);
 
     expect(fn () => herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new ServeContext(new ServeOptions)))
         ->toThrow(ServerException::class, 'did not become reachable');
 
-    // Herd is restarted at most once, not on every failed check.
-    ProcessFaker::assertRanTimes('herd restart', 1);
+    // A running-but-unreachable Herd is never restarted — guidance is surfaced instead.
+    ProcessFaker::assertDidntRun('herd restart');
 });
 
 test('isRunning is true when Herd nginx is up', function (): void {

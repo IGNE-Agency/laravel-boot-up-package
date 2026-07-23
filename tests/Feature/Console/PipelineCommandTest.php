@@ -283,6 +283,15 @@ test('a nova project gets composer auth in the workflow, nova publish in bootstr
     @unlink($fixture);
 });
 
+test('the composer_auth config forces COMPOSER_AUTH into the workflow even without nova', function (): void {
+    config()->set('boot-up.pipeline.composer_auth', true);
+
+    $this->artisan('generate:pipeline', ['provider' => 'github', 'host' => 'webhook'])->assertSuccessful();
+
+    expect((string) file_get_contents(base_path('.github/workflows/ci.yml')))
+        ->toContain('COMPOSER_AUTH: ${{ secrets.COMPOSER_AUTH }}');
+});
+
 test('a project with pint gets a lint check on both providers', function (): void {
     $fixture = sys_get_temp_dir().'/boot-up-pint-composer-'.bin2hex(random_bytes(4)).'.json';
     file_put_contents($fixture, json_encode([
@@ -327,38 +336,34 @@ test('remapped branches flow from config into the generated pipeline', function 
         ->and($workflow)->not->toContain('deploy-development');
 });
 
-test('remapped branches drive the github approval instruction, not hardcoded names', function (): void {
+test('remapped branches flow into the deploy-hook guidance, not hardcoded names', function (): void {
     config()->set('boot-up.pipeline.branches', ['master' => 'acceptance']);
 
     $this->artisan('generate:pipeline', ['provider' => 'github', 'host' => 'webhook'])
-        ->expectsOutputToContain('add required reviewers to the acceptance environment')
+        ->expectsOutputToContain('Configure a DEPLOY_HOOK for EACH environment: acceptance.')
         ->doesntExpectOutputToContain('production')
-        ->doesntExpectOutputToContain('(e.g. main)')
         ->assertSuccessful();
 });
 
-test('remapped branches drive the bitbucket approval instruction, not hardcoded names', function (): void {
-    config()->set('boot-up.pipeline.branches', ['master' => 'acceptance']);
-
-    $this->artisan('generate:pipeline', ['provider' => 'bitbucket', 'host' => 'webhook'])
-        ->expectsOutputToContain('add `trigger: manual` to the acceptance deploy step')
-        ->doesntExpectOutputToContain('production')
+test('the good-to-know notes block is printed and the removed approval gate is gone', function (): void {
+    $this->artisan('generate:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])
+        ->expectsOutputToContain('Good to know')
+        ->doesntExpectOutputToContain('approval gate')
         ->assertSuccessful();
 });
 
 // Each expectsOutputToContain can only match a distinct output chunk (one
 // table, one note per section), so the assertions below sample one line from
 // each section rather than several lines of the same one.
-test('prints the slim secrets table with a guidance section per secret and the next steps', function (): void {
+test('prints the slim secrets table, a guidance section per secret, the notes block and the next steps', function (): void {
     pinDefaultBranches();
 
     $this->artisan('generate:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])
-        ->expectsOutputToContain('deploys on push to develop')
-        ->expectsOutputToContain('DEPLOY_HOOK — development environment')
-        ->expectsOutputToContain('Add under, in your GitHub repository: Settings → Environments → staging → Environment secrets (create the environment first).')
-        ->expectsOutputToContain('Example: https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}')
-        ->expectsOutputToContain('1. Commit .github/workflows/ci.yml')
-        ->expectsOutputToContain('Pipeline generated.')
+        ->expectsOutputToContain('triggers the deploy on a green push')            // secrets table row
+        ->expectsOutputToContain('DEPLOY_HOOK — each environment')                 // one deduped section
+        ->expectsOutputToContain('Branch protection: require the')                 // Good to know
+        ->expectsOutputToContain('1. Commit .github/workflows/ci.yml')             // Next steps
+        ->expectsOutputToContain('Pipeline generated.')                            // outro
         ->assertSuccessful();
 });
 

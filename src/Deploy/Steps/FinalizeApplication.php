@@ -25,11 +25,48 @@ final class FinalizeApplication implements Step
     public function handle(ServeContext $context, Closure $next): mixed
     {
         foreach ($this->config->finalize as $command) {
+            if ($this->storageLinkAlreadySatisfied($command)) {
+                terminal()->note('Storage already linked.');
+
+                continue;
+            }
+
             terminal()->info("Running php artisan {$command}...");
 
             $this->processes->run(ShellCommand::make("php artisan {$command}"));
         }
 
         return $next($context);
+    }
+
+    /**
+     * A `storage:link` that would only re-create links which already exist is
+     * skipped, so a repeat boot never surfaces Laravel's alarming
+     * "The [public/storage] link already exists." ERROR. Any other command, a
+     * forced relink (--force), or a genuinely missing link falls through to
+     * the normal run. The link set is read exactly as Laravel resolves it.
+     */
+    private function storageLinkAlreadySatisfied(string $command): bool
+    {
+        $command = trim($command);
+
+        if (! str_starts_with($command, 'storage:link') || str_contains($command, '--force')) {
+            return false;
+        }
+
+        /** @var array<string, string> $links */
+        $links = (array) config('filesystems.links', [public_path('storage') => storage_path('app/public')]);
+
+        if ($links === []) {
+            return false;
+        }
+
+        foreach (array_keys($links) as $link) {
+            if (! file_exists($link)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
