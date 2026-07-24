@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Data\DeploymentPlan;
-use Igne\LaravelBootUp\Data\ProjectCommand;
+use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Deploy\Scripts\ForgeScriptGenerator;
 use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 use Igne\LaravelBootUp\Enums\PackageManager;
@@ -32,7 +32,7 @@ function forgeScript(array $overrides = []): string
 
 test('renders the full zero-downtime production script', function (): void {
     $script = forgeScript([
-        'beforeMigrations' => [ProjectCommand::artisan('wayfinder:generate', 'Generating routes...')],
+        'beforeMigrations' => [DeployTask::artisan('wayfinder:generate', 'Generating routes...')],
     ]);
 
     expect($script)->toBe(<<<'SCRIPT'
@@ -102,8 +102,8 @@ test('config toggles drop their lines', function (): void {
 test('after-migration project commands render after migrate with composer and package-manager types', function (): void {
     $script = forgeScript([
         'afterMigrations' => [
-            ProjectCommand::composer('dump-autoload --optimize'),
-            ProjectCommand::packageManager('run zodgen'),
+            DeployTask::composer('dump-autoload --optimize'),
+            DeployTask::packageManager('run zodgen'),
         ],
         'packageManager' => PackageManager::PNPM,
     ]);

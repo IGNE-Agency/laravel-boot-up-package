@@ -7,9 +7,9 @@ namespace Igne\LaravelBootUp\Workers\Steps;
 use Closure;
 use Igne\LaravelBootUp\Config\WorkersConfig;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ShellCommand;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
@@ -47,7 +47,7 @@ final class StartHorizon implements Step
         }
 
         $command = $this->rewriter->rewrite(
-            ShellCommand::make(['php', 'artisan', 'horizon'])->withTimeout(null),
+            CommandLine::make(['php', 'artisan', 'horizon'])->withTimeout(null),
             $context->commandRewrites(),
         );
 

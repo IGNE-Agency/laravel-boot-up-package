@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
@@ -26,7 +26,7 @@ beforeEach(function (): void {
     app()->singleton(ProcessRunner::class, fn ($app) => new ProcessRunner(
         processes: $app->make(Factory::class),
         ledger: $this->ledger,
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $this->workDir.'/logs',
         runtimeDirectory: $this->workDir.'/runtime',
@@ -239,7 +239,7 @@ test('a custom step class gets the custom steps divider', function (): void {
 test('a Class:variant entry still resolves with its variant argument', function (): void {
     ProcessFaker::fake();
     config()->set('boot-up.serve_steps', [
-        Igne\LaravelBootUp\Deploy\Steps\RunProjectCommands::class.':before',
+        Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks::class.':before',
     ]);
 
     $this->artisan('app:serve', ['server' => 'laravel'])->assertSuccessful();

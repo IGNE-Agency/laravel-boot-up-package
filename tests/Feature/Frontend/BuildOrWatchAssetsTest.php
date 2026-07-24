@@ -9,10 +9,10 @@ use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\Steps\BuildOrWatchAssets;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -28,11 +28,11 @@ function bindAssetServices(string $dir, string $assets = 'watch', string $watchI
     app()->instance(PackageJson::class, new PackageJson($dir.'/package.json'));
     app()->instance(FrontendConfig::class, new FrontendConfig(PackageManager::BUN, $assets, $watchIn));
     app()->instance(ProcessLedger::class, $ledger);
-    app()->instance(ProcessReaper::class, new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminal));
+    app()->instance(ProcessReaper::class, new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminalLauncher));
     app()->instance(ProcessRunner::class, new ProcessRunner(
         processes: app(Factory::class),
         ledger: $ledger,
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $dir.'/logs',
         runtimeDirectory: $dir.'/runtime',

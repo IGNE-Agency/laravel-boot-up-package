@@ -7,8 +7,8 @@ namespace Igne\LaravelBootUp\Database\Steps;
 use Closure;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ShellCommand;
 use Igne\LaravelBootUp\Exceptions\DatabaseException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
@@ -46,7 +46,7 @@ final class VerifyDatabaseConnection implements Step
     private function verifyThroughServer(ServeContext $context): void
     {
         $result = $this->runner->runSilently($this->rewriter->rewrite(
-            ShellCommand::make('php artisan migrate:status'),
+            CommandLine::make('php artisan migrate:status'),
             $context->commandRewrites(),
         ));
 

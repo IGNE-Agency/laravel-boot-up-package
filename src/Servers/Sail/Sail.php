@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Sail;
 
-use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 
 final class Sail
@@ -23,23 +23,23 @@ final class Sail
 
     public function scaffold(): void
     {
-        $this->runner->run(ShellCommand::make('php artisan sail:install'));
+        $this->runner->run(CommandLine::make('php artisan sail:install'));
     }
 
     public function up(): void
     {
-        $this->runner->run(ShellCommand::make('./vendor/bin/sail up -d')->withTimeout(null));
+        $this->runner->run(CommandLine::make('./vendor/bin/sail up -d')->withTimeout(null));
     }
 
     public function hasRunningContainers(): bool
     {
-        $result = $this->runner->runSilently(ShellCommand::make('./vendor/bin/sail ps -q'));
+        $result = $this->runner->runSilently(CommandLine::make('./vendor/bin/sail ps -q'));
 
         return $result->successful() && trim($result->output()) !== '';
     }
 
     public function down(): void
     {
-        $this->runner->run(ShellCommand::make('./vendor/bin/sail down'));
+        $this->runner->run(CommandLine::make('./vendor/bin/sail down'));
     }
 }

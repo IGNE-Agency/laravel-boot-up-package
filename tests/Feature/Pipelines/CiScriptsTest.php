@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Data\DeploymentPlan;
+use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Data\PipelinePlan;
-use Igne\LaravelBootUp\Data\ProjectCommand;
 use Igne\LaravelBootUp\Enums\DeployHookHost;
 use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 use Igne\LaravelBootUp\Enums\PackageManager;
@@ -251,8 +251,8 @@ test('config toggles drop their lines from test.sh', function (): void {
 
 test('project commands render around migrate with echoed descriptions', function (): void {
     $script = (new CiScripts)->test(ciScriptsPlan([], [
-        'beforeMigrations' => [ProjectCommand::artisan('wayfinder:generate', 'Generating routes...')],
-        'afterMigrations' => [ProjectCommand::composer('dump-autoload --optimize')],
+        'beforeMigrations' => [DeployTask::artisan('wayfinder:generate', 'Generating routes...')],
+        'afterMigrations' => [DeployTask::composer('dump-autoload --optimize')],
     ]));
 
     $migrate = strpos($script->contents, 'php artisan migrate --force');
@@ -264,8 +264,8 @@ test('project commands render around migrate with echoed descriptions', function
 
 test('before-deploy runs before migrate and after-deploy runs after it, before the test run', function (): void {
     $script = (new CiScripts)->test(ciScriptsPlan([], [
-        'beforeDeploy' => [ProjectCommand::artisan('pennant:purge')],
-        'afterDeploy' => [ProjectCommand::artisan('cache:warm')],
+        'beforeDeploy' => [DeployTask::artisan('pennant:purge')],
+        'afterDeploy' => [DeployTask::artisan('cache:warm')],
     ]))->contents;
 
     $migrate = strpos($script, 'php artisan migrate --force');
@@ -277,7 +277,7 @@ test('before-deploy runs before migrate and after-deploy runs after it, before t
 
 test('package-manager project commands use the runtime $PM with a frontend and the configured manager without', function (): void {
     $scripts = new CiScripts;
-    $command = ['beforeMigrations' => [ProjectCommand::packageManager('run generate')]];
+    $command = ['beforeMigrations' => [DeployTask::packageManager('run generate')]];
 
     expect($scripts->test(ciScriptsPlan([], $command))->contents)->toContain('"$PM" run generate')
         ->and($scripts->test(ciScriptsPlan([], [...$command, 'frontend' => false, 'packageManager' => PackageManager::PNPM]))->contents)

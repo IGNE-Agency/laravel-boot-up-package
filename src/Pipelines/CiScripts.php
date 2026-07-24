@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
+use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Data\GeneratedFile;
 use Igne\LaravelBootUp\Data\Lines;
 use Igne\LaravelBootUp\Data\PipelinePlan;
-use Igne\LaravelBootUp\Data\ProjectCommand;
 use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 use Igne\LaravelBootUp\Enums\PackageManager;
 
@@ -113,16 +113,16 @@ final class CiScripts
 
         $script->lineWithBreak('echo "==> Running the test suite"')
             ->line('php artisan config:clear')
-            ->each($plan->deployment->beforeDeploy, fn (Lines $script, ProjectCommand $command) => $script
+            ->each($plan->deployment->beforeDeploy, fn (Lines $script, DeployTask $command) => $script
                 ->lines($this->projectCommand($command, $plan)))
             ->each($plan->deployment->finalize, fn (Lines $script, string $command) => $script
                 ->line("php artisan {$command}"))
-            ->each($plan->deployment->beforeMigrations, fn (Lines $script, ProjectCommand $command) => $script
+            ->each($plan->deployment->beforeMigrations, fn (Lines $script, DeployTask $command) => $script
                 ->lines($this->projectCommand($command, $plan)))
             ->lineIf($plan->deployment->migrate, 'php artisan migrate --force')
-            ->each($plan->deployment->afterMigrations, fn (Lines $script, ProjectCommand $command) => $script
+            ->each($plan->deployment->afterMigrations, fn (Lines $script, DeployTask $command) => $script
                 ->lines($this->projectCommand($command, $plan)))
-            ->each($plan->deployment->afterDeploy, fn (Lines $script, ProjectCommand $command) => $script
+            ->each($plan->deployment->afterDeploy, fn (Lines $script, DeployTask $command) => $script
                 ->lines($this->projectCommand($command, $plan)))
             ->line('php artisan test');
 
@@ -271,7 +271,7 @@ final class CiScripts
             ->line('esac');
     }
 
-    private function projectCommand(ProjectCommand $command, PipelinePlan $plan): Lines
+    private function projectCommand(DeployTask $command, PipelinePlan $plan): Lines
     {
         // With a frontend, package-manager commands use the runtime-detected
         // $PM; without one, no $PM exists — fall back to the configured manager.

@@ -6,8 +6,8 @@ namespace Igne\LaravelBootUp\Environment\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ShellCommand;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 
@@ -30,7 +30,7 @@ final class GenerateAppKey implements Step
 
         // Always host-side (no server rewriting): the key must land in the
         // host .env file that every later step reads.
-        $this->processes->run(ShellCommand::make('php artisan key:generate --ansi'));
+        $this->processes->run(CommandLine::make('php artisan key:generate --ansi'));
         terminal()->success('Application key generated.');
 
         return $next($context);

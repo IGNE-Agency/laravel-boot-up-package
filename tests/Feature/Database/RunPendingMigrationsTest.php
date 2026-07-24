@@ -11,9 +11,9 @@ use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Database\PendingMigrations;
 use Igne\LaravelBootUp\Database\Steps\RunPendingMigrations;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
@@ -33,7 +33,7 @@ beforeEach(function (): void {
         new ProcessRunner(
             processes: app(Factory::class),
             ledger: new ProcessLedger($this->dir.'/processes.json'),
-            terminal: new NullTerminal,
+            terminal: new NullTerminalLauncher,
             poller: new Poller,
             logDirectory: $this->dir.'/logs',
             runtimeDirectory: $this->dir.'/runtime',

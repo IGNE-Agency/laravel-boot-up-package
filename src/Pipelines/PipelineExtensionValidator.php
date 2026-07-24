@@ -6,8 +6,8 @@ namespace Igne\LaravelBootUp\Pipelines;
 
 use Igne\LaravelBootUp\Contracts\PipelineGenerator;
 use Igne\LaravelBootUp\Data\PipelineFile;
+use Igne\LaravelBootUp\Data\PipelineJobStep;
 use Igne\LaravelBootUp\Data\PipelinePlan;
-use Igne\LaravelBootUp\Data\PipelineStep;
 use Igne\LaravelBootUp\Exceptions\PipelineException;
 
 /**
@@ -39,7 +39,7 @@ final class PipelineExtensionValidator
     /**
      * @param  array<mixed>  $steps
      * @param  list<string>  $providers
-     * @return list<PipelineStep>
+     * @return list<PipelineJobStep>
      */
     private function steps(array $steps, PipelineGenerator $generator, PipelinePlan $plan, array $providers): array
     {
@@ -76,7 +76,7 @@ final class PipelineExtensionValidator
                 throw PipelineException::step($id, "targets unknown job [{$job}] for {$generator->key()}; available: ".implode(', ', $anchors).'.');
             }
 
-            $result[] = new PipelineStep(
+            $result[] = new PipelineJobStep(
                 id: $id,
                 job: $job,
                 position: $position,

@@ -8,7 +8,7 @@ namespace Igne\LaravelBootUp\Data;
  * Immutable description of a shell command. Prefer the array form for
  * arguments containing spaces; the string form splits on whitespace.
  */
-final readonly class ShellCommand
+final readonly class CommandLine
 {
     /**
      * @param  list<string>  $tokens

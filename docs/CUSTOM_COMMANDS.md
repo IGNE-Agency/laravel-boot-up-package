@@ -6,16 +6,16 @@ schema exporters, cache warmers — without touching the package.
 ## How it works
 
 1. Create a class implementing
-   `Igne\LaravelBootUp\Deploy\ProvidesProjectCommands` (see
-   [examples/ProjectCommands.php](../examples/ProjectCommands.php)):
+   `Igne\LaravelBootUp\Deploy\ProvidesDeployTasks` (see
+   [examples/DeployTasks.php](../examples/DeployTasks.php)):
 
 ```php
 namespace App\BootUp;
 
-use Igne\LaravelBootUp\Deploy\ProjectCommand;
-use Igne\LaravelBootUp\Deploy\ProvidesProjectCommands;
+use Igne\LaravelBootUp\Deploy\DeployTask;
+use Igne\LaravelBootUp\Deploy\ProvidesDeployTasks;
 
-final class ProjectCommands implements ProvidesProjectCommands
+final class DeployTasks implements ProvidesDeployTasks
 {
     public function beforeDeploy(): array
     {
@@ -25,15 +25,15 @@ final class ProjectCommands implements ProvidesProjectCommands
     public function beforeMigrations(): array
     {
         return [
-            ProjectCommand::artisan('wayfinder:generate --path=resources/js/wayfinder', 'Generating routes...'),
+            DeployTask::artisan('wayfinder:generate --path=resources/js/wayfinder', 'Generating routes...'),
         ];
     }
 
     public function afterMigrations(): array
     {
         return [
-            ProjectCommand::artisan('model:typer', 'Generating model types...'),
-            ProjectCommand::packageManager('run zodgen', 'Generating Zod schemas...'),
+            DeployTask::artisan('model:typer', 'Generating model types...'),
+            DeployTask::packageManager('run zodgen', 'Generating Zod schemas...'),
         ];
     }
 
@@ -51,8 +51,8 @@ use.
 
 ```php
 $this->app->singleton(
-    \Igne\LaravelBootUp\Deploy\ProvidesProjectCommands::class,
-    \App\BootUp\ProjectCommands::class,
+    \Igne\LaravelBootUp\Deploy\ProvidesDeployTasks::class,
+    \App\BootUp\DeployTasks::class,
 );
 ```
 
@@ -63,9 +63,9 @@ means no project commands, no error.
 
 | Named constructor                                      | Runs as                                              |
 | ------------------------------------------------------ | ---------------------------------------------------- |
-| `ProjectCommand::artisan('scout:sync')`                | `php artisan scout:sync`                             |
-| `ProjectCommand::composer('dump-autoload --optimize')` | `composer dump-autoload --optimize`                  |
-| `ProjectCommand::packageManager('run build')`          | `bun run build` (or your configured package manager) |
+| `DeployTask::artisan('scout:sync')`                | `php artisan scout:sync`                             |
+| `DeployTask::composer('dump-autoload --optimize')` | `composer dump-autoload --optimize`                  |
+| `DeployTask::packageManager('run build')`          | `bun run build` (or your configured package manager) |
 
 The optional second argument is a human-readable message printed before the
 command runs.
@@ -100,7 +100,7 @@ queue restart
 
 The local `app:serve` / `app:deploy` pipeline runs the two migration phases by
 default. To run the deploy phases locally too, add
-`RunProjectCommands::class.':before-deploy'` / `':after-deploy'` to
+`RunDeployTasks::class.':before-deploy'` / `':after-deploy'` to
 `boot-up.serve_steps` / `boot-up.deploy_steps`. Need a different position
 entirely? The whole pipeline is published config — implement
 `Igne\LaravelBootUp\Serve\Step` and insert your own step class anywhere.

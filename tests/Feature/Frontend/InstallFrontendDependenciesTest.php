@@ -12,9 +12,9 @@ use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Exceptions\FrontendException;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -30,7 +30,7 @@ function bindFrontendInstallServices(string $dir): void
     app()->instance(ProcessRunner::class, new ProcessRunner(
         processes: app(Factory::class),
         ledger: new ProcessLedger($dir.'/processes.json'),
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $dir.'/logs',
         runtimeDirectory: $dir.'/runtime',

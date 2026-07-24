@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Herd;
 
-use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 
@@ -36,7 +36,7 @@ final class HerdServices
     public function isRunning(): bool
     {
         foreach (self::SERVICE_PATTERNS as $pattern) {
-            if ($this->runner->runSilently(ShellCommand::make(['pgrep', '-f', $pattern]))->successful()) {
+            if ($this->runner->runSilently(CommandLine::make(['pgrep', '-f', $pattern]))->successful()) {
                 return true;
             }
         }
@@ -53,7 +53,7 @@ final class HerdServices
      */
     public function isReachable(string $url): bool
     {
-        $result = $this->runner->runSilently(ShellCommand::make([
+        $result = $this->runner->runSilently(CommandLine::make([
             'curl', '--silent', '--insecure', '--output', '/dev/null',
             '--write-out', '%{http_code}',
             '--retry', '3', '--retry-connrefused', '--retry-delay', '1',
@@ -66,12 +66,12 @@ final class HerdServices
 
     public function boot(): void
     {
-        $this->runner->runSilently(ShellCommand::make('herd start'));
+        $this->runner->runSilently(CommandLine::make('herd start'));
     }
 
     public function restart(): void
     {
-        $this->runner->runSilently(ShellCommand::make('herd restart'));
+        $this->runner->runSilently(CommandLine::make('herd restart'));
     }
 
     /**

@@ -13,7 +13,7 @@ use Igne\LaravelBootUp\Database\Steps\VerifyDatabaseConnection;
 use Igne\LaravelBootUp\Deploy\Steps\CacheFrameworkFiles;
 use Igne\LaravelBootUp\Deploy\Steps\FinalizeApplication;
 use Igne\LaravelBootUp\Deploy\Steps\InstallComposerDependencies;
-use Igne\LaravelBootUp\Deploy\Steps\RunProjectCommands;
+use Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks;
 use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
 use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
@@ -48,7 +48,7 @@ final readonly class StepSequence
         EnsureDatabaseCredentials::class => ServeStage::Database,
         EnsureDatabaseExists::class => ServeStage::Database,
         VerifyDatabaseConnection::class => ServeStage::Database,
-        RunProjectCommands::class => ServeStage::Database,
+        RunDeployTasks::class => ServeStage::Database,
         RunPendingMigrations::class => ServeStage::Database,
         CacheFrameworkFiles::class => ServeStage::Cache,
         FinalizeApplication::class => ServeStage::Finalize,
@@ -75,7 +75,7 @@ final readonly class StepSequence
         EnsureDatabaseCredentials::class => 'database',
         EnsureDatabaseExists::class => 'database',
         VerifyDatabaseConnection::class => 'database',
-        RunProjectCommands::class => 'project-commands',
+        RunDeployTasks::class => 'deploy-tasks',
         RunPendingMigrations::class => 'migrations',
         CacheFrameworkFiles::class => 'cache',
         FinalizeApplication::class => 'finalize',
@@ -197,7 +197,7 @@ final readonly class StepSequence
                 : 'Start the development server',
             'dependencies' => $this->dependenciesLine($present),
             'database' => 'Prepare the database and verify the connection',
-            'project-commands' => "Run the project's configured commands",
+            'deploy-tasks' => "Run the project's configured commands",
             'migrations' => $this->migrationsLine(),
             'cache' => 'Cache the framework files',
             'finalize' => 'Finalize the application',
@@ -272,7 +272,7 @@ final readonly class StepSequence
             EnsureDatabaseCredentials::class => 'Checking database credentials',
             EnsureDatabaseExists::class => 'Ensuring the database exists',
             VerifyDatabaseConnection::class => 'Verifying the database connection',
-            RunProjectCommands::class => ($parameters[0] ?? 'before') === 'after'
+            RunDeployTasks::class => ($parameters[0] ?? 'before') === 'after'
                 ? 'Running project commands (after migrations)'
                 : 'Running project commands (before migrations)',
             RunPendingMigrations::class => $options->fresh && $options->migrate

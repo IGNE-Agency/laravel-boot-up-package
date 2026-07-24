@@ -3,18 +3,18 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\FrontendConfig;
-use Igne\LaravelBootUp\Contracts\ProvidesProjectCommands;
-use Igne\LaravelBootUp\Data\ProjectCommand;
+use Igne\LaravelBootUp\Contracts\ProvidesDeployTasks;
+use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
-use Igne\LaravelBootUp\Deploy\ProjectCommandRunner;
-use Igne\LaravelBootUp\Deploy\Steps\RunProjectCommands;
+use Igne\LaravelBootUp\Deploy\DeployTaskRunner;
+use Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks;
 use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Pipeline\Pipeline;
@@ -40,12 +40,12 @@ function runProjectCommandsCommandOf(object $process): string
 // Process::fake() must run before this resolves the Factory.
 function bindRunProjectCommandsFixtures(string $dir): void
 {
-    app()->instance(ProjectCommandRunner::class, new ProjectCommandRunner(
+    app()->instance(DeployTaskRunner::class, new DeployTaskRunner(
         container: app(),
         processes: new ProcessRunner(
             processes: app(Factory::class),
             ledger: new ProcessLedger($dir.'/processes.json'),
-            terminal: new NullTerminal,
+            terminal: new NullTerminalLauncher,
             poller: new Poller,
             logDirectory: $dir.'/logs',
             runtimeDirectory: $dir.'/runtime',
@@ -57,26 +57,26 @@ function bindRunProjectCommandsFixtures(string $dir): void
         ),
     ));
 
-    app()->singleton(ProvidesProjectCommands::class, fn (): ProvidesProjectCommands => new class implements ProvidesProjectCommands
+    app()->singleton(ProvidesDeployTasks::class, fn (): ProvidesDeployTasks => new class implements ProvidesDeployTasks
     {
         public function beforeDeploy(): array
         {
-            return [ProjectCommand::artisan('pennant:purge')];
+            return [DeployTask::artisan('pennant:purge')];
         }
 
         public function beforeMigrations(): array
         {
-            return [ProjectCommand::artisan('config:clear')];
+            return [DeployTask::artisan('config:clear')];
         }
 
         public function afterMigrations(): array
         {
-            return [ProjectCommand::composer('dump-autoload')];
+            return [DeployTask::composer('dump-autoload')];
         }
 
         public function afterDeploy(): array
         {
-            return [ProjectCommand::artisan('cache:warm')];
+            return [DeployTask::artisan('cache:warm')];
         }
     });
 }
@@ -89,7 +89,7 @@ test("the pipeline ':after' parameter selects the after-migrations commands", fu
 
     $result = app(Pipeline::class)
         ->send($context)
-        ->through([RunProjectCommands::class.':after'])
+        ->through([RunDeployTasks::class.':after'])
         ->then(fn (ServeContext $passed): ServeContext => $passed);
 
     expect($result)->toBe($context);
@@ -103,7 +103,7 @@ test("the ':before-deploy' parameter selects the before-deploy commands", functi
 
     app(Pipeline::class)
         ->send(new ServeContext(new ServeOptions))
-        ->through([RunProjectCommands::class.':before-deploy'])
+        ->through([RunDeployTasks::class.':before-deploy'])
         ->then(fn (ServeContext $passed): ServeContext => $passed);
 
     Process::assertRan(fn ($process): bool => runProjectCommandsCommandOf($process) === 'php artisan pennant:purge');
@@ -116,7 +116,7 @@ test('the phase defaults to before-migrations without a pipeline parameter', fun
 
     app(Pipeline::class)
         ->send(new ServeContext(new ServeOptions))
-        ->through([RunProjectCommands::class])
+        ->through([RunDeployTasks::class])
         ->then(fn (ServeContext $passed): ServeContext => $passed);
 
     Process::assertRan(fn ($process): bool => runProjectCommandsCommandOf($process) === 'php artisan config:clear');

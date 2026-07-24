@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Pipelines;
 
 use Igne\LaravelBootUp\Data\PipelineFile;
+use Igne\LaravelBootUp\Data\PipelineJobStep;
 use Igne\LaravelBootUp\Data\PipelinePlan;
-use Igne\LaravelBootUp\Data\PipelineStep;
 
 /**
  * The validated, provider-aware set of extra steps and files a project has
@@ -16,7 +16,7 @@ use Igne\LaravelBootUp\Data\PipelineStep;
 final readonly class PipelineExtensions
 {
     /**
-     * @param  list<PipelineStep>  $steps
+     * @param  list<PipelineJobStep>  $steps
      * @param  list<PipelineFile>  $files
      */
     public function __construct(
@@ -28,13 +28,13 @@ final readonly class PipelineExtensions
      * The steps to render at one job anchor and position for a provider, in
      * configured order.
      *
-     * @return list<PipelineStep>
+     * @return list<PipelineJobStep>
      */
     public function stepsFor(string $provider, string $job, string $position): array
     {
         return array_values(array_filter(
             $this->steps,
-            fn (PipelineStep $step): bool => ($step->provider === null || $step->provider === $provider)
+            fn (PipelineJobStep $step): bool => ($step->provider === null || $step->provider === $provider)
                 && $step->job === $job
                 && $step->position === $position,
         ));

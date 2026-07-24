@@ -8,9 +8,9 @@ use Closure;
 use Igne\LaravelBootUp\Config\QueueConfig;
 use Igne\LaravelBootUp\Config\WorkersConfig;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ShellCommand;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
 use Igne\LaravelBootUp\Process\ProcessLedger;
@@ -70,7 +70,7 @@ final class StartQueueWorker implements Step
         }
 
         $command = $this->rewriter->rewrite(
-            ShellCommand::make(['php', 'artisan', 'queue:work', $connection])
+            CommandLine::make(['php', 'artisan', 'queue:work', $connection])
                 ->withOptions($this->config->flags)
                 ->withTimeout(null),
             $context->commandRewrites(),

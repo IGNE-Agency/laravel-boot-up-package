@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootUp\Process\Terminal;
+namespace Igne\LaravelBootUp\Process;
 
 use Igne\LaravelBootUp\Contracts\TerminalLauncher;
 use Igne\LaravelBootUp\Services\Platform;
 use Illuminate\Process\Factory;
 
-final class LinuxTerminal implements TerminalLauncher
+final class LinuxTerminalLauncher implements TerminalLauncher
 {
     public function __construct(
         private readonly Factory $processes,

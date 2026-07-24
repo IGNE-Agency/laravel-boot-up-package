@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tools\Installers\Homebrew;
 use Illuminate\Process\Factory;
@@ -27,7 +27,7 @@ function makeHomebrew(string $workDir): Homebrew
     return new Homebrew(new ProcessRunner(
         processes: app(Factory::class),
         ledger: new ProcessLedger($workDir.'/processes.json'),
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $workDir.'/logs',
         runtimeDirectory: $workDir.'/runtime',

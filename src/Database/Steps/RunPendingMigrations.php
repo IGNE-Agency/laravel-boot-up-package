@@ -8,8 +8,8 @@ use Closure;
 use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ShellCommand;
 use Igne\LaravelBootUp\Database\PendingMigrations;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
@@ -85,7 +85,7 @@ final class RunPendingMigrations implements Step
         }
 
         $this->runner->run($this->rewriter->rewrite(
-            ShellCommand::make($command),
+            CommandLine::make($command),
             $context->commandRewrites(),
         ));
     }
@@ -99,7 +99,7 @@ final class RunPendingMigrations implements Step
         terminal()->info('Seeding database...');
 
         $this->runner->run($this->rewriter->rewrite(
-            ShellCommand::make('php artisan db:seed'),
+            CommandLine::make('php artisan db:seed'),
             $context->commandRewrites(),
         ));
     }
@@ -107,7 +107,7 @@ final class RunPendingMigrations implements Step
     private function migrateThroughServer(ServeContext $context): bool
     {
         $status = $this->runner->runSilently($this->rewriter->rewrite(
-            ShellCommand::make('php artisan migrate:status --pending'),
+            CommandLine::make('php artisan migrate:status --pending'),
             $context->commandRewrites(),
         ));
 
@@ -122,7 +122,7 @@ final class RunPendingMigrations implements Step
         terminal()->info('Running pending migrations...');
 
         $this->runner->run($this->rewriter->rewrite(
-            ShellCommand::make('php artisan migrate --force'),
+            CommandLine::make('php artisan migrate --force'),
             $context->commandRewrites(),
         ));
 
@@ -141,7 +141,7 @@ final class RunPendingMigrations implements Step
 
         terminal()->info("Running {$count} pending ".Str::plural('migration', $count).'...');
 
-        $this->runner->run(ShellCommand::make('php artisan migrate --force'));
+        $this->runner->run(CommandLine::make('php artisan migrate --force'));
 
         return true;
     }

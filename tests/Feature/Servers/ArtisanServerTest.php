@@ -10,10 +10,10 @@ use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
 use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
@@ -37,7 +37,7 @@ function artisanServer(ProcessLedger $ledger, string $workDir, ?ServersConfig $c
     $runner = new ProcessRunner(
         processes: app(Factory::class),
         ledger: $ledger,
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $workDir.'/logs',
         runtimeDirectory: $workDir.'/runtime',
@@ -46,7 +46,7 @@ function artisanServer(ProcessLedger $ledger, string $workDir, ?ServersConfig $c
     return new ArtisanServer(
         $runner,
         $ledger,
-        new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminal),
+        new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminalLauncher),
         $config ?? new ServersConfig,
     );
 }

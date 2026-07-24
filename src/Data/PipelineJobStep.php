@@ -10,7 +10,7 @@ use Igne\LaravelBootUp\Pipelines\PipelineExtensionValidator;
  * A configured extra step injected into a generated pipeline job. Validated
  * and built by PipelineExtensionValidator from boot-up.pipeline.steps.
  */
-final readonly class PipelineStep
+final readonly class PipelineJobStep
 {
     /**
      * @param  string  $job  the generator anchor to attach to (e.g. "test")

@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Data\CommandLine;
 
 test('a string command is tokenized on whitespace', function (): void {
-    expect(ShellCommand::make('php  artisan   serve')->tokens)->toBe(['php', 'artisan', 'serve']);
+    expect(CommandLine::make('php  artisan   serve')->tokens)->toBe(['php', 'artisan', 'serve']);
 });
 
 test('array elements are kept verbatim so arguments may contain spaces', function (): void {
-    expect(ShellCommand::make(['php', '-r', 'echo PHP_VERSION;'])->tokens)->toBe(['php', '-r', 'echo PHP_VERSION;']);
+    expect(CommandLine::make(['php', '-r', 'echo PHP_VERSION;'])->tokens)->toBe(['php', '-r', 'echo PHP_VERSION;']);
 });
 
 test('withOptions renders flags, values and drops false or null entries', function (): void {
-    $command = ShellCommand::make('php artisan queue:work')->withOptions([
+    $command = CommandLine::make('php artisan queue:work')->withOptions([
         '--tries' => 3,
         '--force' => true,
         '--quiet' => false,
@@ -25,7 +25,7 @@ test('withOptions renders flags, values and drops false or null entries', functi
 });
 
 test('withers return new instances and never mutate', function (): void {
-    $original = ShellCommand::make('ls');
+    $original = CommandLine::make('ls');
     $modified = $original->inDirectory('/tmp')->withEnv(['FOO' => 'bar'])->withTimeout(null);
 
     expect($original->cwd)->toBeNull()
@@ -37,7 +37,7 @@ test('withers return new instances and never mutate', function (): void {
 });
 
 test('toString escapes tokens containing shell specials', function (): void {
-    $command = ShellCommand::make(['echo', 'hello world', 'plain-token.txt']);
+    $command = CommandLine::make(['echo', 'hello world', 'plain-token.txt']);
 
     expect($command->toString())->toBe("echo 'hello world' plain-token.txt");
 });

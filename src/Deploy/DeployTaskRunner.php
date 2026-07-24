@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Deploy;
 
-use Igne\LaravelBootUp\Contracts\ProvidesProjectCommands;
-use Igne\LaravelBootUp\Data\ProjectCommand;
+use Igne\LaravelBootUp\Contracts\ProvidesDeployTasks;
+use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Exceptions\DeployException;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -19,9 +19,9 @@ use InvalidArgumentException;
 /**
  * Runs the host application's project commands for a deploy phase. The
  * provider is resolved lazily so projects that never bind
- * ProvidesProjectCommands pay nothing.
+ * ProvidesDeployTasks pay nothing.
  */
-final class ProjectCommandRunner
+final class DeployTaskRunner
 {
     public function __construct(
         private readonly Container $container,
@@ -35,11 +35,11 @@ final class ProjectCommandRunner
      */
     public function run(string $phase, ServeContext $context): void
     {
-        if (! $this->container->bound(ProvidesProjectCommands::class)) {
+        if (! $this->container->bound(ProvidesDeployTasks::class)) {
             return;
         }
 
-        $provider = $this->container->make(ProvidesProjectCommands::class);
+        $provider = $this->container->make(ProvidesDeployTasks::class);
 
         $commands = match ($phase) {
             'before-deploy' => $provider->beforeDeploy(),
@@ -54,14 +54,14 @@ final class ProjectCommandRunner
         }
     }
 
-    private function execute(ProjectCommand $command, ServeContext $context): void
+    private function execute(DeployTask $command, ServeContext $context): void
     {
         if ($command->description !== null) {
             terminal()->info($command->description);
         }
 
         $shell = $this->rewriter->rewrite(
-            ShellCommand::make($this->tokensFor($command)),
+            CommandLine::make($this->tokensFor($command)),
             $context->commandRewrites(),
         );
 
@@ -75,7 +75,7 @@ final class ProjectCommandRunner
     /**
      * @return list<string>
      */
-    private function tokensFor(ProjectCommand $command): array
+    private function tokensFor(DeployTask $command): array
     {
         $line = $command->shellLine('php artisan', 'composer', $this->packageManagers->selected()->binary());
 

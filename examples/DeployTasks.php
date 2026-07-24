@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace App\BootUp;
 
-use Igne\LaravelBootUp\Deploy\ProjectCommand;
-use Igne\LaravelBootUp\Deploy\ProvidesProjectCommands;
+use Igne\LaravelBootUp\Deploy\DeployTask;
+use Igne\LaravelBootUp\Deploy\ProvidesDeployTasks;
 
 /**
  * Example implementation of project-specific boot commands.
  *
- * Copy this file to app/BootUp/ProjectCommands.php and register it in
+ * Copy this file to app/BootUp/DeployTasks.php and register it in
  * your AppServiceProvider:
  *
  *     $this->app->singleton(
- *         \Igne\LaravelBootUp\Deploy\ProvidesProjectCommands::class,
- *         \App\BootUp\ProjectCommands::class,
+ *         \Igne\LaravelBootUp\Deploy\ProvidesDeployTasks::class,
+ *         \App\BootUp\DeployTasks::class,
  *     );
  *
  * Commands run as plain argument lists (never through a shell) and are
@@ -23,14 +23,14 @@ use Igne\LaravelBootUp\Deploy\ProvidesProjectCommands;
  * `./vendor/bin/sail artisan ...` automatically under Sail. A failing
  * command aborts the boot.
  */
-final class ProjectCommands implements ProvidesProjectCommands
+final class DeployTasks implements ProvidesDeployTasks
 {
     /**
      * Runs first, once dependencies are installed and before the framework
      * is optimized or migrated. Use this for the earliest, schema-independent
      * work. Return [] if you have none.
      *
-     * @return list<ProjectCommand>
+     * @return list<DeployTask>
      */
     public function beforeDeploy(): array
     {
@@ -43,17 +43,17 @@ final class ProjectCommands implements ProvidesProjectCommands
      * Use this for code generation that does not depend on the database
      * schema: TypeScript route generation, Zod schemas, and the like.
      *
-     * @return list<ProjectCommand>
+     * @return list<DeployTask>
      */
     public function beforeMigrations(): array
     {
         return [
-            ProjectCommand::artisan(
+            DeployTask::artisan(
                 'wayfinder:generate --path=resources/js/wayfinder',
                 'Generating TypeScript routes and actions with Wayfinder...',
             ),
 
-            // ProjectCommand::packageManager(
+            // DeployTask::packageManager(
             //     'run zodgen',
             //     'Generating Zod schemas from resources...',
             // ),
@@ -66,17 +66,17 @@ final class ProjectCommands implements ProvidesProjectCommands
      * Use this for anything that needs the up-to-date database schema:
      * model-based type generation, cache warming, data processing.
      *
-     * @return list<ProjectCommand>
+     * @return list<DeployTask>
      */
     public function afterMigrations(): array
     {
         return [
-            ProjectCommand::artisan(
+            DeployTask::artisan(
                 'model:typer',
                 'Generating TypeScript types from Eloquent models...',
             ),
 
-            // ProjectCommand::composer(
+            // DeployTask::composer(
             //     'dump-autoload --optimize',
             //     'Optimizing the Composer autoloader...',
             // ),
@@ -90,7 +90,7 @@ final class ProjectCommands implements ProvidesProjectCommands
      * serving traffic: cache warming, health pings, notifications. Return []
      * if you have none.
      *
-     * @return list<ProjectCommand>
+     * @return list<DeployTask>
      */
     public function afterDeploy(): array
     {

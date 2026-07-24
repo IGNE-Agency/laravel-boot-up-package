@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Serve;
 
-use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Services\Platform;
 
@@ -19,6 +19,6 @@ final class Browser
     {
         $binary = $this->platform->isMacos() ? 'open' : 'xdg-open';
 
-        $this->runner->runSilently(ShellCommand::make([$binary, $url]));
+        $this->runner->runSilently(CommandLine::make([$binary, $url]));
     }
 }

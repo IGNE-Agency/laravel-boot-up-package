@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Enums;
 
-enum ProjectCommandType: string
+enum DeployTaskType: string
 {
     case ARTISAN = 'artisan';
     case COMPOSER = 'composer';

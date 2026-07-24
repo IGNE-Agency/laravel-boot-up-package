@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Contracts\ProvidesProjectCommands;
-use Igne\LaravelBootUp\Data\ProjectCommand;
+use Igne\LaravelBootUp\Contracts\ProvidesDeployTasks;
+use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\StaticScriptGenerator;
 
 test('exports a forge production script from the package config', function (): void {
@@ -26,7 +26,7 @@ test('exports a fortrabbit script with both dashboard sections', function (): vo
 });
 
 test('embeds the project\'s bound commands into the exported script', function (): void {
-    app()->singleton(ProvidesProjectCommands::class, fn () => new class implements ProvidesProjectCommands
+    app()->singleton(ProvidesDeployTasks::class, fn () => new class implements ProvidesDeployTasks
     {
         public function beforeDeploy(): array
         {
@@ -35,7 +35,7 @@ test('embeds the project\'s bound commands into the exported script', function (
 
         public function beforeMigrations(): array
         {
-            return [ProjectCommand::artisan('wayfinder:generate', 'Generating routes...')];
+            return [DeployTask::artisan('wayfinder:generate', 'Generating routes...')];
         }
 
         public function afterMigrations(): array
@@ -56,26 +56,26 @@ test('embeds the project\'s bound commands into the exported script', function (
 });
 
 test('renders bound commands for all four phases in the forge script', function (): void {
-    app()->singleton(ProvidesProjectCommands::class, fn () => new class implements ProvidesProjectCommands
+    app()->singleton(ProvidesDeployTasks::class, fn () => new class implements ProvidesDeployTasks
     {
         public function beforeDeploy(): array
         {
-            return [ProjectCommand::artisan('pennant:purge')];
+            return [DeployTask::artisan('pennant:purge')];
         }
 
         public function beforeMigrations(): array
         {
-            return [ProjectCommand::artisan('wayfinder:generate')];
+            return [DeployTask::artisan('wayfinder:generate')];
         }
 
         public function afterMigrations(): array
         {
-            return [ProjectCommand::artisan('model:typer')];
+            return [DeployTask::artisan('model:typer')];
         }
 
         public function afterDeploy(): array
         {
-            return [ProjectCommand::artisan('cache:warm')];
+            return [DeployTask::artisan('cache:warm')];
         }
     });
 

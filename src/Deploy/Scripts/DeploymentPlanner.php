@@ -8,14 +8,14 @@ use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Config\DeployConfig;
 use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Config\QueueConfig;
-use Igne\LaravelBootUp\Contracts\ProvidesProjectCommands;
+use Igne\LaravelBootUp\Contracts\ProvidesDeployTasks;
 use Igne\LaravelBootUp\Data\DeploymentPlan;
 use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Illuminate\Contracts\Container\Container;
 
 /**
- * Distils the package config and the host project's ProvidesProjectCommands
+ * Distils the package config and the host project's ProvidesDeployTasks
  * binding into a platform-agnostic deployment plan.
  */
 final class DeploymentPlanner
@@ -31,8 +31,8 @@ final class DeploymentPlanner
 
     public function plan(DeploymentEnvironment $environment, bool $zeroDowntime = true): DeploymentPlan
     {
-        $projectCommands = $this->container->bound(ProvidesProjectCommands::class)
-            ? $this->container->make(ProvidesProjectCommands::class)
+        $projectCommands = $this->container->bound(ProvidesDeployTasks::class)
+            ? $this->container->make(ProvidesDeployTasks::class)
             : null;
 
         return new DeploymentPlan(

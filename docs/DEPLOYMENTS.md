@@ -49,7 +49,7 @@ into the matching dashboard fields.
 
 ## Project commands
 
-Your [`ProvidesProjectCommands` binding](CUSTOM_COMMANDS.md) is embedded across
+Your [`ProvidesDeployTasks` binding](CUSTOM_COMMANDS.md) is embedded across
 all four phases (`beforeDeploy` → `beforeMigrations` → `afterMigrations` →
 `afterDeploy`), with each description rendered as a comment above its command.
 On a Forge zero-downtime site, `afterDeploy` commands run after

@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Data\DeploymentPlan;
+use Igne\LaravelBootUp\Data\PipelineJobStep;
 use Igne\LaravelBootUp\Data\PipelinePlan;
-use Igne\LaravelBootUp\Data\PipelineStep;
 use Igne\LaravelBootUp\Enums\DeployHookHost;
 use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 use Igne\LaravelBootUp\Enums\PackageManager;
@@ -50,8 +50,8 @@ function bitbucketGenerator(): BitbucketPipelinesGenerator
 
 test('injects configured extra steps into a step script before and after its command', function (): void {
     $plan = bitbucketPipelinePlan(['extensions' => new PipelineExtensions([
-        new PipelineStep('prep', 'test', 'before', 'Prepare', 'echo prep'),
-        new PipelineStep('notify', 'test', 'after', 'Notify', 'bash notify.sh'),
+        new PipelineJobStep('prep', 'test', 'before', 'Prepare', 'echo prep'),
+        new PipelineJobStep('notify', 'test', 'after', 'Notify', 'bash notify.sh'),
     ])]);
 
     $yaml = bitbucketGenerator()->files($plan)[0]->contents;

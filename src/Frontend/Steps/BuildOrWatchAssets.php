@@ -7,9 +7,9 @@ namespace Igne\LaravelBootUp\Frontend\Steps;
 use Closure;
 use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ShellCommand;
 use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
@@ -106,8 +106,8 @@ final class BuildOrWatchAssets implements Step
     /**
      * @param  list<string>  $tokens
      */
-    private function rewrite(ServeContext $context, array $tokens): ShellCommand
+    private function rewrite(ServeContext $context, array $tokens): CommandLine
     {
-        return $this->rewriter->rewrite(ShellCommand::make($tokens), $context->commandRewrites());
+        return $this->rewriter->rewrite(CommandLine::make($tokens), $context->commandRewrites());
     }
 }

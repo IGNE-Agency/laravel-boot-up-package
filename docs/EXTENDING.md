@@ -8,12 +8,12 @@ Generators and warmers that run across four deploy phases (`beforeDeploy`,
 `beforeMigrations`, `afterMigrations`, `afterDeploy`) during `app:serve` /
 `app:deploy` and get embedded in exported deployment scripts.
 
-1. Implement `Igne\LaravelBootUp\Deploy\ProvidesProjectCommands` (all four
+1. Implement `Igne\LaravelBootUp\Deploy\ProvidesDeployTasks` (all four
    methods; return `[]` for phases you don't use).
 2. Bind it as a singleton in your `AppServiceProvider::register()`.
 
 Full guide: [CUSTOM_COMMANDS.md](CUSTOM_COMMANDS.md) — example:
-[examples/ProjectCommands.php](../examples/ProjectCommands.php).
+[examples/DeployTasks.php](../examples/DeployTasks.php).
 
 ## Custom pipeline steps
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Deploy;
 
-use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Exceptions\DeployException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Services\LockfileConflictDetector;
@@ -99,7 +99,7 @@ final class Composer
 
     private function run(string $command): void
     {
-        $this->processes->run(ShellCommand::make($command)->withTimeout(self::INSTALL_TIMEOUT_SECONDS));
+        $this->processes->run(CommandLine::make($command)->withTimeout(self::INSTALL_TIMEOUT_SECONDS));
     }
 
     private function outputOf(ProcessFailedException $exception): string

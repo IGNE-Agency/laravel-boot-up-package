@@ -10,10 +10,10 @@ use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Queue\Steps\StartQueueWorker;
 use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
@@ -30,11 +30,11 @@ function bindQueueServices(string $dir, ?QueueConfig $config = null): ProcessLed
     app()->instance(QueueConfig::class, $config ?? new QueueConfig);
     app()->instance(EnvFile::class, new EnvFile($dir.'/.env', $dir.'/.env.example'));
     app()->instance(ProcessLedger::class, $ledger);
-    app()->instance(ProcessReaper::class, new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminal));
+    app()->instance(ProcessReaper::class, new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminalLauncher));
     app()->instance(ProcessRunner::class, new ProcessRunner(
         processes: app(Factory::class),
         ledger: $ledger,
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $dir.'/logs',
         runtimeDirectory: $dir.'/runtime',

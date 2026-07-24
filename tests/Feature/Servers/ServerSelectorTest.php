@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\ServersConfig;
 use Igne\LaravelBootUp\Exceptions\ServerException;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
 use Igne\LaravelBootUp\Servers\Herd\HerdServer;
 use Igne\LaravelBootUp\Servers\Sail\SailServer;
@@ -28,7 +28,7 @@ beforeEach(function (): void {
     app()->singleton(ProcessRunner::class, fn (): ProcessRunner => new ProcessRunner(
         processes: app(Factory::class),
         ledger: app(ProcessLedger::class),
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $this->workDir.'/logs',
         runtimeDirectory: $this->workDir.'/runtime',

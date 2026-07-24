@@ -28,11 +28,11 @@ use Igne\LaravelBootUp\Environment\ShellProfile;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
+use Igne\LaravelBootUp\Process\LinuxTerminalLauncher;
+use Igne\LaravelBootUp\Process\MacTerminalLauncher;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\LinuxTerminal;
-use Igne\LaravelBootUp\Process\Terminal\MacTerminal;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Serve\ShutdownRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Herd\HerdServices;
@@ -102,9 +102,9 @@ final class BootUpServiceProvider extends ServiceProvider
             $platform = $app->make(Platform::class);
 
             return match (true) {
-                $platform->isMacos() => $app->make(MacTerminal::class),
-                $platform->isLinux() => $app->make(LinuxTerminal::class),
-                default => new NullTerminal,
+                $platform->isMacos() => $app->make(MacTerminalLauncher::class),
+                $platform->isLinux() => $app->make(LinuxTerminalLauncher::class),
+                default => new NullTerminalLauncher,
             };
         });
 

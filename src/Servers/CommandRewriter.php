@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers;
 
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\CommandRewrites;
-use Igne\LaravelBootUp\Data\ShellCommand;
 
 /**
  * Applies a server's rewrite rules to a command, e.g. under Sail
@@ -13,7 +13,7 @@ use Igne\LaravelBootUp\Data\ShellCommand;
  */
 final class CommandRewriter
 {
-    public function rewrite(ShellCommand $command, ?CommandRewrites $rules): ShellCommand
+    public function rewrite(CommandLine $command, ?CommandRewrites $rules): CommandLine
     {
         if ($rules === null || $command->tokens === []) {
             return $command;

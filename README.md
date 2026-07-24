@@ -222,7 +222,7 @@ None of these require touching package code:
 
 | Extension point                    | Implement                        | Register                                           |
 | ---------------------------------- | -------------------------------- | -------------------------------------------------- |
-| Project commands around migrations | `Deploy\ProvidesProjectCommands` | Bind as singleton in your `AppServiceProvider`     |
+| Project commands around migrations | `Deploy\ProvidesDeployTasks` | Bind as singleton in your `AppServiceProvider`     |
 | Custom serve/deploy steps          | `Serve\Step`                     | Insert into `boot-up.serve_steps` / `deploy_steps` |
 | Custom servers                     | `Servers\Server`                 | `boot-up.server.drivers`                           |
 | Custom tools                       | `Tools\InstallsTool`             | `boot-up.tools.installers` + `tools.required`      |

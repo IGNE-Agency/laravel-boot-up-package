@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
 use Igne\LaravelBootUp\Pipelines\GitHooks;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -50,7 +50,7 @@ final class GenerateGitHooksCommand extends BootUpCommand
     private function insideGitWorkTree(ProcessRunner $processes): bool
     {
         return $processes->runSilently(
-            ShellCommand::make(['git', 'rev-parse', '--is-inside-work-tree'])
+            CommandLine::make(['git', 'rev-parse', '--is-inside-work-tree'])
                 ->inDirectory($this->laravel->basePath()),
         )->successful();
     }
@@ -58,7 +58,7 @@ final class GenerateGitHooksCommand extends BootUpCommand
     private function pointGitAtHooksPath(ProcessRunner $processes): void
     {
         $processes->runSilently(
-            ShellCommand::make(['git', 'config', 'core.hooksPath', GitHooks::DIRECTORY])
+            CommandLine::make(['git', 'config', 'core.hooksPath', GitHooks::DIRECTORY])
                 ->inDirectory($this->laravel->basePath()),
         );
 

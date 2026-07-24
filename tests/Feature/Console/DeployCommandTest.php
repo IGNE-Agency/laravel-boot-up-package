@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Deploy\Steps\FinalizeApplication;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
@@ -21,7 +21,7 @@ beforeEach(function (): void {
     app()->singleton(ProcessRunner::class, fn ($app) => new ProcessRunner(
         processes: $app->make(Factory::class),
         ledger: new ProcessLedger($this->workDir.'/processes.json'),
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $this->workDir.'/logs',
         runtimeDirectory: $this->workDir.'/runtime',

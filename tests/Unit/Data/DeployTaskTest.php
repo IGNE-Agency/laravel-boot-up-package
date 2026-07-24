@@ -2,27 +2,27 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Data\ProjectCommand;
-use Igne\LaravelBootUp\Enums\ProjectCommandType;
+use Igne\LaravelBootUp\Data\DeployTask;
+use Igne\LaravelBootUp\Enums\DeployTaskType;
 
 test('named constructors set the command type', function (): void {
-    expect(ProjectCommand::artisan('db:seed')->type)->toBe(ProjectCommandType::ARTISAN)
-        ->and(ProjectCommand::composer('dump-autoload')->type)->toBe(ProjectCommandType::COMPOSER)
-        ->and(ProjectCommand::packageManager('run build')->type)->toBe(ProjectCommandType::PACKAGE_MANAGER);
+    expect(DeployTask::artisan('db:seed')->type)->toBe(DeployTaskType::ARTISAN)
+        ->and(DeployTask::composer('dump-autoload')->type)->toBe(DeployTaskType::COMPOSER)
+        ->and(DeployTask::packageManager('run build')->type)->toBe(DeployTaskType::PACKAGE_MANAGER);
 });
 
 test('the command and optional description are kept verbatim', function (): void {
-    $command = ProjectCommand::artisan('wayfinder:generate --path=resources/js', 'Generating routes...');
+    $command = DeployTask::artisan('wayfinder:generate --path=resources/js', 'Generating routes...');
 
     expect($command->command)->toBe('wayfinder:generate --path=resources/js')
         ->and($command->description)->toBe('Generating routes...')
-        ->and(ProjectCommand::artisan('db:seed')->description)->toBeNull();
+        ->and(DeployTask::artisan('db:seed')->description)->toBeNull();
 });
 
 test('valid commands pass validation', function (string $command): void {
-    expect(ProjectCommand::artisan($command))->toBeInstanceOf(ProjectCommand::class)
-        ->and(ProjectCommand::composer($command))->toBeInstanceOf(ProjectCommand::class)
-        ->and(ProjectCommand::packageManager($command))->toBeInstanceOf(ProjectCommand::class);
+    expect(DeployTask::artisan($command))->toBeInstanceOf(DeployTask::class)
+        ->and(DeployTask::composer($command))->toBeInstanceOf(DeployTask::class)
+        ->and(DeployTask::packageManager($command))->toBeInstanceOf(DeployTask::class);
 })->with([
     'artisan command with option' => 'wayfinder:generate --path=resources/js',
     'composer script' => 'dump-autoload --optimize',
@@ -31,12 +31,12 @@ test('valid commands pass validation', function (string $command): void {
 ]);
 
 test('an empty command is rejected', function (string $command): void {
-    ProjectCommand::artisan($command);
+    DeployTask::artisan($command);
 })->with(['empty' => '', 'whitespace only' => '   '])
     ->throws(InvalidArgumentException::class, 'cannot be empty');
 
 test('shell metacharacters are rejected because commands run as argument lists', function (string $command): void {
-    ProjectCommand::artisan($command);
+    DeployTask::artisan($command);
 })->with([
     'chaining with &&' => 'db:seed && rm -rf /',
     'chaining with ;' => 'db:seed; migrate:fresh',
@@ -51,7 +51,7 @@ test('shell metacharacters are rejected because commands run as argument lists',
 ])->throws(InvalidArgumentException::class, 'shell metacharacters');
 
 test('dangerous commands are rejected on word boundaries', function (string $command): void {
-    ProjectCommand::artisan($command);
+    DeployTask::artisan($command);
 })->with([
     'rm' => 'rm -rf /',
     'sudo' => 'sudo su',
@@ -67,7 +67,7 @@ test('dangerous commands are rejected on word boundaries', function (string $com
 ])->throws(InvalidArgumentException::class, 'blocked word');
 
 test('blocked words embedded in larger words are not rejected', function (string $command): void {
-    expect(ProjectCommand::artisan($command))->toBeInstanceOf(ProjectCommand::class);
+    expect(DeployTask::artisan($command))->toBeInstanceOf(DeployTask::class);
 })->with([
     'execute is not exec' => 'php artisan execute-thing',
     'execute-thing alone' => 'execute-thing',
@@ -79,10 +79,10 @@ test('blocked words embedded in larger words are not rejected', function (string
 ]);
 
 test('shellLine renders each type with the caller-supplied binaries', function (): void {
-    expect(ProjectCommand::artisan('nova:publish')->shellLine('$FORGE_PHP artisan', '$FORGE_COMPOSER', 'bun'))
+    expect(DeployTask::artisan('nova:publish')->shellLine('$FORGE_PHP artisan', '$FORGE_COMPOSER', 'bun'))
         ->toBe('$FORGE_PHP artisan nova:publish')
-        ->and(ProjectCommand::composer('dump-autoload')->shellLine('php artisan', 'composer', 'bun'))
+        ->and(DeployTask::composer('dump-autoload')->shellLine('php artisan', 'composer', 'bun'))
         ->toBe('composer dump-autoload')
-        ->and(ProjectCommand::packageManager('run lint')->shellLine('php artisan', 'composer', 'pnpm'))
+        ->and(DeployTask::packageManager('run lint')->shellLine('php artisan', 'composer', 'pnpm'))
         ->toBe('pnpm run lint');
 });

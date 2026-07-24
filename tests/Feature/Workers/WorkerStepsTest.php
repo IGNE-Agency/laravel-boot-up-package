@@ -8,15 +8,15 @@ use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Services\Poller;
+use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Igne\LaravelBootUp\Workers\Steps\StartHorizon;
 use Igne\LaravelBootUp\Workers\Steps\StartReverb;
 use Igne\LaravelBootUp\Workers\Steps\StartScheduler;
-use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -36,11 +36,11 @@ function bindWorkerDeps(string $dir, ?WorkersConfig $config = null, array $compo
     app()->instance(WorkersConfig::class, $config ?? new WorkersConfig);
     app()->instance(ComposerJson::class, new ComposerJson($dir.'/composer.json'));
     app()->instance(ProcessLedger::class, $ledger);
-    app()->instance(ProcessReaper::class, new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminal));
+    app()->instance(ProcessReaper::class, new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminalLauncher));
     app()->instance(ProcessRunner::class, new ProcessRunner(
         processes: app(Factory::class),
         ledger: $ledger,
-        terminal: $terminal ?? new NullTerminal,
+        terminal: $terminal ?? new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $dir.'/logs',
         runtimeDirectory: $dir.'/runtime',

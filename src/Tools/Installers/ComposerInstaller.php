@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Tools\Installers;
 
 use Igne\LaravelBootUp\Contracts\InstallsTool;
-use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\VersionConstraint;
 use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -53,6 +53,6 @@ final class ComposerInstaller implements InstallsTool
 
     public function update(VersionConstraint $constraint): void
     {
-        $this->processes->run(ShellCommand::make(['composer', 'self-update'])->withTimeout(null));
+        $this->processes->run(CommandLine::make(['composer', 'self-update'])->withTimeout(null));
     }
 }

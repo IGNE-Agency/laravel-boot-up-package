@@ -7,9 +7,9 @@ namespace Igne\LaravelBootUp\Workers\Steps;
 use Closure;
 use Igne\LaravelBootUp\Config\WorkersConfig;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ShellCommand;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -45,7 +45,7 @@ final class StartScheduler implements Step
         }
 
         $command = $this->rewriter->rewrite(
-            ShellCommand::make(['php', 'artisan', 'schedule:work'])->withTimeout(null),
+            CommandLine::make(['php', 'artisan', 'schedule:work'])->withTimeout(null),
             $context->commandRewrites(),
         );
 

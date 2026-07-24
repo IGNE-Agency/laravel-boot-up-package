@@ -3,21 +3,21 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\FrontendConfig;
-use Igne\LaravelBootUp\Contracts\ProvidesProjectCommands;
+use Igne\LaravelBootUp\Contracts\ProvidesDeployTasks;
 use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\CommandRewrites;
-use Igne\LaravelBootUp\Data\ProjectCommand;
+use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
-use Igne\LaravelBootUp\Deploy\ProjectCommandRunner;
+use Igne\LaravelBootUp\Deploy\DeployTaskRunner;
 use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Exceptions\DeployException;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
@@ -35,14 +35,14 @@ afterEach(function (): void {
 });
 
 // Process::fake() must run before this resolves the Factory.
-function projectCommandRunner(string $dir): ProjectCommandRunner
+function projectCommandRunner(string $dir): DeployTaskRunner
 {
-    return new ProjectCommandRunner(
+    return new DeployTaskRunner(
         container: app(),
         processes: new ProcessRunner(
             processes: app(Factory::class),
             ledger: new ProcessLedger($dir.'/processes.json'),
-            terminal: new NullTerminal,
+            terminal: new NullTerminalLauncher,
             poller: new Poller,
             logDirectory: $dir.'/logs',
             runtimeDirectory: $dir.'/runtime',
@@ -62,34 +62,34 @@ function projectCommandOf(object $process): string
 
 function bindProjectCommandProvider(): void
 {
-    app()->singleton(ProvidesProjectCommands::class, fn (): ProvidesProjectCommands => new class implements ProvidesProjectCommands
+    app()->singleton(ProvidesDeployTasks::class, fn (): ProvidesDeployTasks => new class implements ProvidesDeployTasks
     {
         public function beforeDeploy(): array
         {
             return [
-                ProjectCommand::artisan('pennant:purge'),
+                DeployTask::artisan('pennant:purge'),
             ];
         }
 
         public function beforeMigrations(): array
         {
             return [
-                ProjectCommand::artisan('wayfinder:generate --path=resources/js', 'Generating routes...'),
-                ProjectCommand::packageManager('run zodgen'),
+                DeployTask::artisan('wayfinder:generate --path=resources/js', 'Generating routes...'),
+                DeployTask::packageManager('run zodgen'),
             ];
         }
 
         public function afterMigrations(): array
         {
             return [
-                ProjectCommand::composer('dump-autoload --optimize'),
+                DeployTask::composer('dump-autoload --optimize'),
             ];
         }
 
         public function afterDeploy(): array
         {
             return [
-                ProjectCommand::artisan('cache:warm'),
+                DeployTask::artisan('cache:warm'),
             ];
         }
     });

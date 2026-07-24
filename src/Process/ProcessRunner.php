@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Process;
 
 use Igne\LaravelBootUp\Contracts\TerminalLauncher;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ProcessRecord;
-use Igne\LaravelBootUp\Data\ShellCommand;
 use Igne\LaravelBootUp\Exceptions\ProcessException;
 use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Contracts\Process\ProcessResult;
@@ -36,7 +36,7 @@ final class ProcessRunner
         private readonly int $terminalPidTimeout = 20,
     ) {}
 
-    public function run(ShellCommand $command): ProcessResult
+    public function run(CommandLine $command): ProcessResult
     {
         // Stream sub-process output with the active progress bar out of the
         // way: it is erased before the output and redrawn once afterward, so
@@ -48,7 +48,7 @@ final class ProcessRunner
             ->throw());
     }
 
-    public function runSilently(ShellCommand $command): ProcessResult
+    public function runSilently(CommandLine $command): ProcessResult
     {
         return $this->pending($command, $command->tokens)->run();
     }
@@ -57,7 +57,7 @@ final class ProcessRunner
      * Start a detached background process that survives this PHP process.
      * Output is appended to storage/logs/boot-up/{label}.log.
      */
-    public function start(ShellCommand $command, string $label): ProcessRecord
+    public function start(CommandLine $command, string $label): ProcessRecord
     {
         $logFile = $this->logDirectory.'/'.$label.'.log';
         $this->ensureDirectory(\dirname($logFile));
@@ -94,7 +94,7 @@ final class ProcessRunner
      * The pid-file poll waits up to `terminalPidTimeout` seconds, because a new
      * window's shell may source a heavy startup profile before the shim runs.
      */
-    public function startInTerminal(ShellCommand $command, string $label): ProcessRecord
+    public function startInTerminal(CommandLine $command, string $label): ProcessRecord
     {
         if (! $this->terminal->available()) {
             return $this->start($command, $label);
@@ -153,7 +153,7 @@ final class ProcessRunner
 
     public function isCommandAvailable(string $binary): bool
     {
-        return $this->runSilently(ShellCommand::make(['sh', '-c', 'command -v '.escapeshellarg($binary)]))
+        return $this->runSilently(CommandLine::make(['sh', '-c', 'command -v '.escapeshellarg($binary)]))
             ->successful();
     }
 
@@ -164,7 +164,7 @@ final class ProcessRunner
      * started wins over any older look-alike. Null when nothing matches — e.g.
      * the window's shell has not exec'd the command yet, or it never started.
      */
-    private function recoverPid(ShellCommand $command): ?int
+    private function recoverPid(CommandLine $command): ?int
     {
         $signature = implode(' ', $command->tokens);
 
@@ -186,7 +186,7 @@ final class ProcessRunner
     /**
      * @param  list<string>  $tokens
      */
-    private function pending(ShellCommand $command, array $tokens): PendingProcess
+    private function pending(CommandLine $command, array $tokens): PendingProcess
     {
         $pending = $this->processes->command($tokens);
 
@@ -203,7 +203,7 @@ final class ProcessRunner
             : $pending->timeout($command->timeout);
     }
 
-    private function remember(int $pid, string $label, ShellCommand $command, ?string $window = null): ProcessRecord
+    private function remember(int $pid, string $label, CommandLine $command, ?string $window = null): ProcessRecord
     {
         $record = new ProcessRecord(
             pid: $pid,

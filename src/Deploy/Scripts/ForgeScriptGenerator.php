@@ -6,8 +6,8 @@ namespace Igne\LaravelBootUp\Deploy\Scripts;
 
 use Igne\LaravelBootUp\Contracts\ScriptGenerator;
 use Igne\LaravelBootUp\Data\DeploymentPlan;
+use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Data\Lines;
-use Igne\LaravelBootUp\Data\ProjectCommand;
 
 /**
  * Renders a Laravel Forge deployment script: the zero-downtime release
@@ -107,17 +107,17 @@ final class ForgeScriptGenerator implements ScriptGenerator
     }
 
     /**
-     * @param  list<ProjectCommand>  $commands
+     * @param  list<DeployTask>  $commands
      */
     private function projectCommands(array $commands, DeploymentPlan $plan): Lines
     {
         return Lines::make()->each(
             $commands,
-            fn (Lines $script, ProjectCommand $command) => $script->lines($this->projectCommand($command, $plan)),
+            fn (Lines $script, DeployTask $command) => $script->lines($this->projectCommand($command, $plan)),
         );
     }
 
-    private function projectCommand(ProjectCommand $command, DeploymentPlan $plan): Lines
+    private function projectCommand(DeployTask $command, DeploymentPlan $plan): Lines
     {
         return Lines::make()
             ->commentIf($command->description !== null, (string) $command->description)

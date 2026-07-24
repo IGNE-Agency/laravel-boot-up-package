@@ -6,8 +6,8 @@ namespace Igne\LaravelBootUp\Frontend\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ShellCommand;
 use Igne\LaravelBootUp\Exceptions\FrontendException;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
@@ -50,7 +50,7 @@ final class InstallFrontendDependencies implements Step
         $manager = $this->selector->selected();
 
         $command = $this->rewriter->rewrite(
-            ShellCommand::make($context->options->update ? $manager->updateCommand() : $manager->installCommand())
+            CommandLine::make($context->options->update ? $manager->updateCommand() : $manager->installCommand())
                 ->withTimeout(self::INSTALL_TIMEOUT_SECONDS),
             $context->commandRewrites(),
         );
@@ -72,7 +72,7 @@ final class InstallFrontendDependencies implements Step
      */
     private function recoverFromLockfileConflict(
         string $manager,
-        ShellCommand $command,
+        CommandLine $command,
         ProcessFailedException $exception,
     ): void {
         if (! $this->conflicts->isLockfileConflict($this->failureReason($exception))) {

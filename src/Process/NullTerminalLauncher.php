@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootUp\Process\Terminal;
+namespace Igne\LaravelBootUp\Process;
 
 use Igne\LaravelBootUp\Contracts\TerminalLauncher;
 use LogicException;
 
-final class NullTerminal implements TerminalLauncher
+final class NullTerminalLauncher implements TerminalLauncher
 {
     public function available(): bool
     {

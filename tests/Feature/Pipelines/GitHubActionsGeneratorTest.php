@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Data\DeploymentPlan;
+use Igne\LaravelBootUp\Data\PipelineJobStep;
 use Igne\LaravelBootUp\Data\PipelinePlan;
-use Igne\LaravelBootUp\Data\PipelineStep;
 use Igne\LaravelBootUp\Enums\DeployHookHost;
 use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 use Igne\LaravelBootUp\Enums\PackageManager;
@@ -49,8 +49,8 @@ function githubGenerator(): GitHubActionsGenerator
 
 test('injects configured extra steps before and after a job, with an env block', function (): void {
     $plan = githubPipelinePlan(['extensions' => new PipelineExtensions([
-        new PipelineStep('prep', 'test', 'before', 'Prepare', 'echo prep'),
-        new PipelineStep('notify', 'test', 'after', 'Notify', 'bash notify.sh', env: ['HOOK' => '${{ secrets.HOOK }}']),
+        new PipelineJobStep('prep', 'test', 'before', 'Prepare', 'echo prep'),
+        new PipelineJobStep('notify', 'test', 'after', 'Notify', 'bash notify.sh', env: ['HOOK' => '${{ secrets.HOOK }}']),
     ])]);
 
     $yaml = githubGenerator()->files($plan)[0]->contents;
@@ -69,7 +69,7 @@ test('injects configured extra steps before and after a job, with an env block',
 
 test('a provider-scoped extra step does not render for a different provider', function (): void {
     $plan = githubPipelinePlan(['extensions' => new PipelineExtensions([
-        new PipelineStep('bb-only', 'test', 'after', 'BB', 'echo bitbucket', provider: 'bitbucket'),
+        new PipelineJobStep('bb-only', 'test', 'after', 'BB', 'echo bitbucket', provider: 'bitbucket'),
     ])]);
 
     expect(githubGenerator()->files($plan)[0]->contents)->not->toContain('echo bitbucket');

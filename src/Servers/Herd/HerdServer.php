@@ -9,9 +9,9 @@ use Igne\LaravelBootUp\Contracts\RequiresTools;
 use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\CommandRewrites;
 use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ShellCommand;
 use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -106,7 +106,7 @@ final class HerdServer implements RequiresTools, RewritesCommands, Server, Warns
 
     public function stop(): void
     {
-        $this->runner->run(ShellCommand::make('herd stop'));
+        $this->runner->run(CommandLine::make('herd stop'));
     }
 
     /**
@@ -192,7 +192,7 @@ final class HerdServer implements RequiresTools, RewritesCommands, Server, Warns
      */
     private function runOrFail(array $command): void
     {
-        $result = $this->runner->runSilently(ShellCommand::make($command));
+        $result = $this->runner->runSilently(CommandLine::make($command));
 
         if (! $result->successful()) {
             throw ServerException::startFailed(

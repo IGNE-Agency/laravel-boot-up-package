@@ -14,7 +14,7 @@ use Igne\LaravelBootUp\Enums\ServeStage;
 final readonly class StepDescriptor
 {
     /**
-     * @param  string  $entry  the raw config value, e.g. "RunProjectCommands:before"
+     * @param  string  $entry  the raw config value, e.g. "RunDeployTasks:before"
      * @param  class-string<Step>  $class
      * @param  list<string>  $parameters  the ":variant" arguments, e.g. ["before"]
      */

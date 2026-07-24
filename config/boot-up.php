@@ -9,7 +9,7 @@ use Igne\LaravelBootUp\Database\Steps\VerifyDatabaseConnection;
 use Igne\LaravelBootUp\Deploy\Steps\CacheFrameworkFiles;
 use Igne\LaravelBootUp\Deploy\Steps\FinalizeApplication;
 use Igne\LaravelBootUp\Deploy\Steps\InstallComposerDependencies;
-use Igne\LaravelBootUp\Deploy\Steps\RunProjectCommands;
+use Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks;
 use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
 use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
 use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
@@ -278,9 +278,9 @@ return [
         EnsureDatabaseCredentials::class,
         EnsureDatabaseExists::class,
         VerifyDatabaseConnection::class,
-        RunProjectCommands::class.':before',
+        RunDeployTasks::class.':before',
         RunPendingMigrations::class,
-        RunProjectCommands::class.':after',
+        RunDeployTasks::class.':after',
         CacheFrameworkFiles::class,
         FinalizeApplication::class,
         StartQueueWorker::class,
@@ -303,9 +303,9 @@ return [
         GenerateAppKey::class,
         InstallComposerDependencies::class,
         InstallFrontendDependencies::class,
-        RunProjectCommands::class.':before',
+        RunDeployTasks::class.':before',
         RunPendingMigrations::class,
-        RunProjectCommands::class.':after',
+        RunDeployTasks::class.':after',
         CacheFrameworkFiles::class,
         FinalizeApplication::class,
     ],

@@ -7,8 +7,8 @@ namespace Igne\LaravelBootUp\Deploy\Steps;
 use Closure;
 use Igne\LaravelBootUp\Config\DeployConfig;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ShellCommand;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 
 /**
@@ -35,7 +35,7 @@ final class CacheFrameworkFiles implements Step
         terminal()->info('Caching framework files...');
 
         foreach (self::COMMANDS as $command) {
-            $this->processes->run(ShellCommand::make(['php', 'artisan', $command]));
+            $this->processes->run(CommandLine::make(['php', 'artisan', $command]));
         }
 
         return $next($context);

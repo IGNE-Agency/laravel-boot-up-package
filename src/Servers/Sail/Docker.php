@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Sail;
 
-use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Services\Platform;
@@ -21,7 +21,7 @@ final class Docker
 
     public function isRunning(): bool
     {
-        return $this->runner->runSilently(ShellCommand::make(['docker', 'info']))->successful();
+        return $this->runner->runSilently(CommandLine::make(['docker', 'info']))->successful();
     }
 
     public function ensureRunning(): void
@@ -33,8 +33,8 @@ final class Docker
         terminal()->info('Starting Docker...');
 
         $this->platform->isMacos()
-            ? $this->runner->runSilently(ShellCommand::make(['open', '-a', 'Docker']))
-            : $this->runner->runSilently(ShellCommand::make(['systemctl', 'start', 'docker']));
+            ? $this->runner->runSilently(CommandLine::make(['open', '-a', 'Docker']))
+            : $this->runner->runSilently(CommandLine::make(['systemctl', 'start', 'docker']));
 
         $started = $this->poller->until(
             fn (): bool => $this->isRunning(),

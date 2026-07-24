@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Data;
 
 use InvalidArgumentException;
-use Igne\LaravelBootUp\Enums\ProjectCommandType;
+use Igne\LaravelBootUp\Enums\DeployTaskType;
 
 /**
  * A project-supplied command executed during deploy. Commands run as plain
  * argument lists (never through a shell), so validation rejects anything
  * that only makes sense with shell interpretation.
  */
-final readonly class ProjectCommand
+final readonly class DeployTask
 {
     private const DANGEROUS_WORDS = [
         'rm', 'del', 'sudo', 'kill', 'pkill', 'shutdown', 'reboot',
@@ -20,7 +20,7 @@ final readonly class ProjectCommand
     ];
 
     public function __construct(
-        public ProjectCommandType $type,
+        public DeployTaskType $type,
         public string $command,
         public ?string $description = null,
     ) {
@@ -29,17 +29,17 @@ final readonly class ProjectCommand
 
     public static function artisan(string $command, ?string $description = null): self
     {
-        return new self(ProjectCommandType::ARTISAN, $command, $description);
+        return new self(DeployTaskType::ARTISAN, $command, $description);
     }
 
     public static function composer(string $command, ?string $description = null): self
     {
-        return new self(ProjectCommandType::COMPOSER, $command, $description);
+        return new self(DeployTaskType::COMPOSER, $command, $description);
     }
 
     public static function packageManager(string $command, ?string $description = null): self
     {
-        return new self(ProjectCommandType::PACKAGE_MANAGER, $command, $description);
+        return new self(DeployTaskType::PACKAGE_MANAGER, $command, $description);
     }
 
     /**
@@ -49,9 +49,9 @@ final readonly class ProjectCommand
     public function shellLine(string $artisan, string $composer, string $packageManager): string
     {
         return match ($this->type) {
-            ProjectCommandType::ARTISAN => "{$artisan} {$this->command}",
-            ProjectCommandType::COMPOSER => "{$composer} {$this->command}",
-            ProjectCommandType::PACKAGE_MANAGER => "{$packageManager} {$this->command}",
+            DeployTaskType::ARTISAN => "{$artisan} {$this->command}",
+            DeployTaskType::COMPOSER => "{$composer} {$this->command}",
+            DeployTaskType::PACKAGE_MANAGER => "{$packageManager} {$this->command}",
         };
     }
 

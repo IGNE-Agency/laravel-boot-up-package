@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Data;
 
-use Igne\LaravelBootUp\Data\ProjectCommand;
-use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
+use Igne\LaravelBootUp\Enums\PackageManager;
 
 /**
  * Everything a script generator needs to render a deployment script,
@@ -16,10 +15,10 @@ final readonly class DeploymentPlan
 {
     /**
      * @param  list<string>  $finalize  artisan commands run at the end of a deploy
-     * @param  list<ProjectCommand>  $beforeMigrations
-     * @param  list<ProjectCommand>  $afterMigrations
-     * @param  list<ProjectCommand>  $beforeDeploy  earliest custom hook, before optimize/migrations
-     * @param  list<ProjectCommand>  $afterDeploy  latest custom hook, after the release is finalized/live
+     * @param  list<DeployTask>  $beforeMigrations
+     * @param  list<DeployTask>  $afterMigrations
+     * @param  list<DeployTask>  $beforeDeploy  earliest custom hook, before optimize/migrations
+     * @param  list<DeployTask>  $afterDeploy  latest custom hook, after the release is finalized/live
      */
     public function __construct(
         public DeploymentEnvironment $environment,

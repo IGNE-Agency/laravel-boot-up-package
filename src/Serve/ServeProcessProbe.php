@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Serve;
 
-use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 
 /**
@@ -19,7 +19,7 @@ final class ServeProcessProbe
     public function isServing(int $pid): bool
     {
         $command = trim($this->runner->runSilently(
-            ShellCommand::make(['ps', '-p', (string) $pid, '-o', 'command=']),
+            CommandLine::make(['ps', '-p', (string) $pid, '-o', 'command=']),
         )->output());
 
         return str_contains($command, 'app:serve');

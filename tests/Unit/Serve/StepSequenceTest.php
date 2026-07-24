@@ -10,7 +10,7 @@ use Igne\LaravelBootUp\Database\Steps\VerifyDatabaseConnection;
 use Igne\LaravelBootUp\Deploy\Steps\CacheFrameworkFiles;
 use Igne\LaravelBootUp\Deploy\Steps\FinalizeApplication;
 use Igne\LaravelBootUp\Deploy\Steps\InstallComposerDependencies;
-use Igne\LaravelBootUp\Deploy\Steps\RunProjectCommands;
+use Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks;
 use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
 use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
@@ -39,9 +39,9 @@ function defaultServeSteps(): array
         EnsureDatabaseCredentials::class,
         EnsureDatabaseExists::class,
         VerifyDatabaseConnection::class,
-        RunProjectCommands::class.':before',
+        RunDeployTasks::class.':before',
         RunPendingMigrations::class,
-        RunProjectCommands::class.':after',
+        RunDeployTasks::class.':after',
         CacheFrameworkFiles::class,
         FinalizeApplication::class,
         StartQueueWorker::class,
@@ -91,9 +91,9 @@ test('the default pipeline summarizes into twelve readable lines', function (): 
 });
 
 test('a variant entry parses its class and parameters', function (): void {
-    $plan = StepSequence::for([RunProjectCommands::class.':before'], new ServeOptions);
+    $plan = StepSequence::for([RunDeployTasks::class.':before'], new ServeOptions);
 
-    expect($plan->steps[0]->class)->toBe(RunProjectCommands::class)
+    expect($plan->steps[0]->class)->toBe(RunDeployTasks::class)
         ->and($plan->steps[0]->parameters)->toBe(['before'])
         ->and($plan->steps[0]->label)->toBe('Running project commands (before migrations)');
 });
