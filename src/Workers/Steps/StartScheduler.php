@@ -7,18 +7,14 @@ namespace Igne\LaravelBootUp\Workers\Steps;
 use Closure;
 use Igne\LaravelBootUp\Config\WorkersConfig;
 use Igne\LaravelBootUp\Contracts\Step;
-use Igne\LaravelBootUp\Data\CommandLine;
-use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Process\ProcessLedger;
-use Igne\LaravelBootUp\Process\ProcessReaper;
-use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Servers\CommandRewriter;
+use Igne\LaravelBootUp\Data\WorkerDefinition;
+use Igne\LaravelBootUp\Serve\WorkerLauncher;
 
 /**
  * Starts a tracked `schedule:work` process. Off by default — a project
  * without scheduled tasks gains nothing from a scheduler loop — and
- * enabled via boot-up.workers.scheduler.
+ * enabled through the workers config (WorkersConfig).
  */
 final class StartScheduler implements Step
 {
@@ -26,41 +22,25 @@ final class StartScheduler implements Step
 
     public function __construct(
         private readonly WorkersConfig $config,
-        private readonly ProcessRunner $runner,
-        private readonly CommandRewriter $rewriter,
-        private readonly ProcessLedger $ledger,
-        private readonly ProcessReaper $reaper,
+        private readonly WorkerLauncher $launcher,
     ) {}
 
     public function handle(ServeContext $context, Closure $next): mixed
     {
-        if (! $this->config->schedulerEnabled) {
-            return $next($context);
+        if ($this->config->schedulerEnabled) {
+            $this->launcher->launch($this->worker(), $context);
         }
-
-        if ($this->alreadyRunning()) {
-            terminal()->note('Scheduler already running — skipping.');
-
-            return $next($context);
-        }
-
-        $command = $this->rewriter->rewrite(
-            CommandLine::make(['php', 'artisan', 'schedule:work'])->withTimeout(null),
-            $context->commandRewrites(),
-        );
-
-        $record = $this->config->schedulerRunIn === 'terminal'
-            ? $this->runner->startInTerminal($command, self::LABEL)
-            : $this->runner->start($command, self::LABEL);
-
-        terminal()->success("Scheduler started (PID {$record->pid}) — {$record->outputLocation()}");
 
         return $next($context);
     }
 
-    private function alreadyRunning(): bool
+    private function worker(): WorkerDefinition
     {
-        return $this->ledger->withLabel(self::LABEL)
-            ->contains(fn (ProcessRecord $record): bool => $this->reaper->isAlive($record));
+        return new WorkerDefinition(
+            label: self::LABEL,
+            name: 'Scheduler',
+            tokens: ['php', 'artisan', 'schedule:work'],
+            runIn: $this->config->schedulerRunIn,
+        );
     }
 }

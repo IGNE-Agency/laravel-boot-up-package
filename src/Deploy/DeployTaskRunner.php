@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Deploy;
 
 use Igne\LaravelBootUp\Contracts\ProvidesDeployTasks;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Exceptions\DeployException;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -60,9 +60,9 @@ final class DeployTaskRunner
             terminal()->info($command->description);
         }
 
-        $shell = $this->rewriter->rewrite(
+        $shell = $this->rewriter->rewriteFor(
+            $context,
             CommandLine::make($this->tokensFor($command)),
-            $context->commandRewrites(),
         );
 
         try {

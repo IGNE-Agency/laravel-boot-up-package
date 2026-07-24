@@ -45,9 +45,9 @@ final class VerifyDatabaseConnection implements Step
 
     private function verifyThroughServer(ServeContext $context): void
     {
-        $result = $this->runner->runSilently($this->rewriter->rewrite(
+        $result = $this->runner->runSilently($this->rewriter->rewriteFor(
+            $context,
             CommandLine::make('php artisan migrate:status'),
-            $context->commandRewrites(),
         ));
 
         if (! $result->successful()) {

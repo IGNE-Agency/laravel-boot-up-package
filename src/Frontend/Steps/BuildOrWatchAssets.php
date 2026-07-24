@@ -8,14 +8,13 @@ use Closure;
 use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\CommandLine;
-use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\WorkerDefinition;
 use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
-use Igne\LaravelBootUp\Process\ProcessLedger;
-use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Serve\WorkerLauncher;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 
 final class BuildOrWatchAssets implements Step
@@ -28,8 +27,7 @@ final class BuildOrWatchAssets implements Step
         private readonly PackageJson $packageJson,
         private readonly ProcessRunner $runner,
         private readonly CommandRewriter $rewriter,
-        private readonly ProcessLedger $ledger,
-        private readonly ProcessReaper $reaper,
+        private readonly WorkerLauncher $launcher,
     ) {}
 
     public function handle(ServeContext $context, Closure $next): mixed
@@ -71,7 +69,10 @@ final class BuildOrWatchAssets implements Step
 
         terminal()->info("Building assets with {$manager->value}...");
 
-        $this->runner->run($this->rewrite($context, $manager->runCommand('build')));
+        $this->runner->run($this->rewriter->rewriteFor(
+            $context,
+            CommandLine::make($manager->runCommand('build')),
+        ));
     }
 
     private function watch(ServeContext $context, PackageManager $manager): void
@@ -82,32 +83,11 @@ final class BuildOrWatchAssets implements Step
             return;
         }
 
-        if ($this->watcherIsRunning()) {
-            terminal()->note('Asset watcher already running — skipping.');
-
-            return;
-        }
-
-        $command = $this->rewrite($context, $manager->runCommand('dev'))->withTimeout(null);
-
-        $record = $this->config->watchIn === 'terminal'
-            ? $this->runner->startInTerminal($command, self::LABEL)
-            : $this->runner->start($command, self::LABEL);
-
-        terminal()->success("Asset watcher started (PID {$record->pid}) — {$record->outputLocation()}");
-    }
-
-    private function watcherIsRunning(): bool
-    {
-        return $this->ledger->withLabel(self::LABEL)
-            ->contains(fn (ProcessRecord $record): bool => $this->reaper->isAlive($record));
-    }
-
-    /**
-     * @param  list<string>  $tokens
-     */
-    private function rewrite(ServeContext $context, array $tokens): CommandLine
-    {
-        return $this->rewriter->rewrite(CommandLine::make($tokens), $context->commandRewrites());
+        $this->launcher->launch(new WorkerDefinition(
+            label: self::LABEL,
+            name: 'Asset watcher',
+            tokens: $manager->runCommand('dev'),
+            runIn: $this->config->watchIn,
+        ), $context);
     }
 }

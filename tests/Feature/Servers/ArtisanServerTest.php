@@ -14,7 +14,9 @@ use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Serve\WorkerLauncher;
 use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
+use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
@@ -43,10 +45,11 @@ function artisanServer(ProcessLedger $ledger, string $workDir, ?ServersConfig $c
         runtimeDirectory: $workDir.'/runtime',
     );
 
+    $reaper = new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminalLauncher);
+
     return new ArtisanServer(
         $runner,
-        $ledger,
-        new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminalLauncher),
+        new WorkerLauncher($runner, new CommandRewriter, $ledger, $reaper),
         $config ?? new ServersConfig,
     );
 }

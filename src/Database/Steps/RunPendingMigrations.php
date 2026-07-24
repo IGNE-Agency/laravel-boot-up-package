@@ -84,9 +84,9 @@ final class RunPendingMigrations implements Step
             $command[] = '--seed';
         }
 
-        $this->runner->run($this->rewriter->rewrite(
+        $this->runner->run($this->rewriter->rewriteFor(
+            $context,
             CommandLine::make($command),
-            $context->commandRewrites(),
         ));
     }
 
@@ -98,17 +98,17 @@ final class RunPendingMigrations implements Step
 
         terminal()->info('Seeding database...');
 
-        $this->runner->run($this->rewriter->rewrite(
+        $this->runner->run($this->rewriter->rewriteFor(
+            $context,
             CommandLine::make('php artisan db:seed'),
-            $context->commandRewrites(),
         ));
     }
 
     private function migrateThroughServer(ServeContext $context): bool
     {
-        $status = $this->runner->runSilently($this->rewriter->rewrite(
+        $status = $this->runner->runSilently($this->rewriter->rewriteFor(
+            $context,
             CommandLine::make('php artisan migrate:status --pending'),
-            $context->commandRewrites(),
         ));
 
         $output = trim($status->output());
@@ -121,9 +121,9 @@ final class RunPendingMigrations implements Step
 
         terminal()->info('Running pending migrations...');
 
-        $this->runner->run($this->rewriter->rewrite(
+        $this->runner->run($this->rewriter->rewriteFor(
+            $context,
             CommandLine::make('php artisan migrate --force'),
-            $context->commandRewrites(),
         ));
 
         return true;

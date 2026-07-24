@@ -49,10 +49,10 @@ final class InstallFrontendDependencies implements Step
 
         $manager = $this->selector->selected();
 
-        $command = $this->rewriter->rewrite(
+        $command = $this->rewriter->rewriteFor(
+            $context,
             CommandLine::make($context->options->update ? $manager->updateCommand() : $manager->installCommand())
                 ->withTimeout(self::INSTALL_TIMEOUT_SECONDS),
-            $context->commandRewrites(),
         );
 
         terminal()->info(($context->options->update ? 'Updating' : 'Installing')." frontend dependencies with {$manager->value}...");

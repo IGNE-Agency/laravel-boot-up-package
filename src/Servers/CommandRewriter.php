@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Servers;
 
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\CommandRewrites;
+use Igne\LaravelBootUp\Data\ServeContext;
 
 /**
  * Applies a server's rewrite rules to a command, e.g. under Sail
@@ -13,6 +14,15 @@ use Igne\LaravelBootUp\Data\CommandRewrites;
  */
 final class CommandRewriter
 {
+    /**
+     * Rewrite for whatever server this serve run booted; a null server
+     * (app:deploy) or one without rewrites leaves the command untouched.
+     */
+    public function rewriteFor(ServeContext $context, CommandLine $command): CommandLine
+    {
+        return $this->rewrite($command, $context->commandRewrites());
+    }
+
     public function rewrite(CommandLine $command, ?CommandRewrites $rules): CommandLine
     {
         if ($rules === null || $command->tokens === []) {

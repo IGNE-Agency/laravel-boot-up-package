@@ -7,11 +7,9 @@ namespace Igne\LaravelBootUp\Servers\Artisan;
 use Igne\LaravelBootUp\Config\ServersConfig;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\CommandLine;
-use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Process\ProcessLedger;
-use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Serve\WorkerLauncher;
 
 /**
  * Serves via a tracked, detached `php artisan serve` process. Key stays
@@ -23,8 +21,7 @@ final class ArtisanServer implements Server
 
     public function __construct(
         private readonly ProcessRunner $runner,
-        private readonly ProcessLedger $ledger,
-        private readonly ProcessReaper $reaper,
+        private readonly WorkerLauncher $launcher,
         private readonly ServersConfig $config,
     ) {}
 
@@ -60,14 +57,12 @@ final class ArtisanServer implements Server
 
     public function isRunning(): bool
     {
-        return $this->ledger->withLabel(self::LABEL)
-            ->contains(fn (ProcessRecord $record): bool => $this->reaper->isAlive($record));
+        return $this->launcher->isRunning(self::LABEL);
     }
 
     public function stop(): void
     {
-        $this->ledger->withLabel(self::LABEL)
-            ->each(fn (ProcessRecord $record) => $this->reaper->reap($record));
+        $this->launcher->stop(self::LABEL);
     }
 
     /**
