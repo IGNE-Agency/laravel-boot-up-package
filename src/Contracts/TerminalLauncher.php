@@ -16,7 +16,7 @@ interface TerminalLauncher
     public function open(string $command, ?string $directory = null): ?string;
 
     /**
-     * Close a window previously opened by open(), given its handle. A null or
+     * Close a window by the handle open() returned. A null or
      * unrecognized handle is a no-op. Best-effort: never throws.
      */
     public function close(?string $handle): void;

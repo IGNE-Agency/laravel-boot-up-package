@@ -22,7 +22,7 @@ publishing.
 | ------------------------------------ | ------------------------------ | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `server.default`                     | `BOOT_UP_SERVER`               | `null`              | `herd`, `sail` or `laravel`. `null` prompts on first run.                                                                                                                                                 |
 | `server.prompt`                      | `BOOT_UP_SERVER_PROMPT`        | `true`              | Whether to prompt for a server when none is configured.                                                                                                                                                   |
-| `server.drivers`                     | —                              | herd, sail, laravel | Extension point: add your own [`Servers\Server`](EXTENDING.md#custom-servers) implementations.                                                                                                            |
+| `server.drivers`                     | —                              | herd, sail, laravel | Extension point: add your own [`Contracts\Server`](EXTENDING.md#custom-servers) implementations.                                                                                                            |
 | `server.herd.site`                   | `BOOT_UP_HERD_SITE`            | `null`              | Fixed Herd site name (served at `https://{name}.test`). `null` prompts on first link, defaulting to the project folder name.                                                                              |
 | `server.herd.health.attempts`        | `BOOT_UP_HERD_HEALTH_ATTEMPTS` | `10`                | How many times `app:serve` probes the Herd-served site before failing. It waits for Nginx to actually answer; a running Herd is never restarted, only a down one, once, at the midpoint.                  |
 | `server.herd.health.delay_ms`        | `BOOT_UP_HERD_HEALTH_DELAY_MS` | `500`               | Delay between reachability checks.                                                                                                                                                                        |
@@ -39,7 +39,7 @@ publishing.
 | `tools.required.php`      | `BOOT_UP_PHP_VERSION`        | `*`     | Composer-style constraint, e.g. `^8.3`. `*` accepts any installed version.                                                                |
 | `tools.required.node`     | `BOOT_UP_NODE_VERSION`       | `*`     | Same, for Node.                                                                                                                           |
 | `tools.required.composer` | `BOOT_UP_COMPOSER_VERSION`   | `*`     | Same, for Composer.                                                                                                                       |
-| `tools.installers`        | —                            | `[]`    | Extension point: map a tool id to your own [`Tools\InstallsTool`](EXTENDING.md#custom-tools) class. Wins over built-ins on key collision. |
+| `tools.installers`        | —                            | `[]`    | Extension point: map a tool id to your own [`Contracts\InstallsTool`](EXTENDING.md#custom-tools) class. Wins over built-ins on key collision. |
 
 ## Database & migrations
 
@@ -77,14 +77,14 @@ publishing.
 | ------------------------------ | --------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
 | `deploy.cache_framework_files` | `BOOT_UP_CACHE` | `false`            | Run the framework cache commands locally. Off by default: `config:cache` breaks `env()` lookups in local development.  |
 | `deploy.finalize`              | —               | `['storage:link']` | Artisan commands run at the end of every boot/deploy.                                                                  |
-| `deploy.script_generators`     | —               | `[]`               | Extension point: map a platform key to a [`Deploy\Scripts\ScriptGenerator`](EXTENDING.md#custom-deployment-platforms). |
+| `deploy.script_generators`     | —               | `[]`               | Extension point: map a platform key to a [`Contracts\ScriptGenerator`](EXTENDING.md#custom-deployment-platforms). |
 
 ## Pipeline
 
 | Key                      | Default                                                           | Description                                                                                                                                                                                                                                                 |
 | ------------------------ | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pipeline.branches`      | `develop → development`, `staging → staging`, `main → production` | Maps a git branch to the deployment environment whose `DEPLOY_HOOK` secret is called after a green push. Environment names should be unique per branch. With the `none` host the mapping only decides which branches run the checks.                        |
-| `pipeline.generators`    | `[]`                                                              | Extension point: map a provider key to a [`Pipelines\PipelineGenerator`](EXTENDING.md#custom-git-providers).                                                                                                                                                |
+| `pipeline.generators`    | `[]`                                                              | Extension point: map a provider key to a [`Contracts\PipelineGenerator`](EXTENDING.md#custom-git-providers).                                                                                                                                                |
 | `pipeline.composer_auth` | `null`                                                            | Whether the pipeline gets a `COMPOSER_AUTH` secret to authenticate composer against a private/licensed registry (Nova, a private Satis, ...). `null` auto-detects (on with `laravel/nova`); `true`/`false` force it. Env: `BOOT_UP_PIPELINE_COMPOSER_AUTH`. |
 | `pipeline.steps`         | `[]`                                                              | Extra steps injected into the generated pipeline jobs. See [Extending the pipeline](PIPELINES.md#extending-the-pipeline).                                                                                                                                   |
 | `pipeline.files`         | `[]`                                                              | Extra whole files emitted verbatim next to the generated pipeline. See [Extending the pipeline](PIPELINES.md#extending-the-pipeline).                                                                                                                       |
@@ -102,4 +102,4 @@ publishing.
 
 The full `app:serve` and `app:deploy` pipelines are plain arrays of step classes
 in the published config. Reorder them, remove steps you don't want, or insert
-your own [`Serve\Step`](EXTENDING.md#custom-pipeline-steps) classes anywhere.
+your own [`Contracts\Step`](EXTENDING.md#custom-pipeline-steps) classes anywhere.

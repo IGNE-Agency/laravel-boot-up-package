@@ -6,14 +6,14 @@ schema exporters, cache warmers — without touching the package.
 ## How it works
 
 1. Create a class implementing
-   `Igne\LaravelBootUp\Deploy\ProvidesDeployTasks` (see
+   `Igne\LaravelBootUp\Contracts\ProvidesDeployTasks` (see
    [examples/DeployTasks.php](../examples/DeployTasks.php)):
 
 ```php
 namespace App\BootUp;
 
-use Igne\LaravelBootUp\Deploy\DeployTask;
-use Igne\LaravelBootUp\Deploy\ProvidesDeployTasks;
+use Igne\LaravelBootUp\Data\DeployTask;
+use Igne\LaravelBootUp\Contracts\ProvidesDeployTasks;
 
 final class DeployTasks implements ProvidesDeployTasks
 {
@@ -51,7 +51,7 @@ use.
 
 ```php
 $this->app->singleton(
-    \Igne\LaravelBootUp\Deploy\ProvidesDeployTasks::class,
+    \Igne\LaravelBootUp\Contracts\ProvidesDeployTasks::class,
     \App\BootUp\DeployTasks::class,
 );
 ```
@@ -103,7 +103,7 @@ default. To run the deploy phases locally too, add
 `RunDeployTasks::class.':before-deploy'` / `':after-deploy'` to
 `boot-up.serve_steps` / `boot-up.deploy_steps`. Need a different position
 entirely? The whole pipeline is published config — implement
-`Igne\LaravelBootUp\Serve\Step` and insert your own step class anywhere.
+`Igne\LaravelBootUp\Contracts\Step` and insert your own step class anywhere.
 
 ## In exported deployment scripts
 

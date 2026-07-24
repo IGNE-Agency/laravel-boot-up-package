@@ -11,7 +11,8 @@ use Igne\LaravelBootUp\Data\PipelinePlan;
 use Igne\LaravelBootUp\Exceptions\PipelineException;
 
 /**
- * Turns the raw boot-up.pipeline.steps / .files config into a validated
+ * Turns the raw step/file definitions from the pipeline config
+ * (PipelineConfig) into a validated
  * PipelineExtensions, or fails with an actionable PipelineException. Anchor
  * checks run against the chosen generator's jobs for the current plan, so a
  * step targeting a job that will not exist (e.g. "lint" without Pint) is
@@ -24,8 +25,8 @@ final class PipelineExtensionValidator
     public function __construct(private readonly string $basePath) {}
 
     /**
-     * @param  array<mixed>  $steps  raw boot-up.pipeline.steps
-     * @param  array<mixed>  $files  raw boot-up.pipeline.files
+     * @param  array<mixed>  $steps  raw step definitions from PipelineConfig
+     * @param  array<mixed>  $files  raw file definitions from PipelineConfig
      * @param  list<string>  $providers  known provider keys, for the optional provider filter
      */
     public function validate(array $steps, array $files, PipelineGenerator $generator, PipelinePlan $plan, array $providers): PipelineExtensions

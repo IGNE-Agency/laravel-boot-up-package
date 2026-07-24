@@ -15,8 +15,8 @@ use Igne\LaravelBootUp\Tools\Installers\PhpInstaller;
 use Illuminate\Contracts\Container\Container;
 
 /**
- * Maps a tool id to its installer. Project overrides from
- * config('boot-up.tools.installers') win over the built-ins.
+ * Maps a tool id to its installer. Project overrides from the tools
+ * config (ToolsConfig) win over the built-ins.
  */
 final class ToolRegistry
 {

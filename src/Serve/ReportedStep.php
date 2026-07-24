@@ -16,7 +16,7 @@ use Illuminate\Contracts\Container\Container;
  * and advances the progress bar only after the step's own work succeeded —
  * the advance rides on the step calling $next. A step that throws never
  * advances; a step that returns without calling $next short-circuits the
- * remaining pipeline exactly as it does today, leaving the bar partial.
+ * remaining pipeline, leaving the bar partial.
  */
 final class ReportedStep implements Step
 {

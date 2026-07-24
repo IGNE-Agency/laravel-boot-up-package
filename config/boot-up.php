@@ -264,7 +264,7 @@ return [
     |--------------------------------------------------------------------------
     | The app:serve pipeline
     |--------------------------------------------------------------------------
-    | The full boot, in order. Insert your own Serve\Step classes anywhere,
+    | The full boot, in order. Insert your own Contracts\Step classes anywhere,
     | remove steps you do not want, or reorder them.
     */
     'serve_steps' => [

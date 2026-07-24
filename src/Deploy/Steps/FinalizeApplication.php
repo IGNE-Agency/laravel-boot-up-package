@@ -12,7 +12,7 @@ use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 
 /**
- * Runs the configured boot-up.deploy.finalize artisan commands host-side
+ * Runs the deploy config's finalize artisan commands (DeployConfig) host-side
  * (default: storage:link).
  */
 final class FinalizeApplication implements Step
@@ -44,7 +44,8 @@ final class FinalizeApplication implements Step
      * skipped, so a repeat boot never surfaces Laravel's alarming
      * "The [public/storage] link already exists." ERROR. Any other command, a
      * forced relink (--force), or a genuinely missing link falls through to
-     * the normal run. The link set is read exactly as Laravel resolves it.
+     * the normal run. The link set is read from the same source that
+     * `storage:link` itself uses.
      */
     private function storageLinkAlreadySatisfied(string $command): bool
     {

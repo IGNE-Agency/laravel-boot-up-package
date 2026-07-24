@@ -8,7 +8,8 @@ use Igne\LaravelBootUp\Pipelines\PipelineExtensionValidator;
 
 /**
  * A configured extra step injected into a generated pipeline job. Validated
- * and built by PipelineExtensionValidator from boot-up.pipeline.steps.
+ * and built by PipelineExtensionValidator from the pipeline config's
+ * step definitions.
  */
 final readonly class PipelineJobStep
 {

@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Console\BootUpCommand;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\Lines;
+use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Exceptions\BootUpException;
 use Igne\LaravelBootUp\Services\Terminal;
 use Igne\LaravelBootUp\Services\TrackedProgress;
 use Igne\LaravelBootUp\Tools\Installers\ToolInstaller;
+use Illuminate\Support\Facades\Facade;
 
 arch('all package code uses strict types')
     ->expect('Igne\LaravelBootUp')
@@ -62,3 +65,62 @@ arch('legacy namespaces are gone for good')
         'Igne\LaravelBootUp\Traits',
     ])
     ->not->toBeUsed();
+
+arch('only interfaces live in Contracts')
+    ->expect('Igne\LaravelBootUp\Contracts')
+    ->toBeInterfaces();
+
+arch('only enums live in Enums')
+    ->expect('Igne\LaravelBootUp\Enums')
+    ->toBeEnums();
+
+arch('only traits live in Concerns')
+    ->expect('Igne\LaravelBootUp\Concerns')
+    ->toBeTraits();
+
+arch('config classes are final readonly value objects built from the repository')
+    ->expect('Igne\LaravelBootUp\Config')
+    ->toBeFinal()
+    ->toBeReadonly()
+    ->toHaveSuffix('Config')
+    ->toHaveMethod('fromRepository');
+
+arch('the Config suffix is reserved for the Config namespace')
+    ->expect('Igne\LaravelBootUp')
+    ->classes()
+    ->not->toHaveSuffix('Config')
+    ->ignoring('Igne\LaravelBootUp\Config');
+
+arch('every exception extends the package base and lives in Exceptions')
+    ->expect('Igne\LaravelBootUp\Exceptions')
+    ->classes()
+    ->toExtend(BootUpException::class)
+    ->ignoring(BootUpException::class);
+
+arch('the Exception suffix is reserved for the Exceptions namespace')
+    ->expect('Igne\LaravelBootUp')
+    ->classes()
+    ->not->toHaveSuffix('Exception')
+    ->ignoring('Igne\LaravelBootUp\Exceptions');
+
+arch('Console contains only boot-up commands')
+    ->expect('Igne\LaravelBootUp\Console')
+    ->classes()
+    ->toExtend(BootUpCommand::class)
+    ->ignoring(BootUpCommand::class);
+
+arch('the Command suffix is reserved for console commands')
+    ->expect('Igne\LaravelBootUp')
+    ->classes()
+    ->not->toHaveSuffix('Command')
+    ->ignoring('Igne\LaravelBootUp\Console');
+
+arch('data objects are readonly values, apart from the two documented carriers')
+    ->expect('Igne\LaravelBootUp\Data')
+    ->classes()
+    ->toBeReadonly()
+    ->ignoring([ServeContext::class, Lines::class]);
+
+arch('facades stay thin')
+    ->expect('Igne\LaravelBootUp\Facades')
+    ->toExtend(Facade::class);

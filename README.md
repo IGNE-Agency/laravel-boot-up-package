@@ -222,12 +222,12 @@ None of these require touching package code:
 
 | Extension point                    | Implement                        | Register                                           |
 | ---------------------------------- | -------------------------------- | -------------------------------------------------- |
-| Project commands around migrations | `Deploy\ProvidesDeployTasks` | Bind as singleton in your `AppServiceProvider`     |
-| Custom serve/deploy steps          | `Serve\Step`                     | Insert into `boot-up.serve_steps` / `deploy_steps` |
-| Custom servers                     | `Servers\Server`                 | `boot-up.server.drivers`                           |
-| Custom tools                       | `Tools\InstallsTool`             | `boot-up.tools.installers` + `tools.required`      |
-| Custom deployment platforms        | `Deploy\Scripts\ScriptGenerator` | `boot-up.deploy.script_generators`                 |
-| Custom git providers               | `Pipelines\PipelineGenerator`    | `boot-up.pipeline.generators`                      |
+| Project commands around migrations | `Contracts\ProvidesDeployTasks` | Bind as singleton in your `AppServiceProvider`     |
+| Custom serve/deploy steps          | `Contracts\Step`                     | Insert into `boot-up.serve_steps` / `deploy_steps` |
+| Custom servers                     | `Contracts\Server`                 | `boot-up.server.drivers`                           |
+| Custom tools                       | `Contracts\InstallsTool`             | `boot-up.tools.installers` + `tools.required`      |
+| Custom deployment platforms        | `Contracts\ScriptGenerator` | `boot-up.deploy.script_generators`                 |
+| Custom git providers               | `Contracts\PipelineGenerator`    | `boot-up.pipeline.generators`                      |
 
 How-to per extension point: [docs/EXTENDING.md](docs/EXTENDING.md).
 

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\BootUp;
 
-use Igne\LaravelBootUp\Deploy\DeployTask;
-use Igne\LaravelBootUp\Deploy\ProvidesDeployTasks;
+use Igne\LaravelBootUp\Contracts\ProvidesDeployTasks;
+use Igne\LaravelBootUp\Data\DeployTask;
 
 /**
  * Example implementation of project-specific boot commands.
@@ -14,7 +14,7 @@ use Igne\LaravelBootUp\Deploy\ProvidesDeployTasks;
  * your AppServiceProvider:
  *
  *     $this->app->singleton(
- *         \Igne\LaravelBootUp\Deploy\ProvidesDeployTasks::class,
+ *         \Igne\LaravelBootUp\Contracts\ProvidesDeployTasks::class,
  *         \App\BootUp\DeployTasks::class,
  *     );
  *
