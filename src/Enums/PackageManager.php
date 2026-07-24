@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Enums;
 
 use Igne\LaravelBootUp\Data\Lines;
-use Igne\LaravelBootUp\Enums\Tool;
 
 enum PackageManager: string
 {

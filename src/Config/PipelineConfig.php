@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Config;
 
-use Illuminate\Contracts\Config\Repository;
 use Igne\LaravelBootUp\Contracts\PipelineGenerator;
+use Illuminate\Contracts\Config\Repository;
 
 final readonly class PipelineConfig
 {

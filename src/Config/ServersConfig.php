@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Config;
 
+use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
 use Igne\LaravelBootUp\Servers\Herd\HerdServer;
 use Igne\LaravelBootUp\Servers\Sail\SailServer;
 use Illuminate\Contracts\Config\Repository;
-use Igne\LaravelBootUp\Contracts\Server;
 
 final readonly class ServersConfig
 {

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Data;
 
-use Igne\LaravelBootUp\Data\DeploymentPlan;
 use Igne\LaravelBootUp\Enums\DeployHookHost;
 use Igne\LaravelBootUp\Pipelines\PipelineExtensions;
 

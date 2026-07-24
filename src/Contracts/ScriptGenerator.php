@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Contracts;
 
-use Igne\LaravelBootUp\Data\Lines;
 use Igne\LaravelBootUp\Data\DeploymentPlan;
+use Igne\LaravelBootUp\Data\Lines;
 
 /**
  * Renders a deployment script for a hosting platform. Register custom

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Exceptions;
 
-use Igne\LaravelBootUp\Exceptions\BootUpException;
-
 final class EnvironmentException extends BootUpException
 {
     public static function missingExampleFile(): self
