@@ -36,40 +36,50 @@ final class EnsureToolsReady implements Step
 
     public function handle(ServeContext $context, Closure $next): mixed
     {
+        $this->summarize($this->outcomes($context));
+
+        return $next($context);
+    }
+
+    /**
+     * @return list<ToolOutcome>
+     */
+    private function outcomes(ServeContext $context): array
+    {
         $covered = [];
         $outcomes = [];
 
-        foreach ($this->config->required as $id => $constraint) {
-            $outcomes[] = $this->manager->ensure(
-                $this->registry->installerFor($id),
-                VersionConstraint::of((string) $constraint),
-            );
-
-            $covered[$id] = true;
-        }
-
-        $required = $context->server instanceof RequiresTools ? $context->server->requiredTools() : [];
-
-        foreach ($required as $tool) {
-            $id = $tool instanceof Tool ? $tool->value : $tool;
-
+        foreach ($this->requiredConstraints($context) as $id => $constraint) {
             if (isset($covered[$id])) {
                 continue;
             }
 
-            $outcomes[] = $this->manager->ensure(
-                $this->registry->installerFor($id),
-                VersionConstraint::wildcard(),
-            );
-
+            $outcomes[] = $this->manager->ensure($this->registry->installerFor($id), $constraint);
             $covered[$id] = true;
         }
 
         $outcomes[] = $this->ensurePackageManager($context, $covered);
 
-        $this->summarize(array_values(array_filter($outcomes)));
+        return array_values(array_filter($outcomes));
+    }
 
-        return $next($context);
+    /**
+     * Configured tools with their constraints first, then the server's
+     * required tools as wildcards — the first occurrence of an id wins.
+     *
+     * @return iterable<string, VersionConstraint>
+     */
+    private function requiredConstraints(ServeContext $context): iterable
+    {
+        foreach ($this->config->required as $id => $constraint) {
+            yield $id => VersionConstraint::of((string) $constraint);
+        }
+
+        $required = $context->server instanceof RequiresTools ? $context->server->requiredTools() : [];
+
+        foreach ($required as $tool) {
+            yield ($tool instanceof Tool ? $tool->value : $tool) => VersionConstraint::wildcard();
+        }
     }
 
     /**

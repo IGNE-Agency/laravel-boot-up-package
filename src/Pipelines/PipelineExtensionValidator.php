@@ -43,7 +43,6 @@ final class PipelineExtensionValidator
      */
     private function steps(array $steps, PipelineGenerator $generator, PipelinePlan $plan, array $providers): array
     {
-        $anchors = $generator->anchors($plan);
         $seen = [];
         $result = [];
 
@@ -59,35 +58,47 @@ final class PipelineExtensionValidator
             }
 
             $seen[$id] = true;
-
-            $provider = $this->provider($raw, $providers, fn (string $problem) => PipelineException::step($id, $problem));
-
-            $job = $this->string($raw, 'job') ?? throw PipelineException::step($id, 'is missing a non-empty "job".');
-            $position = $this->string($raw, 'position') ?? throw PipelineException::step($id, 'is missing a "position" (before or after).');
-
-            if (! \in_array($position, self::POSITIONS, true)) {
-                throw PipelineException::step($id, "has an invalid position [{$position}]; use 'before' or 'after'.");
-            }
-
-            $run = $this->string($raw, 'run') ?? throw PipelineException::step($id, 'is missing a non-empty "run" command.');
-
-            // Only steps that will render for this provider are anchor-checked.
-            if (($provider === null || $provider === $generator->key()) && ! \in_array($job, $anchors, true)) {
-                throw PipelineException::step($id, "targets unknown job [{$job}] for {$generator->key()}; available: ".implode(', ', $anchors).'.');
-            }
-
-            $result[] = new PipelineJobStep(
-                id: $id,
-                job: $job,
-                position: $position,
-                name: $this->string($raw, 'name') ?? $id,
-                run: $run,
-                provider: $provider,
-                env: $this->env($raw, $id),
-            );
+            $result[] = $this->parseStep($id, $raw, $generator, $plan, $providers);
         }
 
         return $result;
+    }
+
+    /**
+     * @param  array<mixed>  $raw
+     * @param  list<string>  $providers
+     */
+    private function parseStep(string $id, array $raw, PipelineGenerator $generator, PipelinePlan $plan, array $providers): PipelineJobStep
+    {
+        $provider = $this->provider($raw, $providers, fn (string $problem) => PipelineException::step($id, $problem));
+
+        $job = $this->string($raw, 'job') ?? throw PipelineException::step($id, 'is missing a non-empty "job".');
+        $position = $this->string($raw, 'position') ?? throw PipelineException::step($id, 'is missing a "position" (before or after).');
+
+        if (! \in_array($position, self::POSITIONS, true)) {
+            throw PipelineException::step($id, "has an invalid position [{$position}]; use 'before' or 'after'.");
+        }
+
+        $run = $this->string($raw, 'run') ?? throw PipelineException::step($id, 'is missing a non-empty "run" command.');
+
+        $anchors = $generator->anchors($plan);
+
+        // Only steps that will render for this provider are anchor-checked.
+        if (($provider === null || $provider === $generator->key()) && ! \in_array($job, $anchors, true)) {
+            $available = implode(', ', $anchors);
+
+            throw PipelineException::step($id, "targets unknown job [{$job}] for {$generator->key()}; available: {$available}.");
+        }
+
+        return new PipelineJobStep(
+            id: $id,
+            job: $job,
+            position: $position,
+            name: $this->string($raw, 'name') ?? $id,
+            run: $run,
+            provider: $provider,
+            env: $this->env($raw, $id),
+        );
     }
 
     /**
@@ -116,23 +127,31 @@ final class PipelineExtensionValidator
             }
 
             $seen[$path] = true;
-
-            $hasContents = \array_key_exists('contents', $raw);
-            $hasStub = \array_key_exists('stub', $raw);
-
-            if ($hasContents === $hasStub) {
-                throw PipelineException::file($path, 'needs exactly one of "contents" or "stub".');
-            }
-
-            $result[] = new PipelineFile(
-                path: $path,
-                contents: $hasStub ? $this->stub($path, (string) $raw['stub']) : (string) $raw['contents'],
-                executable: (bool) ($raw['executable'] ?? false),
-                provider: $this->provider($raw, $providers, fn (string $problem) => PipelineException::file($path, $problem)),
-            );
+            $result[] = $this->parseFile($path, $raw, $providers);
         }
 
         return $result;
+    }
+
+    /**
+     * @param  array<mixed>  $raw
+     * @param  list<string>  $providers
+     */
+    private function parseFile(string $path, array $raw, array $providers): PipelineFile
+    {
+        $hasContents = \array_key_exists('contents', $raw);
+        $hasStub = \array_key_exists('stub', $raw);
+
+        if ($hasContents === $hasStub) {
+            throw PipelineException::file($path, 'needs exactly one of "contents" or "stub".');
+        }
+
+        return new PipelineFile(
+            path: $path,
+            contents: $hasStub ? $this->stub($path, (string) $raw['stub']) : (string) $raw['contents'],
+            executable: (bool) ($raw['executable'] ?? false),
+            provider: $this->provider($raw, $providers, fn (string $problem) => PipelineException::file($path, $problem)),
+        );
     }
 
     private function stub(string $path, string $stub): string

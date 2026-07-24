@@ -50,21 +50,9 @@ final class PipelineCommand extends BootUpCommand
             $this->choose('host', 'Which host receives the deploy hook?', DeployHookHost::FORTRABBIT->value),
         );
 
-        $plan = $planner->plan($host);
+        $plan = $this->validatedPlan($planner->plan($host), $config, $generator);
 
-        $extensions = (new PipelineExtensionValidator($this->laravel->basePath()))
-            ->validate($config->steps, $config->files, $generator, $plan, array_keys($this->generators()));
-
-        $plan = $plan->withExtensions($extensions);
-
-        $files = [
-            ...$generator->files($plan),
-            new GeneratedFile($envFile->path(), $envFile->generate($this->appKey($envFile))),
-            ...array_map(
-                fn (PipelineFile $file): GeneratedFile => new GeneratedFile($file->path, $file->contents, $file->executable),
-                $extensions->filesFor($provider),
-            ),
-        ];
+        $files = $this->generatedFiles($generator, $plan, $envFile, $provider);
 
         if (! $publisher->publish($files, (bool) $this->option('force'))) {
             return self::SUCCESS;
@@ -73,6 +61,35 @@ final class PipelineCommand extends BootUpCommand
         $this->instructions($generator, $plan);
 
         return $this->done('Pipeline generated.');
+    }
+
+    /**
+     * The plan with the project's validated step/file extensions applied.
+     */
+    private function validatedPlan(PipelinePlan $plan, PipelineConfig $config, PipelineGenerator $generator): PipelinePlan
+    {
+        $extensions = (new PipelineExtensionValidator($this->laravel->basePath()))
+            ->validate($config->steps, $config->files, $generator, $plan, array_keys($this->generators()));
+
+        return $plan->withExtensions($extensions);
+    }
+
+    /**
+     * Everything one generate run writes: the provider's own files,
+     * .env.pipeline, and the project's extra files for this provider.
+     *
+     * @return list<GeneratedFile>
+     */
+    private function generatedFiles(PipelineGenerator $generator, PipelinePlan $plan, PipelineEnvFile $envFile, string $provider): array
+    {
+        return [
+            ...$generator->files($plan),
+            new GeneratedFile($envFile->path(), $envFile->generate($this->appKey($envFile))),
+            ...array_map(
+                fn (PipelineFile $file): GeneratedFile => new GeneratedFile($file->path, $file->contents, $file->executable),
+                $plan->extensions->filesFor($provider),
+            ),
+        ];
     }
 
     /**

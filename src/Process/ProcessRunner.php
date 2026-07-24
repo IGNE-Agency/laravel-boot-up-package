@@ -100,7 +100,8 @@ final class ProcessRunner
             return $this->start($command, $label);
         }
 
-        $pidFile = $this->runtimeDirectory.'/pids/'.$label.'-'.bin2hex(random_bytes(4)).'.pid';
+        $suffix = bin2hex(random_bytes(4));
+        $pidFile = "{$this->runtimeDirectory}/pids/{$label}-{$suffix}.pid";
         $this->ensureDirectory(\dirname($pidFile));
 
         $shim = sprintf(
@@ -113,11 +114,31 @@ final class ProcessRunner
             $window = $this->terminal->open($shim, $command->cwd ?? getcwd() ?: null);
         } catch (\Throwable $exception) {
             @unlink($pidFile);
-            terminal()->warning("Could not open a terminal window for [{$label}] ({$exception->getMessage()}) — starting it in the background instead.");
 
-            return $this->start($command, $label);
+            return $this->fallBackToBackground(
+                $command,
+                $label,
+                "Could not open a terminal window for [{$label}] ({$exception->getMessage()})",
+            );
         }
 
+        $pid = $this->pidFromFile($pidFile);
+
+        if ($pid > 0) {
+            return $this->remember($pid, $label, $command, $window);
+        }
+
+        return $this->trackWindowWithoutPidFile($command, $label, $window);
+    }
+
+    /**
+     * Wait for the shim to write the real PID, then remove the file. Zero
+     * when nothing usable appeared within `terminalPidTimeout` seconds —
+     * the poll is generous because a new window's shell may source a heavy
+     * startup profile before the shim runs.
+     */
+    private function pidFromFile(string $pidFile): int
+    {
         $captured = $this->poller->until(
             fn (): bool => is_file($pidFile) && trim((string) file_get_contents($pidFile)) !== '',
             timeoutSeconds: $this->terminalPidTimeout,
@@ -127,13 +148,18 @@ final class ProcessRunner
         $pid = $captured ? (int) trim((string) file_get_contents($pidFile)) : 0;
         @unlink($pidFile);
 
-        if ($pid > 0) {
-            return $this->remember($pid, $label, $command, $window);
-        }
+        return $pid;
+    }
 
-        // The window is open and the process may well be running; it just did
-        // not write its PID in time (usually a slow shell startup). Recover the
-        // real PID from the process table so the process stays tracked.
+    /**
+     * The window is open and the process may well be running; it just did
+     * not write its PID in time (usually a slow shell startup). Recover the
+     * real PID from the process table so the process stays tracked; only
+     * when that also fails, close the window and start in the background so
+     * the boot is never left with an untracked window and never aborts.
+     */
+    private function trackWindowWithoutPidFile(CommandLine $command, string $label, ?string $window): ProcessRecord
+    {
         $recovered = $this->recoverPid($command);
 
         if ($recovered !== null) {
@@ -142,11 +168,19 @@ final class ProcessRunner
             return $this->remember($recovered, $label, $command, $window);
         }
 
-        // Nothing to recover: close the window we opened and fall back to a
-        // plain background process so the boot is never left with an untracked
-        // window and never aborts.
-        terminal()->warning("Could not capture a PID for [{$label}] from its terminal window — starting it in the background instead. (Tip: set its run_in option to 'background' to skip terminal windows.)");
         $this->terminal->close($window);
+
+        return $this->fallBackToBackground(
+            $command,
+            $label,
+            "Could not capture a PID for [{$label}] from its terminal window",
+            " (Tip: set its run_in option to 'background' to skip terminal windows.)",
+        );
+    }
+
+    private function fallBackToBackground(CommandLine $command, string $label, string $reason, string $tip = ''): ProcessRecord
+    {
+        terminal()->warning("{$reason} — starting it in the background instead.{$tip}");
 
         return $this->start($command, $label);
     }

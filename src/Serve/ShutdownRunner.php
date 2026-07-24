@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Serve;
 
+use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
@@ -47,17 +48,26 @@ final class ShutdownRunner
             return;
         }
 
-        // Captured before reaping clears the ledger: a Vite watcher killed with
-        // SIGKILL cannot remove its own public/hot marker.
-        $hadAssetWatcher = $this->ledger->withLabel(self::ASSET_WATCHER_LABEL)->isNotEmpty();
-
         $this->ledger->all()->each(function (ProcessRecord $record): void {
             terminal()->info("Stopping {$record->label} (pid {$record->pid})...");
         });
 
-        // The active-server record is always cleared, even if reaping a process
-        // or stopping the server throws — a stale record would otherwise make
-        // the next app:serve think a server it does not own is still active.
+        $this->tearDown($active);
+
+        terminal()->success('Shutdown complete.');
+    }
+
+    /**
+     * The active-server record is always cleared, even if reaping a process
+     * or stopping the server throws — a stale record would otherwise make
+     * the next app:serve think a server it does not own is still active.
+     */
+    private function tearDown(?ActiveServerRecord $active): void
+    {
+        // Captured before reaping clears the ledger: a Vite watcher killed with
+        // SIGKILL cannot remove its own public/hot marker.
+        $hadAssetWatcher = $this->ledger->withLabel(self::ASSET_WATCHER_LABEL)->isNotEmpty();
+
         try {
             // reap() already forgets confirmed-dead entries; only remove the
             // ledger file itself when nothing survived the signals.
@@ -72,8 +82,6 @@ final class ShutdownRunner
             $this->store->clear();
             $this->cleanUpStaleHotFile($hadAssetWatcher);
         }
-
-        terminal()->success('Shutdown complete.');
     }
 
     /**

@@ -59,6 +59,23 @@ final class ProcessReaper
         // descendant slip through the KILL pass.
         $targets = [...$this->descendants($record->pid), $record->pid];
 
+        if (! $this->terminate($targets)) {
+            terminal()->warning("Could not stop {$record->label} (pid {$record->pid}) — it stays in the ledger; stop it manually or re-run app:down.");
+
+            return false;
+        }
+
+        return $this->settle($record);
+    }
+
+    /**
+     * TERM the targets and wait; escalate to KILL for survivors. Returns
+     * whether every target is confirmed gone.
+     *
+     * @param  list<int>  $targets
+     */
+    private function terminate(array $targets): bool
+    {
         $this->signalAll($targets, 'TERM');
 
         $terminated = $this->poller->until(
@@ -67,23 +84,17 @@ final class ProcessReaper
             intervalMs: 250,
         );
 
-        if (! $terminated) {
-            $this->signalAll($targets, 'KILL');
-
-            $terminated = $this->poller->until(
-                fn (): bool => $this->allGone($targets),
-                timeoutSeconds: $this->killGraceSeconds,
-                intervalMs: 250,
-            );
+        if ($terminated) {
+            return true;
         }
 
-        if (! $terminated) {
-            terminal()->warning("Could not stop {$record->label} (pid {$record->pid}) — it stays in the ledger; stop it manually or re-run app:down.");
+        $this->signalAll($targets, 'KILL');
 
-            return false;
-        }
-
-        return $this->settle($record);
+        return $this->poller->until(
+            fn (): bool => $this->allGone($targets),
+            timeoutSeconds: $this->killGraceSeconds,
+            intervalMs: 250,
+        );
     }
 
     /**

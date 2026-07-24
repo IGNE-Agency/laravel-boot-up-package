@@ -68,20 +68,28 @@ final class ServeCommand extends BootUpCommand implements Isolatable
         $this->reporter = $reporter;
         $pipes = $reporter->begin($plan);
 
-        // The trap must be registered AFTER begin(): Progress::start()
-        // installs its own SIGINT handler, which would otherwise replace
-        // this one and skip the shutdown entirely.
-        $this->trap([SIGINT, SIGTERM], function () use ($shutdown, $reporter): void {
-            $reporter->interrupt();
-            $shutdown->run();
-            exit(self::SUCCESS);
-        });
+        $this->registerShutdownTrap($shutdown, $reporter);
 
         $pipeline->send($context)->through($pipes)->thenReturn();
 
         $reporter->finish();
 
         return $this->done('Application ready.');
+    }
+
+    /**
+     * Ctrl-C / SIGTERM tears everything down through the shared shutdown
+     * path. Must be registered AFTER StageReporter::begin():
+     * Progress::start() installs its own SIGINT handler, which would
+     * otherwise replace this one and skip the shutdown entirely.
+     */
+    private function registerShutdownTrap(ShutdownRunner $shutdown, StageReporter $reporter): void
+    {
+        $this->trap([SIGINT, SIGTERM], function () use ($shutdown, $reporter): void {
+            $reporter->interrupt();
+            $shutdown->run();
+            exit(self::SUCCESS);
+        });
     }
 
     protected function onFailure(): void

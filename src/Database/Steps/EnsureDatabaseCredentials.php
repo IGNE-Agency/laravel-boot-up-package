@@ -51,21 +51,32 @@ final class EnsureDatabaseCredentials implements Step
             return $next($context);
         }
 
-        terminal()->warning('Database credentials are missing from .env: '.implode(', ', $missing));
+        $keys = implode(', ', $missing);
+        terminal()->warning("Database credentials are missing from .env: {$keys}");
 
-        $answers = $this->promptFor($missing, $driver, $context->server?->key());
+        $this->applyAnswers($this->promptFor($missing, $driver, $context->server?->key()), $driver);
 
+        return $next($context);
+    }
+
+    /**
+     * Write the answers to .env and refresh the loaded connection config so
+     * later steps in this same process see fresh values.
+     *
+     * @param  array<string, string>  $answers
+     */
+    private function applyAnswers(array $answers, string $driver): void
+    {
         $this->envFile->setMany($answers);
 
         foreach ($answers as $key => $value) {
-            $this->laravelConfig->set("database.connections.{$driver}.".self::CONFIG_FIELDS[$key], $value);
+            $field = self::CONFIG_FIELDS[$key];
+            $this->laravelConfig->set("database.connections.{$driver}.{$field}", $value);
         }
 
         DB::purge($driver);
 
         terminal()->success('Database credentials saved to .env.');
-
-        return $next($context);
     }
 
     private function driver(): string
@@ -96,18 +107,7 @@ final class EnsureDatabaseCredentials implements Step
      */
     private function promptFor(array $missing, string $driver, ?string $serverKey): array
     {
-        $sail = $serverKey === 'sail';
-
-        $defaults = [
-            'DB_HOST' => $sail ? 'mysql' : '127.0.0.1',
-            'DB_PORT' => match ($driver) {
-                'pgsql' => '5432',
-                'sqlsrv' => '1433',
-                default => '3306',
-            },
-            'DB_DATABASE' => Str::slug(basename(base_path()), '_'),
-            'DB_USERNAME' => $sail ? 'sail' : 'root',
-        ];
+        $defaults = $this->defaultsFor($driver, sail: $serverKey === 'sail');
 
         $labels = [
             'DB_HOST' => 'Database host',
@@ -125,5 +125,26 @@ final class EnsureDatabaseCredentials implements Step
         }
 
         return $answers;
+    }
+
+    /**
+     * Sensible prompt defaults: Sail's container hostnames and user when
+     * the Sail server drives this run, the driver's standard port, and a
+     * database name derived from the project folder.
+     *
+     * @return array<string, string>
+     */
+    private function defaultsFor(string $driver, bool $sail): array
+    {
+        return [
+            'DB_HOST' => $sail ? 'mysql' : '127.0.0.1',
+            'DB_PORT' => match ($driver) {
+                'pgsql' => '5432',
+                'sqlsrv' => '1433',
+                default => '3306',
+            },
+            'DB_DATABASE' => Str::slug(basename(base_path()), '_'),
+            'DB_USERNAME' => $sail ? 'sail' : 'root',
+        ];
     }
 }

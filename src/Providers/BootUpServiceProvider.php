@@ -65,12 +65,49 @@ final class BootUpServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../../config/boot-up.php', 'boot-up');
 
+        $this->registerConfigObjects();
+        $this->registerTerminal();
+        $this->registerProcessTracking();
+        $this->registerHerd();
+        $this->registerProjectFiles();
+
+        $this->app->singleton(PackageManagerSelector::class);
+        $this->app->singleton(ShutdownRunner::class);
+    }
+
+    private function registerConfigObjects(): void
+    {
         foreach (self::CONFIG_CLASSES as $configClass) {
             $this->app->singleton($configClass, fn (Application $app) => $configClass::fromRepository($app['config']));
         }
+    }
 
+    /**
+     * The output seam plus the platform-picked OS terminal-window launcher.
+     */
+    private function registerTerminal(): void
+    {
         $this->app->singleton(Terminal::class, fn () => new Terminal);
 
+        $this->app->singleton(Platform::class, fn () => new Platform);
+
+        $this->app->singleton(TerminalLauncher::class, function (Application $app): TerminalLauncher {
+            $platform = $app->make(Platform::class);
+
+            return match (true) {
+                $platform->isMacos() => $app->make(MacTerminalLauncher::class),
+                $platform->isLinux() => $app->make(LinuxTerminalLauncher::class),
+                default => new NullTerminalLauncher,
+            };
+        });
+    }
+
+    /**
+     * The process ledger and active-server record survive the
+     * app:serve → app:down boundary; the runner feeds them.
+     */
+    private function registerProcessTracking(): void
+    {
         $this->app->singleton(ProcessLedger::class, fn (Application $app) => new ProcessLedger(
             $app->storagePath('framework/boot-up/processes.json'),
         ));
@@ -79,8 +116,19 @@ final class BootUpServiceProvider extends ServiceProvider
             $app->storagePath('framework/boot-up/active-server.json'),
         ));
 
-        $this->app->singleton(Platform::class, fn () => new Platform);
+        $this->app->singleton(ProcessRunner::class, fn (Application $app) => new ProcessRunner(
+            processes: $app->make(Factory::class),
+            ledger: $app->make(ProcessLedger::class),
+            terminal: $app->make(TerminalLauncher::class),
+            poller: $app->make(Poller::class),
+            logDirectory: $app->storagePath('logs/boot-up'),
+            runtimeDirectory: $app->storagePath('framework/boot-up'),
+            terminalPidTimeout: (int) $app['config']->get('boot-up.process.terminal_pid_timeout', 20),
+        ));
+    }
 
+    private function registerHerd(): void
+    {
         $this->app->singleton(HerdSites::class, fn (Application $app) => new HerdSites(
             $app->make(Platform::class)->isMacos()
                 ? ($_SERVER['HOME'] ?? '').'/Library/Application Support/Herd/config/valet/Sites'
@@ -97,27 +145,13 @@ final class BootUpServiceProvider extends ServiceProvider
                 healthTimeoutSeconds: $config->herdHealthTimeoutSeconds,
             );
         });
+    }
 
-        $this->app->singleton(TerminalLauncher::class, function (Application $app): TerminalLauncher {
-            $platform = $app->make(Platform::class);
-
-            return match (true) {
-                $platform->isMacos() => $app->make(MacTerminalLauncher::class),
-                $platform->isLinux() => $app->make(LinuxTerminalLauncher::class),
-                default => new NullTerminalLauncher,
-            };
-        });
-
-        $this->app->singleton(ProcessRunner::class, fn (Application $app) => new ProcessRunner(
-            processes: $app->make(Factory::class),
-            ledger: $app->make(ProcessLedger::class),
-            terminal: $app->make(TerminalLauncher::class),
-            poller: $app->make(Poller::class),
-            logDirectory: $app->storagePath('logs/boot-up'),
-            runtimeDirectory: $app->storagePath('framework/boot-up'),
-            terminalPidTimeout: (int) $app['config']->get('boot-up.process.terminal_pid_timeout', 20),
-        ));
-
+    /**
+     * Readers and writers of the host project's files.
+     */
+    private function registerProjectFiles(): void
+    {
         $this->app->singleton(Composer::class, fn (Application $app) => new Composer(
             processes: $app->make(ProcessRunner::class),
             conflicts: $app->make(LockfileConflictDetector::class),
@@ -139,13 +173,9 @@ final class BootUpServiceProvider extends ServiceProvider
             $app->basePath('package.json'),
         ));
 
-        $this->app->singleton(PackageManagerSelector::class);
-
         $this->app->singleton(ComposerJson::class, fn (Application $app) => new ComposerJson(
             $app->basePath('composer.json'),
         ));
-
-        $this->app->singleton(ShutdownRunner::class);
     }
 
     public function boot(): void
