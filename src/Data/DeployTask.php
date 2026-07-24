@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Data;
 
-use InvalidArgumentException;
 use Igne\LaravelBootUp\Enums\DeployTaskType;
+use InvalidArgumentException;
 
 /**
  * A project-supplied command executed during deploy. Commands run as plain
@@ -71,7 +71,7 @@ final readonly class DeployTask
         // 'exec' blocks `exec something` but not `php artisan execute-thing`.
         $blocked = implode('|', array_map(static fn (string $word): string => preg_quote($word, '/'), self::DANGEROUS_WORDS));
 
-        if (preg_match('/(?<=^|\s)('.$blocked.')\b/i', trim($this->command), $matches) === 1) {
+        if (preg_match("/(?<=^|\s)({$blocked})\b/i", trim($this->command), $matches) === 1) {
             throw new InvalidArgumentException(
                 "Project command '{$this->command}' contains the blocked word '{$matches[1]}'."
             );

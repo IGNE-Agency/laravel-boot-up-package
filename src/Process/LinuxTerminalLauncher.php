@@ -22,9 +22,8 @@ final class LinuxTerminalLauncher implements TerminalLauncher
 
     public function open(string $command, ?string $directory = null): ?string
     {
-        $inner = $directory !== null
-            ? 'cd '.escapeshellarg($directory).' && '.$command
-            : $command;
+        $cd = $directory !== null ? escapeshellarg($directory) : null;
+        $inner = $cd !== null ? "cd {$cd} && {$command}" : $command;
 
         $emulator = $this->emulator();
 
@@ -49,7 +48,7 @@ final class LinuxTerminalLauncher implements TerminalLauncher
     {
         foreach (['gnome-terminal', 'xterm'] as $candidate) {
             $result = $this->processes
-                ->command(['sh', '-c', 'command -v '.$candidate])
+                ->command(['sh', '-c', "command -v {$candidate}"])
                 ->run();
 
             if ($result->successful()) {

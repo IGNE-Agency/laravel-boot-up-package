@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Services;
 
 use Closure;
-use Laravel\Prompts\Concerns\Colors;
 use Igne\LaravelBootUp\Data\Lines;
+use Laravel\Prompts\Concerns\Colors;
 
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\error;
@@ -167,7 +167,8 @@ final class Terminal
         $numbered = [];
 
         foreach (array_values($items) as $index => $item) {
-            $numbered[] = ($index + 1).'. '.$item;
+            $number = $index + 1;
+            $numbered[] = "{$number}. {$item}";
         }
 
         $block = Lines::make()

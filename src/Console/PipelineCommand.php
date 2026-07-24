@@ -85,10 +85,9 @@ final class PipelineCommand extends BootUpCommand
         return [
             ...$generator->files($plan),
             new GeneratedFile($envFile->path(), $envFile->generate($this->appKey($envFile))),
-            ...array_map(
-                fn (PipelineFile $file): GeneratedFile => new GeneratedFile($file->path, $file->contents, $file->executable),
-                $plan->extensions->filesFor($provider),
-            ),
+            ...collect($plan->extensions->filesFor($provider))
+                ->map(fn (PipelineFile $file): GeneratedFile => new GeneratedFile($file->path, $file->contents, $file->executable))
+                ->all(),
         ];
     }
 
@@ -152,7 +151,7 @@ final class PipelineCommand extends BootUpCommand
         if ($secrets !== []) {
             terminal()->table(
                 ['Secret', 'Add under (git provider)', 'Purpose'],
-                array_map(fn (PipelineSecret $secret) => [$secret->name, $secret->location, $secret->purpose], $secrets),
+                collect($secrets)->map(fn (PipelineSecret $secret): array => [$secret->name, $secret->location, $secret->purpose])->all(),
             );
         }
 

@@ -59,7 +59,7 @@ final class ProcessRunner
      */
     public function start(CommandLine $command, string $label): ProcessRecord
     {
-        $logFile = $this->logDirectory.'/'.$label.'.log';
+        $logFile = "{$this->logDirectory}/{$label}.log";
         $this->ensureDirectory(\dirname($logFile));
 
         // nohup exec()s the command, so the echoed PID belongs to the real
@@ -187,7 +187,9 @@ final class ProcessRunner
 
     public function isCommandAvailable(string $binary): bool
     {
-        return $this->runSilently(CommandLine::make(['sh', '-c', 'command -v '.escapeshellarg($binary)]))
+        $quoted = escapeshellarg($binary);
+
+        return $this->runSilently(CommandLine::make(['sh', '-c', "command -v {$quoted}"]))
             ->successful();
     }
 

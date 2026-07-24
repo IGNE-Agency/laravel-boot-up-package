@@ -156,7 +156,9 @@ final class PipelineExtensionValidator
 
     private function stub(string $path, string $stub): string
     {
-        $full = rtrim($this->basePath, '/').'/'.ltrim($stub, '/');
+        $base = rtrim($this->basePath, '/');
+        $relative = ltrim($stub, '/');
+        $full = "{$base}/{$relative}";
 
         if (! is_file($full)) {
             throw PipelineException::file($path, "references a stub that does not exist: {$stub}.");
@@ -195,7 +197,9 @@ final class PipelineExtensionValidator
         }
 
         if (! \is_string($provider) || ! \in_array($provider, $providers, true)) {
-            throw $fail('targets an unknown provider; available: '.implode(', ', $providers).'.');
+            $available = implode(', ', $providers);
+
+            throw $fail("targets an unknown provider; available: {$available}.");
         }
 
         return $provider;

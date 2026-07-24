@@ -129,11 +129,13 @@ final class BootUpServiceProvider extends ServiceProvider
 
     private function registerHerd(): void
     {
-        $this->app->singleton(HerdSites::class, fn (Application $app) => new HerdSites(
-            $app->make(Platform::class)->isMacos()
-                ? ($_SERVER['HOME'] ?? '').'/Library/Application Support/Herd/config/valet/Sites'
-                : ($_SERVER['HOME'] ?? '').'/.config/valet/Sites',
-        ));
+        $this->app->singleton(HerdSites::class, function (Application $app): HerdSites {
+            $home = $_SERVER['HOME'] ?? '';
+
+            return new HerdSites($app->make(Platform::class)->isMacos()
+                ? "{$home}/Library/Application Support/Herd/config/valet/Sites"
+                : "{$home}/.config/valet/Sites");
+        });
 
         $this->app->singleton(HerdServices::class, function (Application $app): HerdServices {
             $config = $app->make(ServersConfig::class);

@@ -22,9 +22,8 @@ final class MacTerminalLauncher implements TerminalLauncher
 
     public function open(string $command, ?string $directory = null): ?string
     {
-        $inner = $directory !== null
-            ? 'cd '.escapeshellarg($directory).' && '.$command
-            : $command;
+        $cd = $directory !== null ? escapeshellarg($directory) : null;
+        $inner = $cd !== null ? "cd {$cd} && {$command}" : $command;
 
         // do script opens a new window and runs the command in it; the id of
         // the now-front window is returned so shutdown can close exactly this

@@ -118,8 +118,9 @@ final class HerdServer implements RequiresTools, RewritesCommands, Server, Warns
     public function url(): string
     {
         $project = $this->project();
+        $name = $this->sites->nameFor($project) ?? basename($project);
 
-        return 'https://'.($this->sites->nameFor($project) ?? basename($project)).'.test';
+        return "https://{$name}.test";
     }
 
     private function project(): string
@@ -195,10 +196,10 @@ final class HerdServer implements RequiresTools, RewritesCommands, Server, Warns
         $result = $this->runner->runSilently(CommandLine::make($command));
 
         if (! $result->successful()) {
-            throw ServerException::startFailed(
-                $this->label(),
-                '`'.implode(' ', $command).'` failed: '.trim($result->errorOutput() !== '' ? $result->errorOutput() : $result->output()),
-            );
+            $line = implode(' ', $command);
+            $output = trim($result->errorOutput() !== '' ? $result->errorOutput() : $result->output());
+
+            throw ServerException::startFailed($this->label(), "`{$line}` failed: {$output}");
         }
     }
 }

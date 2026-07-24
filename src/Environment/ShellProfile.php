@@ -29,8 +29,8 @@ final class ShellProfile
         }
 
         return match (basename($shell)) {
-            'zsh' => $home.'/.zshrc',
-            'bash' => $home.'/.bashrc',
+            'zsh' => "{$home}/.zshrc",
+            'bash' => "{$home}/.bashrc",
             default => null,
         };
     }
@@ -54,7 +54,8 @@ final class ShellProfile
             return false;
         }
 
-        $pattern = '/^[ \t]*alias[ \t]+'.preg_quote($name, '/').'=/m';
+        $quotedName = preg_quote($name, '/');
+        $pattern = "/^[ \\t]*alias[ \\t]+{$quotedName}=/m";
 
         return preg_match($pattern, (string) file_get_contents((string) $this->path())) === 1;
     }

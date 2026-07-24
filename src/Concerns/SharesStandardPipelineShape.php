@@ -20,12 +20,12 @@ trait SharesStandardPipelineShape
      */
     public function anchors(PipelinePlan $plan): array
     {
-        return array_values(array_filter([
+        return collect([
             $plan->pint ? 'lint' : null,
             'build',
             'test',
             $plan->host->deploys() ? 'deploy' : null,
-        ]));
+        ])->filter()->values()->all();
     }
 
     /**
@@ -41,16 +41,13 @@ trait SharesStandardPipelineShape
      */
     protected function deployHookDetails(PipelinePlan $plan): array
     {
-        $details = $this->deployHookHeader($plan);
+        $guidance = collect($plan->branchEnvironments)
+            ->flatMap(fn (string $environment, string $branch): array => [
+                "{$environment} (deploys on push to {$branch}):",
+                ...collect($plan->host->hookValueGuidance($environment))
+                    ->map(fn (string $line): string => "  {$line}"),
+            ]);
 
-        foreach ($plan->branchEnvironments as $branch => $environment) {
-            $details[] = "{$environment} (deploys on push to {$branch}):";
-
-            foreach ($plan->host->hookValueGuidance($environment) as $line) {
-                $details[] = "  {$line}";
-            }
-        }
-
-        return $details;
+        return [...$this->deployHookHeader($plan), ...$guidance];
     }
 }

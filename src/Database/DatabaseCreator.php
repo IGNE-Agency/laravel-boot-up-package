@@ -129,19 +129,16 @@ final class DatabaseCreator
 
     private function createStatement(string $driver, string $database): string
     {
+        $escaped = match ($driver) {
+            'mysql' => str_replace('`', '``', $database),
+            'pgsql' => str_replace('"', '""', $database),
+            'sqlsrv' => str_replace(']', ']]', $database),
+        };
+
         return match ($driver) {
-            'mysql' => sprintf(
-                'CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci',
-                str_replace('`', '``', $database),
-            ),
-            'pgsql' => sprintf(
-                'CREATE DATABASE "%s" WITH ENCODING \'UTF8\'',
-                str_replace('"', '""', $database),
-            ),
-            'sqlsrv' => sprintf(
-                'CREATE DATABASE [%s] COLLATE Latin1_General_100_CI_AS_SC_UTF8',
-                str_replace(']', ']]', $database),
-            ),
+            'mysql' => "CREATE DATABASE IF NOT EXISTS `{$escaped}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
+            'pgsql' => "CREATE DATABASE \"{$escaped}\" WITH ENCODING 'UTF8'",
+            'sqlsrv' => "CREATE DATABASE [{$escaped}] COLLATE Latin1_General_100_CI_AS_SC_UTF8",
         };
     }
 

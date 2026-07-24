@@ -117,7 +117,8 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
 
     private function pipeline(PipelinePlan $plan): string
     {
-        $image = 'laravelsail/php'.str_replace('.', '', $plan->phpVersion).'-composer:latest';
+        $version = str_replace('.', '', $plan->phpVersion);
+        $image = "laravelsail/php{$version}-composer:latest";
 
         return Lines::make()
             ->comment(
@@ -185,7 +186,7 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
                 ->line('script:')
                 ->indent(2, function (Lines $yaml) use ($plan, $step): void {
                     $this->extraScript($yaml, $plan, $step, 'before');
-                    $yaml->line('- '.$this->scalar("bash scripts/ci/{$step}.sh"));
+                    $yaml->line($this->scalarLine("bash scripts/ci/{$step}.sh"));
                     $this->extraScript($yaml, $plan, $step, 'after');
                 }));
     }
@@ -216,7 +217,7 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
                 ->line('script:')
                 ->indent(2, function (Lines $yaml) use ($plan, $environment): void {
                     $this->extraScript($yaml, $plan, 'deploy', 'before');
-                    $yaml->line('- '.$this->scalar("bash scripts/ci/deploy-hook.sh {$environment} \"\${DEPLOY_HOOK:-}\""));
+                    $yaml->line($this->scalarLine("bash scripts/ci/deploy-hook.sh {$environment} \"\${DEPLOY_HOOK:-}\""));
                     $this->extraScript($yaml, $plan, 'deploy', 'after');
                 }));
     }
@@ -231,7 +232,7 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
     {
         foreach ($plan->extensions->stepsFor($this->key(), $job, $position) as $step) {
             $yaml->comment($step->name)
-                ->line('- '.$this->scalar($step->run));
+                ->line($this->scalarLine($step->run));
         }
     }
 
@@ -240,6 +241,13 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
      * scalar. Normally a no-op: the script invocations avoid leading #,
      * quotes, flow indicators and ": " on purpose.
      */
+    private function scalarLine(string $value): string
+    {
+        $scalar = $this->scalar($value);
+
+        return "- {$scalar}";
+    }
+
     private function scalar(string $command): string
     {
         $unsafeFirst = $command === '' || str_contains('#&*!|>%@`"\'{}[],', $command[0]);

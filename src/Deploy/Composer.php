@@ -62,13 +62,13 @@ final class Composer
      */
     private function installNeeded(): bool
     {
-        $installed = $this->basePath.'/vendor/composer/installed.json';
+        $installed = "{$this->basePath}/vendor/composer/installed.json";
 
-        if (! is_file($this->basePath.'/vendor/autoload.php') || ! is_file($installed)) {
+        if (! is_file("{$this->basePath}/vendor/autoload.php") || ! is_file($installed)) {
             return true;
         }
 
-        $lock = $this->basePath.'/composer.lock';
+        $lock = "{$this->basePath}/composer.lock";
 
         if (! is_file($lock)) {
             return true;
@@ -80,7 +80,7 @@ final class Composer
             return true;
         }
 
-        $manifest = $this->basePath.'/composer.json';
+        $manifest = "{$this->basePath}/composer.json";
 
         return is_file($manifest) && (int) filemtime($manifest) > $installedAt;
     }

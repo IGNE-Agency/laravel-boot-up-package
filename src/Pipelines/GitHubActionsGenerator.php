@@ -116,6 +116,13 @@ final class GitHubActionsGenerator implements PipelineGenerator
         ];
     }
 
+    private function branchesLine(PipelinePlan $plan): string
+    {
+        $branches = implode(', ', array_keys($plan->branchEnvironments));
+
+        return "branches: [{$branches}]";
+    }
+
     private function workflow(PipelinePlan $plan): string
     {
         return Lines::make()
@@ -136,7 +143,7 @@ final class GitHubActionsGenerator implements PipelineGenerator
             ->indent(2, fn (Lines $yaml) => $yaml
                 ->line('push:')
                 ->indent(2, fn (Lines $yaml) => $yaml
-                    ->line('branches: ['.implode(', ', array_keys($plan->branchEnvironments)).']'))
+                    ->line($this->branchesLine($plan)))
                 ->line('pull_request:'))
             ->lineWithBreak('permissions:')
             ->indent(2, fn (Lines $yaml) => $yaml->line('contents: read'))

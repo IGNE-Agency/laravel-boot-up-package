@@ -100,15 +100,16 @@ final class EnvFile
      */
     public function missing(array $keys): array
     {
-        return array_values(array_filter(
-            $keys,
-            fn (string $key): bool => ($this->get($key) ?? '') === '',
-        ));
+        return collect($keys)
+            ->filter(fn (string $key): bool => ($this->get($key) ?? '') === '')
+            ->values()
+            ->all();
     }
 
     private function apply(string $content, string $key, string $value): string
     {
-        $line = $key.'='.$this->quoteIfNeeded($value);
+        $quoted = $this->quoteIfNeeded($value);
+        $line = "{$key}={$quoted}";
 
         if (preg_match($this->keyPattern($key), $content) === 1) {
             // Callback replacement so values containing $ or \ stay literal.
@@ -129,7 +130,9 @@ final class EnvFile
 
     private function keyPattern(string $key): string
     {
-        return '/^'.preg_quote($key, '/').'[ \t]*=[ \t]*(.*)$/m';
+        $quotedKey = preg_quote($key, '/');
+
+        return "/^{$quotedKey}[ \\t]*=[ \\t]*(.*)$/m";
     }
 
     private function quoteIfNeeded(string $value): string
@@ -138,7 +141,9 @@ final class EnvFile
             return $value;
         }
 
-        return '"'.str_replace(['\\', '"'], ['\\\\', '\\"'], $value).'"';
+        $escaped = str_replace(['\\', '"'], ['\\\\', '\\"'], $value);
+
+        return "\"{$escaped}\"";
     }
 
     private function unquote(string $value): string

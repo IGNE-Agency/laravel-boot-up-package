@@ -29,13 +29,13 @@ final class CiScripts
      */
     public function files(PipelinePlan $plan): array
     {
-        return array_values(array_filter([
+        return collect([
             $this->bootstrap($plan),
             $this->lint($plan),
             $this->build($plan),
             $this->test($plan),
             $plan->host->deploys() ? $this->deployHook() : null,
-        ]));
+        ])->filter()->values()->all();
     }
 
     public function bootstrap(PipelinePlan $plan): GeneratedFile
@@ -87,10 +87,10 @@ final class CiScripts
 
         $this->frontendBuild($script, $plan);
 
-        $optimizing = implode('/', array_map(
-            fn (DeploymentEnvironment $environment) => $environment->value,
-            array_filter(DeploymentEnvironment::cases(), fn (DeploymentEnvironment $environment) => $environment->optimize()),
-        ));
+        $optimizing = collect(DeploymentEnvironment::cases())
+            ->filter(fn (DeploymentEnvironment $environment): bool => $environment->optimize())
+            ->map(fn (DeploymentEnvironment $environment): string => $environment->value)
+            ->implode('/');
 
         $script->blank()
             ->comment('`artisan optimize` mirrors what the generated deploy scripts run on')
@@ -188,10 +188,7 @@ final class CiScripts
      */
     public function branchList(PipelinePlan $plan): string
     {
-        $branches = array_keys($plan->branchEnvironments);
-        $last = array_pop($branches);
-
-        return $branches === [] ? (string) $last : implode(', ', $branches).' and '.$last;
+        return collect($plan->branchEnvironments)->keys()->join(', ', ' and ');
     }
 
     private function header(string $purpose, string ...$notes): Lines
@@ -278,11 +275,10 @@ final class CiScripts
         $packageManager = $plan->deployment->frontend ? '"$PM"' : $plan->deployment->packageManager->value;
 
         // Descriptions render as echo so they show up in the CI log output.
+        $escaped = str_replace(['\\', '"'], ['\\\\', '\"'], (string) $command->description);
+
         return Lines::make()
-            ->lineIf(
-                $command->description !== null,
-                'echo "'.str_replace(['\\', '"'], ['\\\\', '\"'], (string) $command->description).'"',
-            )
+            ->lineIf($command->description !== null, "echo \"{$escaped}\"")
             ->line($command->shellLine('php artisan', 'composer', $packageManager));
     }
 }

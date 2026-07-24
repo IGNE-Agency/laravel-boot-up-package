@@ -80,9 +80,10 @@ final class ProcessLedger
      */
     private function quarantine(): void
     {
-        rename($this->path, $this->path.'.corrupt');
+        rename($this->path, "{$this->path}.corrupt");
 
-        terminal()->warning('The boot-up process ledger was corrupt — moved to '.basename($this->path).'.corrupt and reset. Background processes it tracked may still be running.');
+        $file = basename($this->path);
+        terminal()->warning("The boot-up process ledger was corrupt — moved to {$file}.corrupt and reset. Background processes it tracked may still be running.");
     }
 
     /**

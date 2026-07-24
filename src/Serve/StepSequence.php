@@ -186,11 +186,7 @@ final readonly class StepSequence
         $options = $this->options;
 
         return match ($group) {
-            'prepare' => 'Prepare the project ('.implode(', ', array_values(array_filter([
-                isset($present[EnsureEnvFile::class]) ? '.env file' : null,
-                isset($present[EnsureLocalEnvironment::class]) ? 'local environment' : null,
-                isset($present[GenerateAppKey::class]) ? 'application key' : null,
-            ]))).')',
+            'prepare' => $this->prepareLine($present),
             'tools' => 'Check required tools are installed',
             'server' => $this->serverLabel !== null
                 ? "Start the {$this->serverLabel} development server"
@@ -210,18 +206,35 @@ final readonly class StepSequence
     /**
      * @param  array<string, true>  $present
      */
+    private function prepareLine(array $present): string
+    {
+        $parts = collect([
+            isset($present[EnsureEnvFile::class]) ? '.env file' : null,
+            isset($present[EnsureLocalEnvironment::class]) ? 'local environment' : null,
+            isset($present[GenerateAppKey::class]) ? 'application key' : null,
+        ])->filter()->implode(', ');
+
+        return "Prepare the project ({$parts})";
+    }
+
+    /**
+     * @param  array<string, true>  $present
+     */
     private function dependenciesLine(array $present): ?string
     {
-        $kinds = array_values(array_filter([
+        $kinds = collect([
             isset($present[InstallComposerDependencies::class]) ? 'Composer' : null,
             isset($present[InstallFrontendDependencies::class]) && $this->options->withAssets ? 'frontend' : null,
-        ]));
+        ])->filter();
 
-        if ($kinds === []) {
+        if ($kinds->isEmpty()) {
             return null;
         }
 
-        return ($this->options->update ? 'Update ' : 'Install ').implode(' and ', $kinds).' dependencies';
+        $verb = $this->options->update ? 'Update' : 'Install';
+        $list = $kinds->implode(' and ');
+
+        return "{$verb} {$list} dependencies";
     }
 
     private function migrationsLine(): ?string
@@ -242,18 +255,20 @@ final readonly class StepSequence
      */
     private function workersLine(array $present): ?string
     {
-        $services = array_values(array_filter([
+        $services = collect([
             isset($present[StartQueueWorker::class]) && $this->options->withQueue ? 'queue worker' : null,
             isset($present[StartHorizon::class]) ? 'Horizon' : null,
             isset($present[StartReverb::class]) ? 'Reverb' : null,
             isset($present[StartScheduler::class]) ? 'scheduler' : null,
-        ]));
+        ])->filter();
 
-        if ($services === []) {
+        if ($services->isEmpty()) {
             return null;
         }
 
-        return 'Start long-running services when enabled: '.implode(', ', $services);
+        $list = $services->implode(', ');
+
+        return "Start long-running services when enabled: {$list}";
     }
 
     /**
@@ -286,7 +301,23 @@ final readonly class StepSequence
             StartScheduler::class => 'Starting the scheduler',
             BuildOrWatchAssets::class => 'Building or watching assets',
             AnnounceApplication::class => 'Announcing the application',
-            default => Str::headline(class_basename($class)).($parameters === [] ? '' : ' ('.implode(', ', $parameters).')'),
+            default => self::fallbackLabel($class, $parameters),
         };
+    }
+
+    /**
+     * @param  list<string>  $parameters
+     */
+    private static function fallbackLabel(string $class, array $parameters): string
+    {
+        $label = Str::headline(class_basename($class));
+
+        if ($parameters === []) {
+            return $label;
+        }
+
+        $list = implode(', ', $parameters);
+
+        return "{$label} ({$list})";
     }
 }

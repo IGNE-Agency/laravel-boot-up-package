@@ -122,7 +122,7 @@ final class EnsureToolsReady implements Step
 
         terminal()->summary(
             'Dependencies ready',
-            array_map(fn (ToolOutcome $outcome): string => $outcome->describe(), $outcomes),
+            collect($outcomes)->map(fn (ToolOutcome $outcome): string => $outcome->describe())->all(),
             $this->footer($outcomes),
         );
     }
@@ -135,18 +135,22 @@ final class EnsureToolsReady implements Step
      */
     private function footer(array $outcomes): string
     {
-        $of = fn (ToolStatus $status): int => \count(array_filter($outcomes, fn (ToolOutcome $outcome): bool => $outcome->status === $status));
+        $of = fn (ToolStatus $status): int => collect($outcomes)
+            ->filter(fn (ToolOutcome $outcome): bool => $outcome->status === $status)
+            ->count();
 
         $unverified = $of(ToolStatus::Unverified);
 
         if ($unverified > 0) {
-            return sprintf('%d of %d dependencies could not be verified — boot continues (see warnings above).', $unverified, \count($outcomes));
+            $total = \count($outcomes);
+
+            return "{$unverified} of {$total} dependencies could not be verified — boot continues (see warnings above).";
         }
 
         $changed = $of(ToolStatus::Installed) + $of(ToolStatus::Updated);
 
         if ($changed > 0) {
-            return sprintf('All dependencies are ready — %d installed or updated during boot.', $changed);
+            return "All dependencies are ready — {$changed} installed or updated during boot.";
         }
 
         if ($of(ToolStatus::SkippedSelfUpdating) > 0) {

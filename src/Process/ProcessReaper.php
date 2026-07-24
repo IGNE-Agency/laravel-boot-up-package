@@ -189,10 +189,12 @@ final class ProcessReaper
             return [];
         }
 
-        return array_values(array_filter(
-            array_map(static fn (string $line): int => (int) trim($line), explode(PHP_EOL, $output)),
-            static fn (int $child): bool => $child > 0,
-        ));
+        return str($output)
+            ->explode(PHP_EOL)
+            ->map(fn (string $line): int => (int) trim($line))
+            ->filter(fn (int $child): bool => $child > 0)
+            ->values()
+            ->all();
     }
 
     private function signal(int $pid, string $signal): bool

@@ -18,7 +18,8 @@ final class AtomicFile
             mkdir($directory, 0755, true);
         }
 
-        $temporary = $path.'.tmp-'.bin2hex(random_bytes(4));
+        $suffix = bin2hex(random_bytes(4));
+        $temporary = "{$path}.tmp-{$suffix}";
 
         file_put_contents($temporary, $content);
         rename($temporary, $path);
