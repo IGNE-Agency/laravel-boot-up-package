@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Sail;
 
+use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
+use Igne\LaravelBootUp\Contracts\RequiresTools;
+use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\CommandRewrites;
 use Igne\LaravelBootUp\Data\ServeContext;
@@ -13,7 +16,7 @@ use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Contracts\Config\Repository;
 
-final class SailServer implements Server
+final class SailServer implements ProvidesDatabase, RequiresTools, RewritesCommands, Server
 {
     public function __construct(
         private readonly Docker $docker,
@@ -35,6 +38,9 @@ final class SailServer implements Server
         return 'Laravel Sail';
     }
 
+    /**
+     * @return list<Tool>
+     */
     public function requiredTools(): array
     {
         return [Tool::DOCKER];
@@ -49,19 +55,9 @@ final class SailServer implements Server
         );
     }
 
-    public function providesDatabase(): bool
-    {
-        return true;
-    }
-
     public function databaseReachableFromHost(): bool
     {
         return false;
-    }
-
-    public function stopImpact(): ?string
-    {
-        return null;
     }
 
     public function start(ServeContext $context): void

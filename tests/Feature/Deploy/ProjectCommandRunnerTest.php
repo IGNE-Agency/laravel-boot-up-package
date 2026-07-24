@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesProjectCommands;
+use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\CommandRewrites;
 use Igne\LaravelBootUp\Data\ProjectCommand;
@@ -11,7 +12,6 @@ use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Deploy\ProjectCommandRunner;
 use Igne\LaravelBootUp\Enums\PackageManager;
-use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Exceptions\DeployException;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
@@ -20,7 +20,6 @@ use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Services\Poller;
-use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -98,10 +97,8 @@ function bindProjectCommandProvider(): void
 
 function projectCommandServer(CommandRewrites $rewrites): Server
 {
-    return new class($rewrites) implements Server
+    return new class($rewrites) implements RewritesCommands, Server
     {
-        use DefaultServerCapabilities;
-
         public function __construct(private readonly CommandRewrites $rewrites) {}
 
         public function key(): string
@@ -112,11 +109,6 @@ function projectCommandServer(CommandRewrites $rewrites): Server
         public function label(): string
         {
             return 'Laravel Sail';
-        }
-
-        public function requiredTools(): array
-        {
-            return [Tool::DOCKER];
         }
 
         public function commandRewrites(): CommandRewrites

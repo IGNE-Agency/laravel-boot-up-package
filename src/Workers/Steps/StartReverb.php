@@ -47,7 +47,7 @@ final class StartReverb implements Step
 
         $command = $this->rewriter->rewrite(
             ShellCommand::make(['php', 'artisan', 'reverb:start'])->withTimeout(null),
-            $context->server?->commandRewrites(),
+            $context->commandRewrites(),
         );
 
         $record = $this->config->reverbRunIn === 'terminal'

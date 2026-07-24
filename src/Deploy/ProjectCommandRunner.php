@@ -62,7 +62,7 @@ final class ProjectCommandRunner
 
         $shell = $this->rewriter->rewrite(
             ShellCommand::make($this->tokensFor($command)),
-            $context->server?->commandRewrites(),
+            $context->commandRewrites(),
         );
 
         try {

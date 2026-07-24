@@ -5,52 +5,23 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Contracts;
 
 use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Enums\Tool;
-use Igne\LaravelBootUp\Data\CommandRewrites;
 
 /**
  * A development server driver. Identity is a string key so consuming
  * projects can register their own drivers via config('boot-up.server.drivers').
  *
+ * This is the core every driver has. Optional capabilities are their own
+ * contracts a driver adds only when they apply: ProvidesDatabase,
+ * RequiresTools, RewritesCommands and WarnsBeforeStop.
+ *
  * Constructors must be side-effect free: installation happens in the Tools
- * step (via requiredTools()), never in the driver, and never on teardown.
+ * step (via RequiresTools), never in the driver, and never on teardown.
  */
 interface Server
 {
     public function key(): string;
 
     public function label(): string;
-
-    /**
-     * Tools that must be present on the host before start() runs.
-     *
-     * @return list<Tool>
-     */
-    public function requiredTools(): array;
-
-    public function commandRewrites(): CommandRewrites;
-
-    /**
-     * Whether the server provisions the configured database itself
-     * (e.g. Sail's containers create it from .env), so the boot must
-     * not try to create one.
-     */
-    public function providesDatabase(): bool;
-
-    /**
-     * Whether the host can reach the configured database directly. When
-     * false, database checks and migrations run through the server's
-     * command rewrites instead of host-side PDO.
-     */
-    public function databaseReachableFromHost(): bool;
-
-    /**
-     * A warning shown before stop() when stopping reaches beyond this
-     * project (e.g. `herd stop` halts every Herd site on the machine).
-     * Null means stopping is project-scoped. A non-null impact is never
-     * acted on without an explicit confirmation.
-     */
-    public function stopImpact(): ?string;
 
     public function isRunning(): bool;
 

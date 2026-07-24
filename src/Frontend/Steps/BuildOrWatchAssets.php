@@ -108,6 +108,6 @@ final class BuildOrWatchAssets implements Step
      */
     private function rewrite(ServeContext $context, array $tokens): ShellCommand
     {
-        return $this->rewriter->rewrite(ShellCommand::make($tokens), $context->server?->commandRewrites());
+        return $this->rewriter->rewrite(ShellCommand::make($tokens), $context->commandRewrites());
     }
 }

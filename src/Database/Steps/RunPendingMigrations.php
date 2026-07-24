@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Database\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Config\DatabaseConfig;
+use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ShellCommand;
@@ -45,7 +46,7 @@ final class RunPendingMigrations implements Step
             $this->migrateFresh($context);
 
             return $next($context);
-        } elseif ($context->server !== null && ! $context->server->databaseReachableFromHost()) {
+        } elseif ($context->server instanceof ProvidesDatabase && ! $context->server->databaseReachableFromHost()) {
             $this->migrateThroughServer($context);
         } else {
             $this->migrateFromHost();
@@ -85,7 +86,7 @@ final class RunPendingMigrations implements Step
 
         $this->runner->run($this->rewriter->rewrite(
             ShellCommand::make($command),
-            $context->server?->commandRewrites(),
+            $context->commandRewrites(),
         ));
     }
 
@@ -99,7 +100,7 @@ final class RunPendingMigrations implements Step
 
         $this->runner->run($this->rewriter->rewrite(
             ShellCommand::make('php artisan db:seed'),
-            $context->server?->commandRewrites(),
+            $context->commandRewrites(),
         ));
     }
 
@@ -107,7 +108,7 @@ final class RunPendingMigrations implements Step
     {
         $status = $this->runner->runSilently($this->rewriter->rewrite(
             ShellCommand::make('php artisan migrate:status --pending'),
-            $context->server?->commandRewrites(),
+            $context->commandRewrites(),
         ));
 
         $output = trim($status->output());
@@ -122,7 +123,7 @@ final class RunPendingMigrations implements Step
 
         $this->runner->run($this->rewriter->rewrite(
             ShellCommand::make('php artisan migrate --force'),
-            $context->server?->commandRewrites(),
+            $context->commandRewrites(),
         ));
 
         return true;

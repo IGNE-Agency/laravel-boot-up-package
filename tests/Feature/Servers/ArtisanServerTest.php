@@ -3,6 +3,10 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\ServersConfig;
+use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
+use Igne\LaravelBootUp\Contracts\RequiresTools;
+use Igne\LaravelBootUp\Contracts\RewritesCommands;
+use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
@@ -138,15 +142,14 @@ test('start passes the configured host and port to artisan serve', function (): 
     ProcessFaker::assertRan('*php artisan serve --host=0.0.0.0 --port=8080*');
 });
 
-test('identity, tools and rewrites', function (): void {
+test('identity, with no optional capabilities', function (): void {
     ProcessFaker::fake();
     $server = artisanServer($this->ledger, $this->workDir);
-    $rewrites = $server->commandRewrites();
 
     expect($server->key())->toBe('laravel')
         ->and($server->label())->toBe('Laravel (php artisan serve)')
-        ->and($server->requiredTools())->toBe([])
-        ->and($rewrites->replaces)->toBe([])
-        ->and($rewrites->prefixes)->toBe([])
-        ->and($rewrites->prefix)->toBeNull();
+        ->and($server)->not->toBeInstanceOf(RequiresTools::class)
+        ->and($server)->not->toBeInstanceOf(RewritesCommands::class)
+        ->and($server)->not->toBeInstanceOf(ProvidesDatabase::class)
+        ->and($server)->not->toBeInstanceOf(WarnsBeforeStop::class);
 });

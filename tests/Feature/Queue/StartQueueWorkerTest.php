@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\QueueConfig;
+use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\CommandRewrites;
 use Igne\LaravelBootUp\Data\ProcessRecord;
@@ -15,7 +16,6 @@ use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Queue\Steps\StartQueueWorker;
 use Igne\LaravelBootUp\Services\Poller;
-use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -45,10 +45,8 @@ function bindQueueServices(string $dir, ?QueueConfig $config = null): ProcessLed
 
 function queueSailServer(): Server
 {
-    return new class implements Server
+    return new class implements RewritesCommands, Server
     {
-        use DefaultServerCapabilities;
-
         public function key(): string
         {
             return 'sail';
@@ -57,11 +55,6 @@ function queueSailServer(): Server
         public function label(): string
         {
             return 'Laravel Sail';
-        }
-
-        public function requiredTools(): array
-        {
-            return [];
         }
 
         public function commandRewrites(): CommandRewrites

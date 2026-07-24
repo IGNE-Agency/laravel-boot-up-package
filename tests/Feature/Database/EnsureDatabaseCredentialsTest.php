@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Contracts\Server;
-use Igne\LaravelBootUp\Data\CommandRewrites;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseCredentials;
 use Igne\LaravelBootUp\Environment\EnvFile;
-use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Illuminate\Support\Str;
 use Laravel\Prompts\Key;
 use Laravel\Prompts\Prompt;
@@ -28,8 +26,6 @@ beforeEach(function (): void {
 
     $this->sailServer = new class implements Server
     {
-        use DefaultServerCapabilities;
-
         public function key(): string
         {
             return 'sail';
@@ -38,16 +34,6 @@ beforeEach(function (): void {
         public function label(): string
         {
             return 'Laravel Sail';
-        }
-
-        public function requiredTools(): array
-        {
-            return [];
-        }
-
-        public function commandRewrites(): CommandRewrites
-        {
-            return CommandRewrites::none();
         }
 
         public function isRunning(): bool

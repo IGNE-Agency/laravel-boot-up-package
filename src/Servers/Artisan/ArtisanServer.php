@@ -6,11 +6,9 @@ namespace Igne\LaravelBootUp\Servers\Artisan;
 
 use Igne\LaravelBootUp\Config\ServersConfig;
 use Igne\LaravelBootUp\Contracts\Server;
-use Igne\LaravelBootUp\Data\CommandRewrites;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ShellCommand;
-use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -38,34 +36,6 @@ final class ArtisanServer implements Server
     public function label(): string
     {
         return 'Laravel (php artisan serve)';
-    }
-
-    /**
-     * @return list<Tool>
-     */
-    public function requiredTools(): array
-    {
-        return [];
-    }
-
-    public function commandRewrites(): CommandRewrites
-    {
-        return CommandRewrites::none();
-    }
-
-    public function providesDatabase(): bool
-    {
-        return false;
-    }
-
-    public function databaseReachableFromHost(): bool
-    {
-        return true;
-    }
-
-    public function stopImpact(): ?string
-    {
-        return null;
     }
 
     public function start(ServeContext $context): void

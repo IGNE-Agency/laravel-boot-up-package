@@ -73,7 +73,7 @@ final class StartQueueWorker implements Step
             ShellCommand::make(['php', 'artisan', 'queue:work', $connection])
                 ->withOptions($this->config->flags)
                 ->withTimeout(null),
-            $context->server?->commandRewrites(),
+            $context->commandRewrites(),
         );
 
         $record = $this->config->runIn === 'terminal'

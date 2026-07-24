@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Database\Steps;
 
 use Closure;
+use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ShellCommand;
@@ -31,7 +32,7 @@ final class VerifyDatabaseConnection implements Step
 
     public function handle(ServeContext $context, Closure $next): mixed
     {
-        if ($context->server !== null && ! $context->server->databaseReachableFromHost()) {
+        if ($context->server instanceof ProvidesDatabase && ! $context->server->databaseReachableFromHost()) {
             $this->verifyThroughServer($context);
         } else {
             $this->verifyFromHost();
@@ -46,7 +47,7 @@ final class VerifyDatabaseConnection implements Step
     {
         $result = $this->runner->runSilently($this->rewriter->rewrite(
             ShellCommand::make('php artisan migrate:status'),
-            $context->server?->commandRewrites(),
+            $context->commandRewrites(),
         ));
 
         if (! $result->successful()) {

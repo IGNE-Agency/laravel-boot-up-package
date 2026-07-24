@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Database\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Config\DatabaseConfig;
+use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Database\DatabaseCreator;
@@ -31,7 +32,7 @@ final class EnsureDatabaseExists implements Step
             return $next($context);
         }
 
-        if ($context->server?->providesDatabase() === true) {
+        if ($context->server instanceof ProvidesDatabase) {
             terminal()->note("{$context->server->label()} provisions the database itself — skipping creation.");
 
             return $next($context);

@@ -4,22 +4,24 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\ServersConfig;
 use Igne\LaravelBootUp\Contracts\Server;
-use Igne\LaravelBootUp\Data\CommandRewrites;
+use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Servers\StopServerPrompt;
-use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
+use Igne\LaravelBootUp\Tests\Feature\Serve\Fixtures\RecordingServer;
 use Laravel\Prompts\Key;
 use Laravel\Prompts\Prompt;
 
 function stopPromptServer(?string $impact = null): Server
 {
-    return new class($impact) implements Server
+    if ($impact === null) {
+        return new RecordingServer;
+    }
+
+    return new class($impact) implements Server, WarnsBeforeStop
     {
-        use DefaultServerCapabilities;
+        public function __construct(private readonly string $impact) {}
 
-        public function __construct(private readonly ?string $impact = null) {}
-
-        public function stopImpact(): ?string
+        public function stopImpact(): string
         {
             return $this->impact;
         }
@@ -32,16 +34,6 @@ function stopPromptServer(?string $impact = null): Server
         public function label(): string
         {
             return 'Double Server';
-        }
-
-        public function requiredTools(): array
-        {
-            return [];
-        }
-
-        public function commandRewrites(): CommandRewrites
-        {
-            return CommandRewrites::none();
         }
 
         public function isRunning(): bool

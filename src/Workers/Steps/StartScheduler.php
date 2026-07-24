@@ -46,7 +46,7 @@ final class StartScheduler implements Step
 
         $command = $this->rewriter->rewrite(
             ShellCommand::make(['php', 'artisan', 'schedule:work'])->withTimeout(null),
-            $context->server?->commandRewrites(),
+            $context->commandRewrites(),
         );
 
         $record = $this->config->schedulerRunIn === 'terminal'

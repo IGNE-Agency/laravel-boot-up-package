@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Tools\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Config\ToolsConfig;
+use Igne\LaravelBootUp\Contracts\RequiresTools;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ToolOutcome;
@@ -47,7 +48,9 @@ final class EnsureToolsReady implements Step
             $covered[$id] = true;
         }
 
-        foreach ($context->server?->requiredTools() ?? [] as $tool) {
+        $required = $context->server instanceof RequiresTools ? $context->server->requiredTools() : [];
+
+        foreach ($required as $tool) {
             $id = $tool instanceof Tool ? $tool->value : $tool;
 
             if (isset($covered[$id])) {
@@ -88,7 +91,7 @@ final class EnsureToolsReady implements Step
             return null;
         }
 
-        if ($context->server?->commandRewrites()->wraps($manager->binary()) === true) {
+        if ($context->commandRewrites()?->wraps($manager->binary()) === true) {
             return null;
         }
 

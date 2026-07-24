@@ -48,7 +48,7 @@ final class StartHorizon implements Step
 
         $command = $this->rewriter->rewrite(
             ShellCommand::make(['php', 'artisan', 'horizon'])->withTimeout(null),
-            $context->server?->commandRewrites(),
+            $context->commandRewrites(),
         );
 
         $record = $this->config->horizonRunIn === 'terminal'

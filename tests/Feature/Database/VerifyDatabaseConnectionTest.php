@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
+use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\CommandRewrites;
 use Igne\LaravelBootUp\Data\ServeContext;
@@ -13,7 +15,6 @@ use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Services\Poller;
-use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -38,10 +39,8 @@ beforeEach(function (): void {
         config(),
     );
 
-    $this->sailServer = new class implements Server
+    $this->sailServer = new class implements ProvidesDatabase, RewritesCommands, Server
     {
-        use DefaultServerCapabilities;
-
         public function databaseReachableFromHost(): bool
         {
             return false;
@@ -55,11 +54,6 @@ beforeEach(function (): void {
         public function label(): string
         {
             return 'Laravel Sail';
-        }
-
-        public function requiredTools(): array
-        {
-            return [];
         }
 
         public function commandRewrites(): CommandRewrites

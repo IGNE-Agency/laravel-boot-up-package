@@ -6,11 +6,12 @@ namespace Igne\LaravelBootUp\Servers;
 
 use Igne\LaravelBootUp\Config\ServersConfig;
 use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
 
 /**
  * Asks (config-gated) whether shutdown should stop a server that
  * app:serve itself started. A server whose stop reaches beyond this
- * project (stopImpact()) is never stopped without an explicit yes.
+ * project (WarnsBeforeStop) is never stopped without an explicit yes.
  */
 final class StopServerPrompt
 {
@@ -18,7 +19,7 @@ final class StopServerPrompt
 
     public function shouldStop(Server $server, bool $startedByUs = true): bool
     {
-        $impact = $server->stopImpact();
+        $impact = $server instanceof WarnsBeforeStop ? $server->stopImpact() : null;
 
         // A server boot-up did not start is never stopped by default; it can
         // only be stopped with an explicit yes.

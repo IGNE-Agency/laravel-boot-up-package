@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures;
 
 use Igne\LaravelBootUp\Contracts\Server;
-use Igne\LaravelBootUp\Data\CommandRewrites;
 use Igne\LaravelBootUp\Data\ServeContext;
 
 /**
- * A project-registered custom driver, as the extension API allows.
+ * A project-registered custom driver, as the extension API allows: the
+ * core Server contract is all a minimal driver needs.
  */
 final class ValetServer implements Server
 {
@@ -21,31 +21,6 @@ final class ValetServer implements Server
     public function label(): string
     {
         return 'Laravel Valet';
-    }
-
-    public function requiredTools(): array
-    {
-        return [];
-    }
-
-    public function commandRewrites(): CommandRewrites
-    {
-        return CommandRewrites::none();
-    }
-
-    public function providesDatabase(): bool
-    {
-        return false;
-    }
-
-    public function databaseReachableFromHost(): bool
-    {
-        return true;
-    }
-
-    public function stopImpact(): ?string
-    {
-        return null;
     }
 
     public function isRunning(): bool

@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Servers\Herd;
 
 use Igne\LaravelBootUp\Config\ServersConfig;
+use Igne\LaravelBootUp\Contracts\RequiresTools;
+use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
 use Igne\LaravelBootUp\Data\CommandRewrites;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ShellCommand;
@@ -13,7 +16,7 @@ use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 
-final class HerdServer implements Server
+final class HerdServer implements RequiresTools, RewritesCommands, Server, WarnsBeforeStop
 {
     public function __construct(
         private readonly ProcessRunner $runner,
@@ -33,6 +36,9 @@ final class HerdServer implements Server
         return 'Laravel Herd';
     }
 
+    /**
+     * @return list<Tool>
+     */
     public function requiredTools(): array
     {
         return [Tool::HERD];
@@ -46,17 +52,7 @@ final class HerdServer implements Server
         );
     }
 
-    public function providesDatabase(): bool
-    {
-        return false;
-    }
-
-    public function databaseReachableFromHost(): bool
-    {
-        return true;
-    }
-
-    public function stopImpact(): ?string
+    public function stopImpact(): string
     {
         return '`herd stop` halts ALL Herd sites on this machine, not just this project.';
     }
