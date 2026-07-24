@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
+use Igne\LaravelBootUp\Concerns\SharesStandardPipelineShape;
 use Igne\LaravelBootUp\Contracts\PipelineGenerator;
 use Igne\LaravelBootUp\Data\GeneratedFile;
 use Igne\LaravelBootUp\Data\Lines;
@@ -19,6 +20,8 @@ use Igne\LaravelBootUp\Data\PipelineSecret;
  */
 final class GitHubActionsGenerator implements PipelineGenerator
 {
+    use SharesStandardPipelineShape;
+
     public function __construct(private readonly CiScripts $scripts) {}
 
     public function key(): string
@@ -29,16 +32,6 @@ final class GitHubActionsGenerator implements PipelineGenerator
     public function label(): string
     {
         return 'GitHub Actions';
-    }
-
-    public function anchors(PipelinePlan $plan): array
-    {
-        return array_values(array_filter([
-            $plan->pint ? 'lint' : null,
-            'build',
-            'test',
-            $plan->host->deploys() ? 'deploy' : null,
-        ]));
     }
 
     public function files(PipelinePlan $plan): array
@@ -113,24 +106,14 @@ final class GitHubActionsGenerator implements PipelineGenerator
      *
      * @return list<string>
      */
-    private function deployHookDetails(PipelinePlan $plan): array
+    protected function deployHookHeader(PipelinePlan $plan): array
     {
-        $environments = array_values($plan->branchEnvironments);
+        $environments = implode(', ', array_values($plan->branchEnvironments));
 
-        $details = [
-            'Configure a DEPLOY_HOOK for EACH environment: '.implode(', ', $environments).'.',
+        return [
+            "Configure a DEPLOY_HOOK for EACH environment: {$environments}.",
             'Add under, in your GitHub repository: Settings → Environments → <environment> → Environment secrets (create each environment first).',
         ];
-
-        foreach ($plan->branchEnvironments as $branch => $environment) {
-            $details[] = "{$environment} (deploys on push to {$branch}):";
-
-            foreach ($plan->host->hookValueGuidance($environment) as $line) {
-                $details[] = '  '.$line;
-            }
-        }
-
-        return $details;
     }
 
     private function workflow(PipelinePlan $plan): string

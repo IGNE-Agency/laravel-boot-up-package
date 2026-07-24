@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
+use Igne\LaravelBootUp\Concerns\SharesStandardPipelineShape;
 use Igne\LaravelBootUp\Contracts\PipelineGenerator;
 use Igne\LaravelBootUp\Data\GeneratedFile;
 use Igne\LaravelBootUp\Data\Lines;
@@ -19,6 +20,8 @@ use Igne\LaravelBootUp\Data\PipelineSecret;
  */
 final class BitbucketPipelinesGenerator implements PipelineGenerator
 {
+    use SharesStandardPipelineShape;
+
     public function __construct(private readonly CiScripts $scripts) {}
 
     public function key(): string
@@ -29,16 +32,6 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
     public function label(): string
     {
         return 'Bitbucket Pipelines';
-    }
-
-    public function anchors(PipelinePlan $plan): array
-    {
-        return array_values(array_filter([
-            $plan->pint ? 'lint' : null,
-            'build',
-            'test',
-            $plan->host->deploys() ? 'deploy' : null,
-        ]));
     }
 
     public function files(PipelinePlan $plan): array
@@ -112,24 +105,14 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
      *
      * @return list<string>
      */
-    private function deployHookDetails(PipelinePlan $plan): array
+    protected function deployHookHeader(PipelinePlan $plan): array
     {
-        $environments = array_values($plan->branchEnvironments);
+        $environments = implode(', ', array_values($plan->branchEnvironments));
 
-        $details = [
-            'Configure a DEPLOY_HOOK for EACH deployment environment: '.implode(', ', $environments).'.',
+        return [
+            "Configure a DEPLOY_HOOK for EACH deployment environment: {$environments}.",
             'Add under, in your Bitbucket repository: Repository settings → Deployments → <environment> → Variables (mark as secured; create each environment first).',
         ];
-
-        foreach ($plan->branchEnvironments as $branch => $environment) {
-            $details[] = "{$environment} (deploys on push to {$branch}):";
-
-            foreach ($plan->host->hookValueGuidance($environment) as $line) {
-                $details[] = '  '.$line;
-            }
-        }
-
-        return $details;
     }
 
     private function pipeline(PipelinePlan $plan): string
