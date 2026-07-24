@@ -19,8 +19,6 @@ use Illuminate\Pipeline\Pipeline;
 
 final class ServeCommand extends BootUpCommand implements Isolatable
 {
-    protected bool $requiresUnix = true;
-
     private ?StageReporter $reporter = null;
 
     protected $signature = 'app:serve {server? : The development server to use (herd, sail, laravel, or any driver registered in boot-up.server.drivers)}
@@ -34,7 +32,12 @@ final class ServeCommand extends BootUpCommand implements Isolatable
 
     protected $description = 'Boot everything the application needs and serve it locally';
 
-    public function perform(
+    protected function requiresUnix(): bool
+    {
+        return true;
+    }
+
+    public function handle(
         ServerSelector $selector,
         ServeConfig $config,
         ShutdownRunner $shutdown,
@@ -52,16 +55,14 @@ final class ServeCommand extends BootUpCommand implements Isolatable
 
         $reaper->prune();
 
-        terminal()->intro('Booting the application...');
+        $this->announce('Booting the application...');
 
         $context = new ServeContext($this->serveOptions(), $selector->select($this->argument('server')));
 
         $plan = StepSequence::for($config->serveSteps, $context->options, $context->server?->label());
 
         if (! $this->confirmPlan($plan, 'app:serve', $config->autoAccept)) {
-            terminal()->note('Aborted — nothing was changed.');
-
-            return self::SUCCESS;
+            return $this->skip('Aborted — nothing was changed.');
         }
 
         $this->reporter = $reporter;
@@ -79,9 +80,8 @@ final class ServeCommand extends BootUpCommand implements Isolatable
         $pipeline->send($context)->through($pipes)->thenReturn();
 
         $reporter->finish();
-        terminal()->outro('Application ready.');
 
-        return self::SUCCESS;
+        return $this->done('Application ready.');
     }
 
     protected function onFailure(): void

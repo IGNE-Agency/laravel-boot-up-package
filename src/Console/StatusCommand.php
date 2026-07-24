@@ -20,28 +20,29 @@ use Throwable;
  */
 final class StatusCommand extends BootUpCommand
 {
-    protected bool $requiresUnix = true;
-
     protected $signature = 'app:status';
 
     protected $description = 'Show the active server and tracked background processes';
 
-    public function perform(
+    protected function requiresUnix(): bool
+    {
+        return true;
+    }
+
+    public function handle(
         ActiveServerStore $store,
         ProcessLedger $ledger,
         ProcessReaper $reaper,
         ServerSelector $selector,
         ServeProcessProbe $probe,
     ): int {
-        terminal()->intro('Application status');
+        $this->announce('Application status');
 
         $active = $store->current();
         $records = $ledger->all();
 
         if ($active === null && $records->isEmpty()) {
-            terminal()->outro('Nothing is running.');
-
-            return self::SUCCESS;
+            return $this->done('Nothing is running.');
         }
 
         if ($active !== null) {
@@ -54,9 +55,7 @@ final class StatusCommand extends BootUpCommand
             terminal()->info("{$record->label} (pid {$record->pid}): {$state} — {$record->outputLocation()}");
         });
 
-        terminal()->outro('Stop everything with: php artisan app:down');
-
-        return self::SUCCESS;
+        return $this->done('Stop everything with: php artisan app:down');
     }
 
     private function describeServer(ActiveServerRecord $active, ServerSelector $selector, ServeProcessProbe $probe): void

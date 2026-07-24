@@ -37,6 +37,7 @@ use Igne\LaravelBootUp\Serve\ShutdownRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Herd\HerdServices;
 use Igne\LaravelBootUp\Servers\Herd\HerdSites;
+use Igne\LaravelBootUp\Services\GeneratedFilePublisher;
 use Igne\LaravelBootUp\Services\LockfileConflictDetector;
 use Igne\LaravelBootUp\Services\Platform;
 use Igne\LaravelBootUp\Services\Poller;
@@ -129,6 +130,10 @@ final class BootUpServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(ShellProfile::class, fn () => new ShellProfile);
+
+        $this->app->singleton(GeneratedFilePublisher::class, fn (Application $app) => new GeneratedFilePublisher(
+            $app->basePath(),
+        ));
 
         $this->app->singleton(PackageJson::class, fn (Application $app) => new PackageJson(
             $app->basePath('package.json'),
