@@ -7,6 +7,7 @@ use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Exceptions\BootUpException;
 use Igne\LaravelBootUp\Services\Terminal;
 use Igne\LaravelBootUp\Services\TrackedProgress;
+use Igne\LaravelBootUp\Tools\Installers\ToolInstaller;
 
 arch('all package code uses strict types')
     ->expect('Igne\LaravelBootUp')
@@ -16,7 +17,7 @@ arch('every class is final except the shared exception and command bases')
     ->expect('Igne\LaravelBootUp')
     ->classes()
     ->toBeFinal()
-    ->ignoring([BootUpException::class, BootUpCommand::class]);
+    ->ignoring([BootUpException::class, BootUpCommand::class, ToolInstaller::class]);
 
 arch('no raw process primitives anywhere — the ProcessRunner is the only OS seam')
     ->expect('Igne\LaravelBootUp')

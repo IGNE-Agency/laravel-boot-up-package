@@ -10,9 +10,7 @@ use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\RegistryCustomToolSpy;
 use Igne\LaravelBootUp\Tools\Installers\ComposerInstaller;
-use Igne\LaravelBootUp\Tools\Installers\DockerInstaller;
-use Igne\LaravelBootUp\Tools\Installers\HerdInstaller;
-use Igne\LaravelBootUp\Tools\Installers\NodeInstaller;
+use Igne\LaravelBootUp\Tools\Installers\HomebrewInstaller;
 use Igne\LaravelBootUp\Tools\Installers\PackageManagerInstaller;
 use Igne\LaravelBootUp\Tools\Installers\PhpInstaller;
 use Igne\LaravelBootUp\Tools\ToolRegistry;
@@ -53,10 +51,10 @@ test('resolves the built-in installer for each known tool id', function (string 
         ->and($installer->id())->toBe($id);
 })->with([
     'php' => ['php', PhpInstaller::class],
-    'node' => ['node', NodeInstaller::class],
+    'node' => ['node', HomebrewInstaller::class],
     'composer' => ['composer', ComposerInstaller::class],
-    'docker' => ['docker', DockerInstaller::class],
-    'herd' => ['herd', HerdInstaller::class],
+    'docker' => ['docker', HomebrewInstaller::class],
+    'herd' => ['herd', HomebrewInstaller::class],
     'bun' => ['bun', PackageManagerInstaller::class],
     'yarn' => ['yarn', PackageManagerInstaller::class],
     'npm' => ['npm', PackageManagerInstaller::class],

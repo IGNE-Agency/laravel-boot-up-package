@@ -4,46 +4,25 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Tools\Installers;
 
-use Igne\LaravelBootUp\Contracts\InstallsTool;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\VersionConstraint;
 use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Tools\ToolInspector;
 
-final class PhpInstaller implements InstallsTool
+final class PhpInstaller extends ToolInstaller
 {
-    private const Tool TOOL = Tool::PHP;
-
     public function __construct(
-        private readonly ToolInspector $inspector,
+        ToolInspector $inspector,
         private readonly Homebrew $homebrew,
         private readonly ProcessRunner $processes,
-    ) {}
-
-    public function id(): string
-    {
-        return self::TOOL->value;
+    ) {
+        parent::__construct($inspector);
     }
 
-    public function label(): string
+    protected function tool(): Tool
     {
-        return self::TOOL->label();
-    }
-
-    public function updatesAutomatically(): bool
-    {
-        return self::TOOL->updatesAutomatically();
-    }
-
-    public function isInstalled(): bool
-    {
-        return $this->inspector->isInstalled(self::TOOL);
-    }
-
-    public function installedVersion(): ?string
-    {
-        return $this->inspector->installedVersion(self::TOOL);
+        return Tool::PHP;
     }
 
     public function install(VersionConstraint $constraint): void
