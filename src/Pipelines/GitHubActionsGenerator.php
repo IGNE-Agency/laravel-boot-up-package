@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
-use Igne\LaravelBootUp\Support\Lines;
+use Igne\LaravelBootUp\Contracts\PipelineGenerator;
+use Igne\LaravelBootUp\Data\GeneratedFile;
+use Igne\LaravelBootUp\Data\Lines;
+use Igne\LaravelBootUp\Data\PipelinePlan;
+use Igne\LaravelBootUp\Data\PipelineSecret;
 
 /**
  * Renders a GitHub Actions workflow: lint, build and test run as parallel

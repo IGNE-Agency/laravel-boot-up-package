@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Tools;
 
+use Igne\LaravelBootUp\Config\ToolsConfig;
+use Igne\LaravelBootUp\Contracts\InstallsTool;
+use Igne\LaravelBootUp\Enums\Tool;
+use Igne\LaravelBootUp\Exceptions\ToolException;
 use Igne\LaravelBootUp\Tools\Installers\ComposerInstaller;
 use Igne\LaravelBootUp\Tools\Installers\DockerInstaller;
 use Igne\LaravelBootUp\Tools\Installers\HerdInstaller;

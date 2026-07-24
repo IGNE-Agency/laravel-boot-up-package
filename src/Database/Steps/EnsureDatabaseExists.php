@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Database\Steps;
 
 use Closure;
-use Igne\LaravelBootUp\Database\DatabaseConfig;
+use Igne\LaravelBootUp\Config\DatabaseConfig;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Database\DatabaseCreator;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
 use Illuminate\Contracts\Config\Repository;
 
 /**

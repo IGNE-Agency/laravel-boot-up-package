@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Servers\ActiveServerRecord;
+use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 
 beforeEach(function (): void {

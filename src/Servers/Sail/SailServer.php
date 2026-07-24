@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Sail;
 
+use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\CommandRewrites;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Environment\EnvFile;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Servers\CommandRewrites;
-use Igne\LaravelBootUp\Servers\Server;
-use Igne\LaravelBootUp\Servers\ServerException;
-use Igne\LaravelBootUp\Support\Poller;
-use Igne\LaravelBootUp\Tools\Tool;
+use Igne\LaravelBootUp\Exceptions\ServerException;
+use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Contracts\Config\Repository;
 
 final class SailServer implements Server

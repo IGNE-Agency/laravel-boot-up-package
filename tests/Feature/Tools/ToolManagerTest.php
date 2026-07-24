@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Tools\InstallsTool;
-use Igne\LaravelBootUp\Tools\ToolException;
+use Igne\LaravelBootUp\Config\ToolsConfig;
+use Igne\LaravelBootUp\Contracts\InstallsTool;
+use Igne\LaravelBootUp\Data\VersionConstraint;
+use Igne\LaravelBootUp\Enums\ToolStatus;
+use Igne\LaravelBootUp\Exceptions\ToolException;
 use Igne\LaravelBootUp\Tools\ToolManager;
-use Igne\LaravelBootUp\Tools\ToolsConfig;
-use Igne\LaravelBootUp\Tools\ToolStatus;
-use Igne\LaravelBootUp\Tools\VersionConstraint;
 use Laravel\Prompts\Key;
 use Laravel\Prompts\Prompt;
 

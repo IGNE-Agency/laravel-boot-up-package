@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers;
 
-use Igne\LaravelBootUp\Support\AtomicFile;
+use Igne\LaravelBootUp\Data\ActiveServerRecord;
+use Igne\LaravelBootUp\Services\AtomicFile;
 
 /**
  * Persists the active-server record across the app:serve / app:down

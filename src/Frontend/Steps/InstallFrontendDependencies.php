@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Frontend\Steps;
 
 use Closure;
-use Igne\LaravelBootUp\Frontend\FrontendException;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Exceptions\FrontendException;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
-use Igne\LaravelBootUp\Support\LockfileConflictDetector;
+use Igne\LaravelBootUp\Services\LockfileConflictDetector;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 
 final class InstallFrontendDependencies implements Step

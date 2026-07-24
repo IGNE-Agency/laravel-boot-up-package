@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers;
 
-use Igne\LaravelBootUp\Process\ShellCommand;
+use Igne\LaravelBootUp\Data\CommandRewrites;
+use Igne\LaravelBootUp\Data\ShellCommand;
 
 /**
  * Applies a server's rewrite rules to a command, e.g. under Sail

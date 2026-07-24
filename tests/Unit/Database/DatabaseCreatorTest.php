@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Database\DatabaseCreator;
-use Igne\LaravelBootUp\Database\DatabaseException;
+use Igne\LaravelBootUp\Exceptions\DatabaseException;
 
 beforeEach(function (): void {
     $this->dir = sys_get_temp_dir().'/boot-up-db-creator-'.bin2hex(random_bytes(4));

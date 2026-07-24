@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Frontend\Steps;
 
 use Closure;
-use Igne\LaravelBootUp\Frontend\FrontendConfig;
+use Igne\LaravelBootUp\Config\FrontendConfig;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Frontend\PackageJson;
-use Igne\LaravelBootUp\Frontend\PackageManager;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
-use Igne\LaravelBootUp\Process\ProcessRecord;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 
 final class BuildOrWatchAssets implements Step

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
-use Igne\LaravelBootUp\Servers\ActiveServerRecord;
+use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\ActiveServerRecord;
+use Igne\LaravelBootUp\Data\CommandRewrites;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
-use Igne\LaravelBootUp\Servers\CommandRewrites;
-use Igne\LaravelBootUp\Servers\Server;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Laravel\Prompts\Prompt;

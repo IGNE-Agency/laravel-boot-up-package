@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootUp\Serve\ServeConfig;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Config\ServeConfig;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Serve\StageReporter;
 use Igne\LaravelBootUp\Serve\StepSequence;
 use Illuminate\Contracts\Console\Isolatable;

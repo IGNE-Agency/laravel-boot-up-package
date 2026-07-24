@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Environment\Steps;
 
 use Closure;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Environment\EnvFile;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
 
 final class EnsureEnvFile implements Step
 {

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Serve;
 
-use Igne\LaravelBootUp\Support\TrackedProgress;
+use Igne\LaravelBootUp\Data\StepDescriptor;
+use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Services\TrackedProgress;
 use Illuminate\Contracts\Container\Container;
 
 /**

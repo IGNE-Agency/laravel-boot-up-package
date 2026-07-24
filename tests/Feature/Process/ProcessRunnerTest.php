@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Contracts\TerminalLauncher;
+use Igne\LaravelBootUp\Data\ShellCommand;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
 use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Process\Terminal\TerminalLauncher;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -98,7 +98,7 @@ test('start throws when no pid is echoed back', function (): void {
     Process::fake(['*' => Process::result(output: '')]);
 
     makeRunner($this->ledger, $this->workDir)->start(ShellCommand::make('php artisan serve'), 'artisan-serve');
-})->throws(Igne\LaravelBootUp\Process\ProcessException::class);
+})->throws(Igne\LaravelBootUp\Exceptions\ProcessException::class);
 
 test('startInTerminal degrades to a tracked background start when no terminal exists', function (): void {
     Process::fake(['*' => Process::result(output: "77\n")]);

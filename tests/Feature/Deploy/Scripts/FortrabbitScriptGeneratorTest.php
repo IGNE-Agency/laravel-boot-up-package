@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Deploy\ProjectCommand;
-use Igne\LaravelBootUp\Deploy\Scripts\DeploymentEnvironment;
-use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlan;
+use Igne\LaravelBootUp\Data\DeploymentPlan;
+use Igne\LaravelBootUp\Data\ProjectCommand;
 use Igne\LaravelBootUp\Deploy\Scripts\FortrabbitScriptGenerator;
-use Igne\LaravelBootUp\Frontend\PackageManager;
+use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
+use Igne\LaravelBootUp\Enums\PackageManager;
 
 function fortrabbitPlan(array $overrides = []): DeploymentPlan
 {

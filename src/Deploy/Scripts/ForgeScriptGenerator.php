@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Deploy\Scripts;
 
-use Igne\LaravelBootUp\Deploy\ProjectCommand;
-use Igne\LaravelBootUp\Support\Lines;
+use Igne\LaravelBootUp\Contracts\ScriptGenerator;
+use Igne\LaravelBootUp\Data\DeploymentPlan;
+use Igne\LaravelBootUp\Data\Lines;
+use Igne\LaravelBootUp\Data\ProjectCommand;
 
 /**
  * Renders a Laravel Forge deployment script: the zero-downtime release

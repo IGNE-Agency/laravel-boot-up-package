@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Deploy\ProjectCommand;
-use Igne\LaravelBootUp\Deploy\ProvidesProjectCommands;
+use Igne\LaravelBootUp\Contracts\ProvidesProjectCommands;
+use Igne\LaravelBootUp\Data\ProjectCommand;
 use Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\StaticScriptGenerator;
 
 test('exports a forge production script from the package config', function (): void {

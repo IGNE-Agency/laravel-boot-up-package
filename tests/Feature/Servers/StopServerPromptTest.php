@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Servers\CommandRewrites;
-use Igne\LaravelBootUp\Servers\Server;
-use Igne\LaravelBootUp\Servers\ServersConfig;
+use Igne\LaravelBootUp\Config\ServersConfig;
+use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\CommandRewrites;
+use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Servers\StopServerPrompt;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Laravel\Prompts\Key;

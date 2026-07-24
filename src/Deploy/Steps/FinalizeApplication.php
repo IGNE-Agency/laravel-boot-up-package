@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Deploy\Steps;
 
 use Closure;
-use Igne\LaravelBootUp\Deploy\DeployConfig;
+use Igne\LaravelBootUp\Config\DeployConfig;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ShellCommand;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
 
 /**
  * Runs the configured boot-up.deploy.finalize artisan commands host-side

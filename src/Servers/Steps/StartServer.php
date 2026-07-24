@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Servers\Steps;
 
 use Closure;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
-use Igne\LaravelBootUp\Servers\ActiveServerRecord;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\ActiveServerRecord;
+use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 
 /**

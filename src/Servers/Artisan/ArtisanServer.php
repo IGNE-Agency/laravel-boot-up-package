@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Artisan;
 
+use Igne\LaravelBootUp\Config\ServersConfig;
+use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\CommandRewrites;
+use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
-use Igne\LaravelBootUp\Process\ProcessRecord;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Servers\CommandRewrites;
-use Igne\LaravelBootUp\Servers\Server;
-use Igne\LaravelBootUp\Servers\ServersConfig;
-use Igne\LaravelBootUp\Tools\Tool;
 
 /**
  * Serves via a tracked, detached `php artisan serve` process. Key stays

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Frontend;
 
+use Igne\LaravelBootUp\Enums\PackageManager;
+
 final class PackageJson
 {
     public function __construct(private readonly string $path) {}

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Sail;
 
-use Igne\LaravelBootUp\Environment\EnvironmentConfig;
+use Igne\LaravelBootUp\Config\EnvironmentConfig;
 use Igne\LaravelBootUp\Environment\ShellProfile;
 
 /**

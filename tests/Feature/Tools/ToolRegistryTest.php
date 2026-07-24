@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Config\ToolsConfig;
+use Igne\LaravelBootUp\Exceptions\ToolException;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\RegistryCustomToolSpy;
 use Igne\LaravelBootUp\Tools\Installers\ComposerInstaller;
 use Igne\LaravelBootUp\Tools\Installers\DockerInstaller;
@@ -13,9 +15,7 @@ use Igne\LaravelBootUp\Tools\Installers\HerdInstaller;
 use Igne\LaravelBootUp\Tools\Installers\NodeInstaller;
 use Igne\LaravelBootUp\Tools\Installers\PackageManagerInstaller;
 use Igne\LaravelBootUp\Tools\Installers\PhpInstaller;
-use Igne\LaravelBootUp\Tools\ToolException;
 use Igne\LaravelBootUp\Tools\ToolRegistry;
-use Igne\LaravelBootUp\Tools\ToolsConfig;
 use Illuminate\Process\Factory;
 
 beforeEach(function (): void {

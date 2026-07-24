@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
+use Igne\LaravelBootUp\Config\DeployConfig;
 use Igne\LaravelBootUp\Console\Support\Selection;
-use Igne\LaravelBootUp\Deploy\DeployConfig;
-use Igne\LaravelBootUp\Deploy\Scripts\DeploymentEnvironment;
+use Igne\LaravelBootUp\Contracts\ScriptGenerator;
+use Igne\LaravelBootUp\Data\Lines;
 use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlanner;
 use Igne\LaravelBootUp\Deploy\Scripts\ForgeScriptGenerator;
 use Igne\LaravelBootUp\Deploy\Scripts\FortrabbitScriptGenerator;
-use Igne\LaravelBootUp\Deploy\Scripts\ScriptGenerator;
-use Igne\LaravelBootUp\Support\Lines;
+use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 
 final class DeployScriptCommand extends BootUpCommand
 {

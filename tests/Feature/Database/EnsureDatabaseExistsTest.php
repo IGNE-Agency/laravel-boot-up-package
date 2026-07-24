@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Database\DatabaseConfig;
+use Igne\LaravelBootUp\Config\DatabaseConfig;
+use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\CommandRewrites;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Database\DatabaseCreator;
 use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseExists;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
-use Igne\LaravelBootUp\Servers\CommandRewrites;
-use Igne\LaravelBootUp\Servers\Server;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Laravel\Prompts\Prompt;
 

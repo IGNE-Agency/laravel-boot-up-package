@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
+use Igne\LaravelBootUp\Exceptions\BootUpException;
 use Igne\LaravelBootUp\Facades\Platform;
 use Igne\LaravelBootUp\Serve\StepSequence;
-use Igne\LaravelBootUp\Support\BootUpException;
 use Illuminate\Console\Command;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 use Illuminate\Process\Exceptions\ProcessTimedOutException;

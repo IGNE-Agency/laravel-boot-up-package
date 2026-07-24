@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Herd;
 
+use Igne\LaravelBootUp\Config\ServersConfig;
+use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\CommandRewrites;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Enums\Tool;
+use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Servers\CommandRewrites;
-use Igne\LaravelBootUp\Servers\Server;
-use Igne\LaravelBootUp\Servers\ServerException;
-use Igne\LaravelBootUp\Servers\ServersConfig;
-use Igne\LaravelBootUp\Tools\Tool;
 
 final class HerdServer implements Server
 {

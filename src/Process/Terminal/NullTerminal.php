@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Process\Terminal;
 
+use Igne\LaravelBootUp\Contracts\TerminalLauncher;
 use LogicException;
 
 final class NullTerminal implements TerminalLauncher

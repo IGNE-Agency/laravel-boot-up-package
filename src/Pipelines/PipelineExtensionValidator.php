@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
+use Igne\LaravelBootUp\Contracts\PipelineGenerator;
+use Igne\LaravelBootUp\Data\PipelineFile;
+use Igne\LaravelBootUp\Data\PipelinePlan;
+use Igne\LaravelBootUp\Data\PipelineStep;
+use Igne\LaravelBootUp\Exceptions\PipelineException;
+
 /**
  * Turns the raw boot-up.pipeline.steps / .files config into a validated
  * PipelineExtensions, or fails with an actionable PipelineException. Anchor

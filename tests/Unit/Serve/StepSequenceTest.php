@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseCredentials;
 use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseExists;
 use Igne\LaravelBootUp\Database\Steps\RunPendingMigrations;
@@ -10,14 +11,13 @@ use Igne\LaravelBootUp\Deploy\Steps\CacheFrameworkFiles;
 use Igne\LaravelBootUp\Deploy\Steps\FinalizeApplication;
 use Igne\LaravelBootUp\Deploy\Steps\InstallComposerDependencies;
 use Igne\LaravelBootUp\Deploy\Steps\RunProjectCommands;
+use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
 use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
 use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
 use Igne\LaravelBootUp\Frontend\Steps\BuildOrWatchAssets;
 use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
 use Igne\LaravelBootUp\Queue\Steps\StartQueueWorker;
-use Igne\LaravelBootUp\Serve\ServeOptions;
-use Igne\LaravelBootUp\Serve\ServeStage;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
 use Igne\LaravelBootUp\Serve\StepSequence;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;

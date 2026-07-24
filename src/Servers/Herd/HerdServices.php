@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Herd;
 
+use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Servers\ServerException;
 
 /**
  * Owns Herd's runtime health. Two distinct signals:

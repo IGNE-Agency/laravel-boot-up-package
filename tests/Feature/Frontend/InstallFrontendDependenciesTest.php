@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Frontend\FrontendConfig;
-use Igne\LaravelBootUp\Frontend\FrontendException;
+use Igne\LaravelBootUp\Config\FrontendConfig;
+use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\CommandRewrites;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Enums\PackageManager;
+use Igne\LaravelBootUp\Exceptions\FrontendException;
 use Igne\LaravelBootUp\Frontend\PackageJson;
-use Igne\LaravelBootUp\Frontend\PackageManager;
 use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
-use Igne\LaravelBootUp\Servers\CommandRewrites;
-use Igne\LaravelBootUp\Servers\Server;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;

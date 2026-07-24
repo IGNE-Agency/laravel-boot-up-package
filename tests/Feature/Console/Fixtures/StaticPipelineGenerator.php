@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Tests\Feature\Console\Fixtures;
 
-use Igne\LaravelBootUp\Pipelines\GeneratedFile;
-use Igne\LaravelBootUp\Pipelines\PipelineGenerator;
-use Igne\LaravelBootUp\Pipelines\PipelinePlan;
+use Igne\LaravelBootUp\Contracts\PipelineGenerator;
+use Igne\LaravelBootUp\Data\GeneratedFile;
+use Igne\LaravelBootUp\Data\PipelinePlan;
 
 /**
  * A project-registered custom git provider, as the extension API allows.

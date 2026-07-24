@@ -7,7 +7,7 @@ use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -91,7 +91,7 @@ test('a failing finalize command fails the deploy cleanly', function (): void {
 
 test('fails fast on native Windows', function (): void {
     ProcessFaker::fake();
-    app()->instance(Igne\LaravelBootUp\Support\Platform::class, new Igne\LaravelBootUp\Support\Platform('Windows'));
+    app()->instance(Igne\LaravelBootUp\Services\Platform::class, new Igne\LaravelBootUp\Services\Platform('Windows'));
 
     $this->artisan('app:deploy')
         ->expectsOutputToContain('not supported on native Windows')

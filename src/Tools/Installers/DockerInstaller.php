@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Tools\Installers;
 
-use Igne\LaravelBootUp\Tools\InstallsTool;
-use Igne\LaravelBootUp\Tools\Tool;
+use Igne\LaravelBootUp\Contracts\InstallsTool;
+use Igne\LaravelBootUp\Data\VersionConstraint;
+use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Tools\ToolInspector;
-use Igne\LaravelBootUp\Tools\VersionConstraint;
 
 final class DockerInstaller implements InstallsTool
 {

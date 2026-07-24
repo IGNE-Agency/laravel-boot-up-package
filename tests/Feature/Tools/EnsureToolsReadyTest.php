@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Config\ToolsConfig;
+use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\CommandRewrites;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Frontend\PackageJson;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
-use Igne\LaravelBootUp\Servers\CommandRewrites;
-use Igne\LaravelBootUp\Servers\Server;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
 use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\AlphaToolSpy;
 use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\BunToolSpy;
 use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\DockerToolSpy;
 use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\EnsureToolsReadySpy;
 use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
-use Igne\LaravelBootUp\Tools\Tool;
-use Igne\LaravelBootUp\Tools\ToolsConfig;
 use Laravel\Prompts\Prompt;
 
 function ensureToolsServer(array $tools, ?CommandRewrites $rewrites = null): Server

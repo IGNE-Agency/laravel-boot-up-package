@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Database\Steps;
 
 use Closure;
-use Igne\LaravelBootUp\Database\DatabaseConfig;
+use Igne\LaravelBootUp\Config\DatabaseConfig;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ShellCommand;
 use Igne\LaravelBootUp\Database\PendingMigrations;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Illuminate\Support\Str;
 

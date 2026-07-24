@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Facades;
 
-use Igne\LaravelBootUp\Support\TrackedProgress;
+use Igne\LaravelBootUp\Services\TrackedProgress;
 use Illuminate\Support\Facades\Facade;
 
 /**
@@ -27,12 +27,12 @@ use Illuminate\Support\Facades\Facade;
  * @method static string password(string $label, string $placeholder = '', bool|string $required = false, mixed $validate = null, string $hint = '')
  * @method static TrackedProgress progress(string $label, iterable|int $steps, string $hint = '')
  *
- * @see \Igne\LaravelBootUp\Support\Terminal
+ * @see \Igne\LaravelBootUp\Services\Terminal
  */
 final class Terminal extends Facade
 {
     protected static function getFacadeAccessor(): string
     {
-        return \Igne\LaravelBootUp\Support\Terminal::class;
+        return \Igne\LaravelBootUp\Services\Terminal::class;
     }
 }

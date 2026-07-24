@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Deploy\ProjectCommand;
-use Igne\LaravelBootUp\Deploy\Scripts\DeploymentEnvironment;
-use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlan;
-use Igne\LaravelBootUp\Frontend\PackageManager;
+use Igne\LaravelBootUp\Data\DeploymentPlan;
+use Igne\LaravelBootUp\Data\PipelinePlan;
+use Igne\LaravelBootUp\Data\ProjectCommand;
+use Igne\LaravelBootUp\Enums\DeployHookHost;
+use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
+use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Pipelines\CiScripts;
-use Igne\LaravelBootUp\Pipelines\DeployHookHost;
-use Igne\LaravelBootUp\Pipelines\PipelinePlan;
 
 function ciScriptsPlan(array $overrides = [], array $deploymentOverrides = []): PipelinePlan
 {

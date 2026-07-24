@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Deploy\Scripts;
 
-use Igne\LaravelBootUp\Database\DatabaseConfig;
-use Igne\LaravelBootUp\Deploy\DeployConfig;
-use Igne\LaravelBootUp\Deploy\ProvidesProjectCommands;
-use Igne\LaravelBootUp\Frontend\FrontendConfig;
+use Igne\LaravelBootUp\Config\DatabaseConfig;
+use Igne\LaravelBootUp\Config\DeployConfig;
+use Igne\LaravelBootUp\Config\FrontendConfig;
+use Igne\LaravelBootUp\Config\QueueConfig;
+use Igne\LaravelBootUp\Contracts\ProvidesProjectCommands;
+use Igne\LaravelBootUp\Data\DeploymentPlan;
+use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
-use Igne\LaravelBootUp\Queue\QueueConfig;
 use Illuminate\Contracts\Container\Container;
 
 /**

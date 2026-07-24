@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Deploy;
 
+use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Exceptions\DeployException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Support\LockfileConflictDetector;
+use Igne\LaravelBootUp\Services\LockfileConflictDetector;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 
 /**

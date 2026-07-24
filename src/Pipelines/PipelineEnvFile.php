@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
-use Igne\LaravelBootUp\Support\Lines;
+use Igne\LaravelBootUp\Data\Lines;
 
 /**
  * Renders a fresh .env.pipeline: the committed CI test environment the

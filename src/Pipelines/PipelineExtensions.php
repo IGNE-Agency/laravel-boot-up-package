@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
+use Igne\LaravelBootUp\Data\PipelineFile;
+use Igne\LaravelBootUp\Data\PipelinePlan;
+use Igne\LaravelBootUp\Data\PipelineStep;
+
 /**
  * The validated, provider-aware set of extra steps and files a project has
  * configured. Carried on the PipelinePlan so generators can splice matching

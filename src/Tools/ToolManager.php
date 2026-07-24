@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Tools;
 
+use Igne\LaravelBootUp\Config\ToolsConfig;
+use Igne\LaravelBootUp\Contracts\InstallsTool;
+use Igne\LaravelBootUp\Data\ToolOutcome;
+use Igne\LaravelBootUp\Data\VersionConstraint;
+use Igne\LaravelBootUp\Enums\ToolStatus;
+use Igne\LaravelBootUp\Exceptions\ToolException;
+
 /**
  * Pure policy: decides whether a tool must be installed, updated, or left
  * alone. A version we cannot read or satisfy never blocks the boot.

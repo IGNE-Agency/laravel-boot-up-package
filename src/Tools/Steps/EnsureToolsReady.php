@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Tools\Steps;
 
 use Closure;
+use Igne\LaravelBootUp\Config\ToolsConfig;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ToolOutcome;
+use Igne\LaravelBootUp\Data\VersionConstraint;
+use Igne\LaravelBootUp\Enums\Tool;
+use Igne\LaravelBootUp\Enums\ToolStatus;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
-use Igne\LaravelBootUp\Tools\Tool;
 use Igne\LaravelBootUp\Tools\ToolManager;
-use Igne\LaravelBootUp\Tools\ToolOutcome;
 use Igne\LaravelBootUp\Tools\ToolRegistry;
-use Igne\LaravelBootUp\Tools\ToolsConfig;
-use Igne\LaravelBootUp\Tools\ToolStatus;
-use Igne\LaravelBootUp\Tools\VersionConstraint;
 
 /**
  * Ensures every configured tool — plus whatever the selected server needs,

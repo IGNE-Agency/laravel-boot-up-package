@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Serve;
 
 use Closure;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\StepDescriptor;
 use Illuminate\Contracts\Container\Container;
 
 /**

@@ -42,7 +42,7 @@ return [
     | Development server
     |--------------------------------------------------------------------------
     | Extension point: add your own driver under 'drivers' with a string key
-    | and a class implementing Igne\LaravelBootUp\Servers\Server.
+    | and a class implementing Igne\LaravelBootUp\Contracts\Server.
     */
     'server' => [
         'default' => env('BOOT_UP_SERVER'),
@@ -171,7 +171,7 @@ return [
         // Artisan commands run at the end of every boot/deploy.
         'finalize' => ['storage:link'],
         // Extension point for generate:deploy-script: 'platform' => class implementing
-        // Igne\LaravelBootUp\Deploy\Scripts\ScriptGenerator (wins over built-ins).
+        // Igne\LaravelBootUp\Contracts\ScriptGenerator (wins over built-ins).
         'script_generators' => [],
     ],
 
@@ -185,7 +185,7 @@ return [
     | curled after a green push (an unset secret skips that deploy gracefully).
     | Environment names should be unique per branch.
     | Extension point: 'generators' maps a provider key to a class implementing
-    | Igne\LaravelBootUp\Pipelines\PipelineGenerator (wins over built-ins).
+    | Igne\LaravelBootUp\Contracts\PipelineGenerator (wins over built-ins).
     */
     'pipeline' => [
         'branches' => [

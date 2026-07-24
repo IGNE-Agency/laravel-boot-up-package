@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Environment;
 
-use Igne\LaravelBootUp\Support\AtomicFile;
+use Igne\LaravelBootUp\Exceptions\EnvironmentException;
+use Igne\LaravelBootUp\Services\AtomicFile;
 
 /**
  * Line-preserving reader/writer for the application's .env file.

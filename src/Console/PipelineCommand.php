@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
+use Igne\LaravelBootUp\Config\PipelineConfig;
 use Igne\LaravelBootUp\Console\Support\Selection;
+use Igne\LaravelBootUp\Contracts\PipelineGenerator;
+use Igne\LaravelBootUp\Data\GeneratedFile;
+use Igne\LaravelBootUp\Data\PipelineFile;
+use Igne\LaravelBootUp\Data\PipelinePlan;
+use Igne\LaravelBootUp\Data\PipelineSecret;
+use Igne\LaravelBootUp\Enums\DeployHookHost;
 use Igne\LaravelBootUp\Pipelines\BitbucketPipelinesGenerator;
-use Igne\LaravelBootUp\Pipelines\DeployHookHost;
-use Igne\LaravelBootUp\Pipelines\GeneratedFile;
 use Igne\LaravelBootUp\Pipelines\GitHubActionsGenerator;
-use Igne\LaravelBootUp\Pipelines\PipelineConfig;
 use Igne\LaravelBootUp\Pipelines\PipelineEnvFile;
 use Igne\LaravelBootUp\Pipelines\PipelineExtensionValidator;
-use Igne\LaravelBootUp\Pipelines\PipelineFile;
-use Igne\LaravelBootUp\Pipelines\PipelineGenerator;
-use Igne\LaravelBootUp\Pipelines\PipelinePlan;
 use Igne\LaravelBootUp\Pipelines\PipelinePlanner;
-use Igne\LaravelBootUp\Pipelines\PipelineSecret;
-use Igne\LaravelBootUp\Support\AtomicFile;
+use Igne\LaravelBootUp\Services\AtomicFile;
 
 final class PipelineCommand extends BootUpCommand
 {

@@ -20,7 +20,7 @@ abstract class TestCase extends Orchestra
     protected function getPackageProviders($app): array
     {
         return [
-            \Igne\LaravelBootUp\BootUpServiceProvider::class,
+            \Igne\LaravelBootUp\Providers\BootUpServiceProvider::class,
         ];
     }
 

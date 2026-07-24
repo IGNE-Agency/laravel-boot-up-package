@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
+use Igne\LaravelBootUp\Data\GeneratedFile;
+use Igne\LaravelBootUp\Data\ShellCommand;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
-use Igne\LaravelBootUp\Pipelines\GeneratedFile;
 use Igne\LaravelBootUp\Pipelines\GitHooks;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Support\AtomicFile;
+use Igne\LaravelBootUp\Services\AtomicFile;
 
 final class GenerateGitHooksCommand extends BootUpCommand
 {

@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Process;
 
-use Igne\LaravelBootUp\Support\AtomicFile;
+use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Services\AtomicFile;
 use Illuminate\Support\Collection;
 
 /**

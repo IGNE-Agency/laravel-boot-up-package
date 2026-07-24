@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
-use Igne\LaravelBootUp\Servers\ActiveServerRecord;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -72,7 +72,7 @@ test('does not start a second artisan serve when one is already tracked and aliv
     ]);
 
     // Seed a live artisan-serve record; the driver must self-skip.
-    $this->ledger->record(new Igne\LaravelBootUp\Process\ProcessRecord(12345, 'artisan-serve', 'php artisan serve', date(DATE_ATOM)));
+    $this->ledger->record(new Igne\LaravelBootUp\Data\ProcessRecord(12345, 'artisan-serve', 'php artisan serve', date(DATE_ATOM)));
 
     $this->artisan('app:serve', ['server' => 'laravel'])->assertSuccessful();
 
@@ -121,7 +121,7 @@ test('rejects an unknown server argument with a clean, actionable failure', func
 
 test('fails fast on native Windows', function (): void {
     ProcessFaker::fake();
-    app()->instance(Igne\LaravelBootUp\Support\Platform::class, new Igne\LaravelBootUp\Support\Platform('Windows'));
+    app()->instance(Igne\LaravelBootUp\Services\Platform::class, new Igne\LaravelBootUp\Services\Platform('Windows'));
 
     $this->artisan('app:serve', ['server' => 'laravel'])
         ->expectsOutputToContain('not supported on native Windows')
@@ -281,7 +281,7 @@ test('dead ledger entries are pruned when a new serve boots', function (): void 
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
 
-    $this->ledger->record(new Igne\LaravelBootUp\Process\ProcessRecord(4444, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM)));
+    $this->ledger->record(new Igne\LaravelBootUp\Data\ProcessRecord(4444, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM)));
 
     $this->artisan('app:serve', ['server' => 'laravel'])->assertSuccessful();
 

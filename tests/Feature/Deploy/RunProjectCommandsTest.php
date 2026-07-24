@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Deploy\ProjectCommand;
+use Igne\LaravelBootUp\Config\FrontendConfig;
+use Igne\LaravelBootUp\Contracts\ProvidesProjectCommands;
+use Igne\LaravelBootUp\Data\ProjectCommand;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Deploy\ProjectCommandRunner;
-use Igne\LaravelBootUp\Deploy\ProvidesProjectCommands;
 use Igne\LaravelBootUp\Deploy\Steps\RunProjectCommands;
-use Igne\LaravelBootUp\Frontend\FrontendConfig;
+use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Frontend\PackageJson;
-use Igne\LaravelBootUp\Frontend\PackageManager;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Pipeline\Pipeline;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;

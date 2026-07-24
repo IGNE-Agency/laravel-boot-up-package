@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Data\VersionConstraint;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tools\Installers\Homebrew;
 use Igne\LaravelBootUp\Tools\Installers\PhpInstaller;
 use Igne\LaravelBootUp\Tools\ToolInspector;
-use Igne\LaravelBootUp\Tools\VersionConstraint;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 

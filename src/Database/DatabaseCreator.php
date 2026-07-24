@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Database;
 
+use Igne\LaravelBootUp\Exceptions\DatabaseException;
 use PDO;
 use PDOException;
 

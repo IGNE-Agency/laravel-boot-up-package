@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
-use Igne\LaravelBootUp\Deploy\ProjectCommand;
-use Igne\LaravelBootUp\Deploy\Scripts\DeploymentEnvironment;
-use Igne\LaravelBootUp\Frontend\PackageManager;
-use Igne\LaravelBootUp\Support\Lines;
+use Igne\LaravelBootUp\Data\GeneratedFile;
+use Igne\LaravelBootUp\Data\Lines;
+use Igne\LaravelBootUp\Data\PipelinePlan;
+use Igne\LaravelBootUp\Data\ProjectCommand;
+use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
+use Igne\LaravelBootUp\Enums\PackageManager;
 
 /**
  * Renders the shared scripts/ci/*.sh files every provider pipeline calls,

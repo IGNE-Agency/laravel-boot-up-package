@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Tools\Installers;
 
+use Igne\LaravelBootUp\Contracts\InstallsTool;
+use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Data\VersionConstraint;
+use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Tools\InstallsTool;
-use Igne\LaravelBootUp\Tools\Tool;
 use Igne\LaravelBootUp\Tools\ToolInspector;
-use Igne\LaravelBootUp\Tools\VersionConstraint;
 
 /**
  * One installer for the frontend package managers (bun, yarn, npm, pnpm).

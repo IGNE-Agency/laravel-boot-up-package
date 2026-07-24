@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures;
 
-use Igne\LaravelBootUp\Tools\InstallsTool;
-use Igne\LaravelBootUp\Tools\VersionConstraint;
+use Igne\LaravelBootUp\Contracts\InstallsTool;
+use Igne\LaravelBootUp\Data\VersionConstraint;
 
 abstract class EnsureToolsReadySpy implements InstallsTool
 {

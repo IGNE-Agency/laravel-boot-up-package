@@ -3,10 +3,10 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Console\BootUpCommand;
-use Igne\LaravelBootUp\Serve\Step;
-use Igne\LaravelBootUp\Support\BootUpException;
-use Igne\LaravelBootUp\Support\Terminal;
-use Igne\LaravelBootUp\Support\TrackedProgress;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Exceptions\BootUpException;
+use Igne\LaravelBootUp\Services\Terminal;
+use Igne\LaravelBootUp\Services\TrackedProgress;
 
 arch('all package code uses strict types')
     ->expect('Igne\LaravelBootUp')
@@ -29,7 +29,7 @@ arch('nothing depends on Symfony Process directly')
 arch('the process factory is only touched by the Process layer and the provider')
     ->expect('Igne\LaravelBootUp')
     ->not->toUse('Illuminate\Process\Factory')
-    ->ignoring(['Igne\LaravelBootUp\Process', 'Igne\LaravelBootUp\BootUpServiceProvider']);
+    ->ignoring(['Igne\LaravelBootUp\Process', 'Igne\LaravelBootUp\Providers\BootUpServiceProvider']);
 
 arch('every pipeline step implements the Step contract')
     ->expect([
@@ -55,7 +55,6 @@ arch('legacy namespaces are gone for good')
         'Igne\LaravelBootUp\Managers',
         'Igne\LaravelBootUp\Executors',
         'Igne\LaravelBootUp\Resolvers',
-        'Igne\LaravelBootUp\Providers',
         'Igne\LaravelBootUp\Repositories',
         'Igne\LaravelBootUp\Verifiers',
         'Igne\LaravelBootUp\Handlers',

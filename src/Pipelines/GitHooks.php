@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
-use Igne\LaravelBootUp\Support\Lines;
+use Igne\LaravelBootUp\Data\GeneratedFile;
+use Igne\LaravelBootUp\Data\Lines;
 
 /**
  * Builds git hooks that run the pipeline's checks earlier — locally, before a

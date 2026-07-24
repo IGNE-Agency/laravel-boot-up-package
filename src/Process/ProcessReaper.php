@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Process;
 
-use Igne\LaravelBootUp\Process\Terminal\TerminalLauncher;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Contracts\TerminalLauncher;
+use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
 
 /**

@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Sail;
 
+use Igne\LaravelBootUp\Data\ShellCommand;
+use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Servers\ServerException;
-use Igne\LaravelBootUp\Support\Platform;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Platform;
+use Igne\LaravelBootUp\Services\Poller;
 
 final class Docker
 {

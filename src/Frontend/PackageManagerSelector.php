@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Frontend;
 
+use Igne\LaravelBootUp\Config\FrontendConfig;
+use Igne\LaravelBootUp\Enums\PackageManager;
+
 final class PackageManagerSelector
 {
     private ?PackageManager $selected = null;
