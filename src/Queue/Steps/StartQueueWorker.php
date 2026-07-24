@@ -6,7 +6,7 @@ namespace Igne\LaravelBootUp\Queue\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Config\QueueConfig;
-use Igne\LaravelBootUp\Config\ServicesConfig;
+use Igne\LaravelBootUp\Config\WorkersConfig;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
@@ -31,7 +31,7 @@ final class StartQueueWorker implements Step
         private readonly CommandRewriter $rewriter,
         private readonly ProcessLedger $ledger,
         private readonly ProcessReaper $reaper,
-        private readonly ServicesConfig $services,
+        private readonly WorkersConfig $workers,
         private readonly ComposerJson $composerJson,
     ) {}
 
@@ -49,7 +49,7 @@ final class StartQueueWorker implements Step
             return $next($context);
         }
 
-        if ($this->services->horizonEnabled && $this->composerJson->requires('laravel/horizon')) {
+        if ($this->workers->horizonEnabled && $this->composerJson->requires('laravel/horizon')) {
             terminal()->note('laravel/horizon manages the queue — skipping queue:work.');
 
             return $next($context);

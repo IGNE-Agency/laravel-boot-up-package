@@ -21,10 +21,10 @@ use Igne\LaravelBootUp\Queue\Steps\StartQueueWorker;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
 use Igne\LaravelBootUp\Serve\StepSequence;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
-use Igne\LaravelBootUp\Services\Steps\StartHorizon;
-use Igne\LaravelBootUp\Services\Steps\StartReverb;
-use Igne\LaravelBootUp\Services\Steps\StartScheduler;
 use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
+use Igne\LaravelBootUp\Workers\Steps\StartHorizon;
+use Igne\LaravelBootUp\Workers\Steps\StartReverb;
+use Igne\LaravelBootUp\Workers\Steps\StartScheduler;
 
 function defaultServeSteps(): array
 {

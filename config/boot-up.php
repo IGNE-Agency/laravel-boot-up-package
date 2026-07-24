@@ -21,10 +21,10 @@ use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
 use Igne\LaravelBootUp\Servers\Herd\HerdServer;
 use Igne\LaravelBootUp\Servers\Sail\SailServer;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
-use Igne\LaravelBootUp\Services\Steps\StartHorizon;
-use Igne\LaravelBootUp\Services\Steps\StartReverb;
-use Igne\LaravelBootUp\Services\Steps\StartScheduler;
 use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
+use Igne\LaravelBootUp\Workers\Steps\StartHorizon;
+use Igne\LaravelBootUp\Workers\Steps\StartReverb;
+use Igne\LaravelBootUp\Workers\Steps\StartScheduler;
 
 return [
 
@@ -135,7 +135,7 @@ return [
     | applies). The scheduler is opt-in: schedule:work on a project with
     | no scheduled tasks is pure noise.
     */
-    'services' => [
+    'workers' => [
         'scheduler' => [
             'enabled' => env('BOOT_UP_SCHEDULER', false),
             'run_in' => env('BOOT_UP_SCHEDULER_RUN_IN', 'terminal'), // terminal | background

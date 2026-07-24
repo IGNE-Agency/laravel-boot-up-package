@@ -2,31 +2,30 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootUp\Services\Steps;
+namespace Igne\LaravelBootUp\Workers\Steps;
 
 use Closure;
-use Igne\LaravelBootUp\Config\ServicesConfig;
+use Igne\LaravelBootUp\Config\WorkersConfig;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ShellCommand;
-use Igne\LaravelBootUp\Pipelines\ComposerJson;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 
 /**
- * Starts a tracked Reverb WebSocket server when laravel/reverb is a
- * project dependency. Detect-and-skip, like Horizon.
+ * Starts a tracked `schedule:work` process. Off by default — a project
+ * without scheduled tasks gains nothing from a scheduler loop — and
+ * enabled via boot-up.workers.scheduler.
  */
-final class StartReverb implements Step
+final class StartScheduler implements Step
 {
-    private const LABEL = 'reverb';
+    private const LABEL = 'scheduler';
 
     public function __construct(
-        private readonly ServicesConfig $config,
-        private readonly ComposerJson $composerJson,
+        private readonly WorkersConfig $config,
         private readonly ProcessRunner $runner,
         private readonly CommandRewriter $rewriter,
         private readonly ProcessLedger $ledger,
@@ -35,26 +34,26 @@ final class StartReverb implements Step
 
     public function handle(ServeContext $context, Closure $next): mixed
     {
-        if (! $this->config->reverbEnabled || ! $this->composerJson->requires('laravel/reverb')) {
+        if (! $this->config->schedulerEnabled) {
             return $next($context);
         }
 
         if ($this->alreadyRunning()) {
-            terminal()->note('Reverb already running — skipping.');
+            terminal()->note('Scheduler already running — skipping.');
 
             return $next($context);
         }
 
         $command = $this->rewriter->rewrite(
-            ShellCommand::make(['php', 'artisan', 'reverb:start'])->withTimeout(null),
+            ShellCommand::make(['php', 'artisan', 'schedule:work'])->withTimeout(null),
             $context->server?->commandRewrites(),
         );
 
-        $record = $this->config->reverbRunIn === 'terminal'
+        $record = $this->config->schedulerRunIn === 'terminal'
             ? $this->runner->startInTerminal($command, self::LABEL)
             : $this->runner->start($command, self::LABEL);
 
-        terminal()->success("Reverb started (PID {$record->pid}) — {$record->outputLocation()}");
+        terminal()->success("Scheduler started (PID {$record->pid}) — {$record->outputLocation()}");
 
         return $next($context);
     }

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootUp\Services\Steps;
+namespace Igne\LaravelBootUp\Workers\Steps;
 
 use Closure;
-use Igne\LaravelBootUp\Config\ServicesConfig;
+use Igne\LaravelBootUp\Config\WorkersConfig;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
@@ -26,7 +26,7 @@ final class StartHorizon implements Step
     private const LABEL = 'horizon';
 
     public function __construct(
-        private readonly ServicesConfig $config,
+        private readonly WorkersConfig $config,
         private readonly ComposerJson $composerJson,
         private readonly ProcessRunner $runner,
         private readonly CommandRewriter $rewriter,

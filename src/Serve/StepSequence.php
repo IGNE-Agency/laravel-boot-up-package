@@ -23,10 +23,10 @@ use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
 use Igne\LaravelBootUp\Queue\Steps\StartQueueWorker;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
-use Igne\LaravelBootUp\Services\Steps\StartHorizon;
-use Igne\LaravelBootUp\Services\Steps\StartReverb;
-use Igne\LaravelBootUp\Services\Steps\StartScheduler;
 use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
+use Igne\LaravelBootUp\Workers\Steps\StartHorizon;
+use Igne\LaravelBootUp\Workers\Steps\StartReverb;
+use Igne\LaravelBootUp\Workers\Steps\StartScheduler;
 use Illuminate\Support\Str;
 
 /**
@@ -79,10 +79,10 @@ final readonly class StepSequence
         RunPendingMigrations::class => 'migrations',
         CacheFrameworkFiles::class => 'cache',
         FinalizeApplication::class => 'finalize',
-        StartQueueWorker::class => 'services',
-        StartHorizon::class => 'services',
-        StartReverb::class => 'services',
-        StartScheduler::class => 'services',
+        StartQueueWorker::class => 'workers',
+        StartHorizon::class => 'workers',
+        StartReverb::class => 'workers',
+        StartScheduler::class => 'workers',
         BuildOrWatchAssets::class => 'assets',
         AnnounceApplication::class => 'announce',
     ];
@@ -201,7 +201,7 @@ final readonly class StepSequence
             'migrations' => $this->migrationsLine(),
             'cache' => 'Cache the framework files',
             'finalize' => 'Finalize the application',
-            'services' => $this->servicesLine($present),
+            'workers' => $this->workersLine($present),
             'assets' => $options->withAssets ? 'Build or watch frontend assets' : null,
             'announce' => 'Announce the application URL',
         };
@@ -240,7 +240,7 @@ final readonly class StepSequence
     /**
      * @param  array<string, true>  $present
      */
-    private function servicesLine(array $present): ?string
+    private function workersLine(array $present): ?string
     {
         $services = array_values(array_filter([
             isset($present[StartQueueWorker::class]) && $this->options->withQueue ? 'queue worker' : null,

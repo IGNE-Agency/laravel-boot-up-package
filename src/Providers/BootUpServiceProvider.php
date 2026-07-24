@@ -4,6 +4,16 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Providers;
 
+use Igne\LaravelBootUp\Config\DatabaseConfig;
+use Igne\LaravelBootUp\Config\DeployConfig;
+use Igne\LaravelBootUp\Config\EnvironmentConfig;
+use Igne\LaravelBootUp\Config\FrontendConfig;
+use Igne\LaravelBootUp\Config\PipelineConfig;
+use Igne\LaravelBootUp\Config\QueueConfig;
+use Igne\LaravelBootUp\Config\ServeConfig;
+use Igne\LaravelBootUp\Config\ServersConfig;
+use Igne\LaravelBootUp\Config\ToolsConfig;
+use Igne\LaravelBootUp\Config\WorkersConfig;
 use Igne\LaravelBootUp\Console\DeployCommand;
 use Igne\LaravelBootUp\Console\DeployScriptCommand;
 use Igne\LaravelBootUp\Console\DownCommand;
@@ -11,15 +21,10 @@ use Igne\LaravelBootUp\Console\GenerateGitHooksCommand;
 use Igne\LaravelBootUp\Console\PipelineCommand;
 use Igne\LaravelBootUp\Console\ServeCommand;
 use Igne\LaravelBootUp\Console\StatusCommand;
-use Igne\LaravelBootUp\Config\DatabaseConfig;
-use Igne\LaravelBootUp\Config\DeployConfig;
-use Igne\LaravelBootUp\Config\PipelineConfig;
-use Igne\LaravelBootUp\Config\ServicesConfig;
+use Igne\LaravelBootUp\Contracts\TerminalLauncher;
 use Igne\LaravelBootUp\Deploy\Composer;
 use Igne\LaravelBootUp\Environment\EnvFile;
-use Igne\LaravelBootUp\Config\EnvironmentConfig;
 use Igne\LaravelBootUp\Environment\ShellProfile;
-use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
@@ -28,19 +33,14 @@ use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Process\Terminal\LinuxTerminal;
 use Igne\LaravelBootUp\Process\Terminal\MacTerminal;
 use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Contracts\TerminalLauncher;
-use Igne\LaravelBootUp\Config\QueueConfig;
-use Igne\LaravelBootUp\Config\ServeConfig;
 use Igne\LaravelBootUp\Serve\ShutdownRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Herd\HerdServices;
 use Igne\LaravelBootUp\Servers\Herd\HerdSites;
-use Igne\LaravelBootUp\Config\ServersConfig;
 use Igne\LaravelBootUp\Services\LockfileConflictDetector;
 use Igne\LaravelBootUp\Services\Platform;
 use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Services\Terminal;
-use Igne\LaravelBootUp\Config\ToolsConfig;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Process\Factory;
 use Illuminate\Support\ServiceProvider;
@@ -57,7 +57,7 @@ final class BootUpServiceProvider extends ServiceProvider
         EnvironmentConfig::class,
         DeployConfig::class,
         PipelineConfig::class,
-        ServicesConfig::class,
+        WorkersConfig::class,
     ];
 
     public function register(): void

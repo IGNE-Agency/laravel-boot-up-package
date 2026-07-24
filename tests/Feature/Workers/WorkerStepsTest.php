@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Config\ServicesConfig;
+use Igne\LaravelBootUp\Config\WorkersConfig;
 use Igne\LaravelBootUp\Contracts\TerminalLauncher;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
@@ -13,9 +13,9 @@ use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Services\Poller;
-use Igne\LaravelBootUp\Services\Steps\StartHorizon;
-use Igne\LaravelBootUp\Services\Steps\StartReverb;
-use Igne\LaravelBootUp\Services\Steps\StartScheduler;
+use Igne\LaravelBootUp\Workers\Steps\StartHorizon;
+use Igne\LaravelBootUp\Workers\Steps\StartReverb;
+use Igne\LaravelBootUp\Workers\Steps\StartScheduler;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -27,13 +27,13 @@ use Laravel\Prompts\Prompt;
  *
  * @param  array<string, mixed>  $composer
  */
-function bindServiceDeps(string $dir, ?ServicesConfig $config = null, array $composer = [], ?TerminalLauncher $terminal = null): ProcessLedger
+function bindWorkerDeps(string $dir, ?WorkersConfig $config = null, array $composer = [], ?TerminalLauncher $terminal = null): ProcessLedger
 {
     $ledger = new ProcessLedger($dir.'/processes.json');
 
     file_put_contents($dir.'/composer.json', json_encode($composer));
 
-    app()->instance(ServicesConfig::class, $config ?? new ServicesConfig);
+    app()->instance(WorkersConfig::class, $config ?? new WorkersConfig);
     app()->instance(ComposerJson::class, new ComposerJson($dir.'/composer.json'));
     app()->instance(ProcessLedger::class, $ledger);
     app()->instance(ProcessReaper::class, new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminal));
@@ -93,7 +93,7 @@ afterEach(function (): void {
 
 test('the scheduler stays off by default', function (): void {
     Process::fake();
-    bindServiceDeps($this->dir);
+    bindWorkerDeps($this->dir);
 
     $context = new ServeContext(new ServeOptions);
 
@@ -105,7 +105,7 @@ test('the scheduler stays off by default', function (): void {
 
 test('an enabled scheduler starts a tracked schedule:work process', function (): void {
     ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
-    $ledger = bindServiceDeps($this->dir, new ServicesConfig(schedulerEnabled: true, schedulerRunIn: 'background'));
+    $ledger = bindWorkerDeps($this->dir, new WorkersConfig(schedulerEnabled: true, schedulerRunIn: 'background'));
 
     app(StartScheduler::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
@@ -119,7 +119,7 @@ test('a scheduler that is already running is not started twice', function (): vo
         'kill -0 4242' => Process::result(),
         'ps -p 4242*' => Process::result('php artisan schedule:work'),
     ]);
-    $ledger = bindServiceDeps($this->dir, new ServicesConfig(schedulerEnabled: true));
+    $ledger = bindWorkerDeps($this->dir, new WorkersConfig(schedulerEnabled: true));
     $ledger->record(new ProcessRecord(4242, 'scheduler', 'php artisan schedule:work', date(DATE_ATOM)));
 
     app(StartScheduler::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
@@ -130,7 +130,7 @@ test('a scheduler that is already running is not started twice', function (): vo
 
 test('horizon is skipped when the project does not require it', function (): void {
     Process::fake();
-    bindServiceDeps($this->dir, composer: ['require' => ['laravel/framework' => '^13.0']]);
+    bindWorkerDeps($this->dir, composer: ['require' => ['laravel/framework' => '^13.0']]);
 
     app(StartHorizon::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
@@ -139,7 +139,7 @@ test('horizon is skipped when the project does not require it', function (): voi
 
 test('horizon starts when the project requires it', function (): void {
     ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
-    $ledger = bindServiceDeps($this->dir, new ServicesConfig(horizonRunIn: 'background'), ['require' => ['laravel/horizon' => '^6.0']]);
+    $ledger = bindWorkerDeps($this->dir, new WorkersConfig(horizonRunIn: 'background'), ['require' => ['laravel/horizon' => '^6.0']]);
 
     app(StartHorizon::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
@@ -151,7 +151,7 @@ test('horizon starts when the project requires it', function (): void {
 test('horizon opens a terminal window by default', function (): void {
     Process::fake();
     $terminal = fakeServiceTerminal();
-    $ledger = bindServiceDeps($this->dir, composer: ['require' => ['laravel/horizon' => '^6.0']], terminal: $terminal);
+    $ledger = bindWorkerDeps($this->dir, composer: ['require' => ['laravel/horizon' => '^6.0']], terminal: $terminal);
 
     app(StartHorizon::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
@@ -163,7 +163,7 @@ test('horizon opens a terminal window by default', function (): void {
 
 test('horizon can be disabled in configuration even when installed', function (): void {
     Process::fake();
-    bindServiceDeps($this->dir, new ServicesConfig(horizonEnabled: false), ['require' => ['laravel/horizon' => '^6.0']]);
+    bindWorkerDeps($this->dir, new WorkersConfig(horizonEnabled: false), ['require' => ['laravel/horizon' => '^6.0']]);
 
     app(StartHorizon::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
@@ -172,7 +172,7 @@ test('horizon can be disabled in configuration even when installed', function ()
 
 test('reverb starts when the project requires it', function (): void {
     ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
-    $ledger = bindServiceDeps($this->dir, new ServicesConfig(reverbRunIn: 'background'), ['require' => ['laravel/reverb' => '^2.0']]);
+    $ledger = bindWorkerDeps($this->dir, new WorkersConfig(reverbRunIn: 'background'), ['require' => ['laravel/reverb' => '^2.0']]);
 
     app(StartReverb::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
@@ -183,7 +183,7 @@ test('reverb starts when the project requires it', function (): void {
 test('reverb opens a terminal window by default', function (): void {
     Process::fake();
     $terminal = fakeServiceTerminal();
-    $ledger = bindServiceDeps($this->dir, composer: ['require' => ['laravel/reverb' => '^2.0']], terminal: $terminal);
+    $ledger = bindWorkerDeps($this->dir, composer: ['require' => ['laravel/reverb' => '^2.0']], terminal: $terminal);
 
     app(StartReverb::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
@@ -195,7 +195,7 @@ test('reverb opens a terminal window by default', function (): void {
 
 test('reverb is skipped when the project does not require it', function (): void {
     Process::fake();
-    bindServiceDeps($this->dir, composer: ['require' => []]);
+    bindWorkerDeps($this->dir, composer: ['require' => []]);
 
     app(StartReverb::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
