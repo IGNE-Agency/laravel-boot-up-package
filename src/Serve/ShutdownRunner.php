@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Serve;
 
+use Igne\LaravelBootUp\Contracts\HasResidualState;
+use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Process\ProcessLedger;
@@ -107,6 +109,8 @@ final class ShutdownRunner
         $server = $this->selector->driver($key);
 
         if (! $server->isRunning()) {
+            $this->offerResidualCleanup($server, $startedByUs);
+
             return;
         }
 
@@ -131,5 +135,35 @@ final class ShutdownRunner
         }
 
         terminal()->note("Keeping {$server->label()} running.");
+    }
+
+    /**
+     * A server that is not running may still have left residual state behind
+     * when its boot failed halfway (a failed `sail up` leaves stopped
+     * containers and networks). Only offered for the server this run started.
+     */
+    private function offerResidualCleanup(Server $server, bool $startedByUs): void
+    {
+        if (! $startedByUs || ! $server instanceof HasResidualState || ! $server->hasResidualState()) {
+            return;
+        }
+
+        terminal()->note("{$server->label()} is not running, but the last boot did not finish cleanly.");
+        terminal()->info($server->residualStateImpact());
+
+        if (! $this->prompt->shouldCleanUp($server)) {
+            terminal()->note("Keeping {$server->label()}'s leftover resources in place.");
+
+            return;
+        }
+
+        // Like a failed stop, a failed cleanup is a warning — the rest of the
+        // shutdown (clearing state) must still complete.
+        try {
+            $server->cleanUpResidualState();
+            terminal()->success("{$server->label()} cleaned up.");
+        } catch (\Throwable $exception) {
+            terminal()->warning("Could not clean up {$server->label()}: {$exception->getMessage()} — run the cleanup manually.");
+        }
     }
 }

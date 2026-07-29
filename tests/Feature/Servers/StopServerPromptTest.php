@@ -105,3 +105,30 @@ test('an explicit yes still stops a server with stop impact', function (): void 
 
     expect($prompt->shouldStop(stopPromptServer('stopping halts every site.')))->toBeTrue();
 });
+
+test('cleanup confirms with the server label and honours the answer', function (): void {
+    Prompt::fake(['n', Key::ENTER]);
+
+    $prompt = new StopServerPrompt(new ServersConfig(promptStopServer: true, stopServerByDefault: false));
+
+    expect($prompt->shouldCleanUp(stopPromptServer()))->toBeFalse();
+    Prompt::assertStrippedOutputContains("Clean up Double Server's leftover resources?");
+});
+
+test('cleanup defaults to yes at the prompt', function (): void {
+    Prompt::fake([Key::ENTER]);
+
+    $prompt = new StopServerPrompt(new ServersConfig(promptStopServer: true, stopServerByDefault: false));
+
+    expect($prompt->shouldCleanUp(stopPromptServer()))->toBeTrue();
+});
+
+test('unattended cleanup follows the stop-by-default setting', function (): void {
+    Prompt::fake();
+
+    $keep = new StopServerPrompt(new ServersConfig(promptStopServer: false, stopServerByDefault: false));
+    $clean = new StopServerPrompt(new ServersConfig(promptStopServer: false, stopServerByDefault: true));
+
+    expect($keep->shouldCleanUp(stopPromptServer()))->toBeFalse()
+        ->and($clean->shouldCleanUp(stopPromptServer()))->toBeTrue();
+});

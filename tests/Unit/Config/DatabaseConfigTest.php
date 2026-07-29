@@ -11,6 +11,7 @@ test('fromRepository reads the boot-up.database and boot-up.migrations schema', 
             'database' => [
                 'create' => false,
                 'prompt_missing_credentials' => false,
+                'reconcile_credentials' => false,
             ],
             'migrations' => [
                 'auto' => false,
@@ -22,6 +23,7 @@ test('fromRepository reads the boot-up.database and boot-up.migrations schema', 
 
     expect($database->create)->toBeFalse()
         ->and($database->promptMissingCredentials)->toBeFalse()
+        ->and($database->reconcileServerCredentials)->toBeFalse()
         ->and($database->migrationsAuto)->toBeFalse();
 });
 
@@ -30,5 +32,6 @@ test('fromRepository falls back to the documented defaults', function (): void {
 
     expect($database->create)->toBeTrue()
         ->and($database->promptMissingCredentials)->toBeTrue()
+        ->and($database->reconcileServerCredentials)->toBeTrue()
         ->and($database->migrationsAuto)->toBeTrue();
 });

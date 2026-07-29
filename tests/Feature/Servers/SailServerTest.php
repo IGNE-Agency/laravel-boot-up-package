@@ -16,9 +16,11 @@ use Igne\LaravelBootUp\Servers\Sail\Docker;
 use Igne\LaravelBootUp\Servers\Sail\Sail;
 use Igne\LaravelBootUp\Servers\Sail\SailAliasInstaller;
 use Igne\LaravelBootUp\Servers\Sail\SailServer;
+use Igne\LaravelBootUp\Servers\Sail\SailUpFailureDetector;
 use Igne\LaravelBootUp\Services\Platform;
 use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
+use Illuminate\Process\Exceptions\ProcessFailedException;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Key;
@@ -61,6 +63,7 @@ function sailServer(
         poller: new Poller,
         config: app('config'),
         envFile: new EnvFile($workDir.'/app/.env', $workDir.'/app/.env.example'),
+        detector: new SailUpFailureDetector,
         readyTimeoutSeconds: $readyTimeout,
     );
 }
@@ -112,6 +115,70 @@ test('start throws when docker never becomes available', function (): void {
 
     expect(fn () => sailServer($this->workDir, dockerTimeout: 0)->start(new ServeContext(new ServeOptions)))
         ->toThrow(ServerException::class, 'Docker did not become available');
+});
+
+test('a never-built app image is retried with --build', function (): void {
+    touch($this->basePath.'/docker-compose.yml');
+    ProcessFaker::fake([
+        './vendor/bin/sail up -d --build' => Process::result(),
+        './vendor/bin/sail up -d' => Process::result(
+            exitCode: 1,
+            errorOutput: 'failed to resolve reference "sail-8.5/app:latest": dial tcp: lookup sail-8.5: no such host',
+        ),
+        './vendor/bin/sail ps -q' => Process::result(output: "abc123\n"),
+    ]);
+
+    sailServer($this->workDir)->start(new ServeContext(new ServeOptions));
+
+    ProcessFaker::assertRan('./vendor/bin/sail up -d --build');
+    Prompt::assertStrippedOutputContains("Sail's application image has not been built yet");
+});
+
+test('an unreachable registry throws guidance instead of retrying a build', function (): void {
+    touch($this->basePath.'/docker-compose.yml');
+    ProcessFaker::fake([
+        './vendor/bin/sail up -d' => Process::result(
+            exitCode: 1,
+            errorOutput: 'dial tcp: lookup registry-1.docker.io: no such host',
+        ),
+    ]);
+
+    expect(fn () => sailServer($this->workDir)->start(new ServeContext(new ServeOptions)))
+        ->toThrow(ServerException::class, 'Docker could not reach its image registry');
+
+    ProcessFaker::assertDidntRun('*--build*');
+});
+
+test('an unknown up failure bubbles as a process failure', function (): void {
+    touch($this->basePath.'/docker-compose.yml');
+    ProcessFaker::fake([
+        './vendor/bin/sail up -d' => Process::result(
+            exitCode: 1,
+            errorOutput: 'yaml: line 12: mapping values are not allowed in this context',
+        ),
+    ]);
+
+    expect(fn () => sailServer($this->workDir)->start(new ServeContext(new ServeOptions)))
+        ->toThrow(ProcessFailedException::class);
+
+    ProcessFaker::assertDidntRun('*--build*');
+});
+
+test('a build retry that hits an unreachable registry still throws guidance', function (): void {
+    touch($this->basePath.'/docker-compose.yml');
+    ProcessFaker::fake([
+        './vendor/bin/sail up -d --build' => Process::result(
+            exitCode: 1,
+            errorOutput: 'Head "https://registry-1.docker.io/v2/library/ubuntu/manifests/24.04": i/o timeout',
+        ),
+        './vendor/bin/sail up -d' => Process::result(
+            exitCode: 1,
+            errorOutput: 'failed to resolve reference "sail-8.5/app:latest"',
+        ),
+    ]);
+
+    expect(fn () => sailServer($this->workDir)->start(new ServeContext(new ServeOptions)))
+        ->toThrow(ServerException::class, 'Docker could not reach its image registry');
 });
 
 test('start throws when containers never come up', function (): void {
@@ -177,6 +244,31 @@ test('url prefers the .env, falls back to app.url, then to localhost', function 
     unlink($this->basePath.'/.env');
     config()->set('app.url', '');
     expect(sailServer($this->workDir)->url())->toBe('http://localhost');
+});
+
+test('has residual state only when sail is installed and configured', function (): void {
+    ProcessFaker::fake();
+    $server = sailServer($this->workDir);
+
+    expect($server->hasResidualState())->toBeFalse();
+
+    touch($this->basePath.'/docker-compose.yml');
+    expect($server->hasResidualState())->toBeFalse();
+
+    mkdir($this->basePath.'/vendor/bin', 0755, true);
+    touch($this->basePath.'/vendor/bin/sail');
+    expect($server->hasResidualState())->toBeTrue();
+
+    // File checks only — residual detection must never talk to Docker.
+    Process::assertNothingRan();
+});
+
+test('residual cleanup runs sail down', function (): void {
+    ProcessFaker::fake();
+
+    sailServer($this->workDir)->cleanUpResidualState();
+
+    ProcessFaker::assertRan('./vendor/bin/sail down');
 });
 
 test('identity, tools and rewrites', function (): void {

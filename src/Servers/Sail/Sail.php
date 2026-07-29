@@ -26,9 +26,18 @@ final class Sail
         $this->runner->run(CommandLine::make('php artisan sail:install'));
     }
 
-    public function up(): void
+    public function up(bool $build = false): void
     {
-        $this->runner->run(CommandLine::make('./vendor/bin/sail up -d')->withTimeout(null));
+        $command = './vendor/bin/sail up -d'.($build ? ' --build' : '');
+
+        // Compose and BuildKit fall back noisily ("TTY mode requires
+        // /dev/tty") when stdout is a pipe — select the non-TTY renderers
+        // up front.
+        $this->runner->run(
+            CommandLine::make($command)
+                ->withTimeout(null)
+                ->withEnv(['BUILDKIT_PROGRESS' => 'plain', 'COMPOSE_ANSI' => 'never']),
+        );
     }
 
     public function hasRunningContainers(): bool

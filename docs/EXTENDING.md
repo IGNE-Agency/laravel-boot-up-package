@@ -37,14 +37,23 @@ too.
 It becomes selectable by argument, config, and prompt, and participates in state
 tracking, shutdown, and command rewriting automatically.
 
-The interface declares three capability methods you must implement:
+Beyond the core `Server` interface, optional capability interfaces opt your
+driver into extra behaviour:
 
-- `providesDatabase()` — the server provisions the database itself, so creation
-  is skipped.
-- `databaseReachableFromHost()` — return `false` to route database checks and
-  migrations through your command rewrites (like Sail does).
-- `stopImpact()` — a non-null warning makes stopping require an explicit yes
-  (like Herd's machine-wide stop).
+- `ProvidesDatabase` — the server provisions the database itself, so creation
+  is skipped; `databaseReachableFromHost()` returns `false` to route database
+  checks and migrations through your command rewrites (like Sail does).
+- `WarnsBeforeStop` — `stopImpact()` describes what stopping reaches beyond
+  this project; it is shown and never acted on without an explicit yes (like
+  Herd's machine-wide stop).
+- `HasResidualState` — a failed boot can leave state behind even when the
+  server reports not-running (like Sail's stopped containers). Shutdown shows
+  `residualStateImpact()` and offers `cleanUpResidualState()` instead of
+  silently skipping the server.
+- `RequiresTools` — `requiredTools()` lists tools the server needs installed
+  (like Sail's Docker).
+- `RewritesCommands` — `commandRewrites()` reroutes project commands through
+  the server (like Sail's `./vendor/bin/sail` prefix).
 
 ## Custom tools
 

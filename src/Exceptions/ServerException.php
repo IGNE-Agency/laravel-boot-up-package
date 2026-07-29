@@ -29,4 +29,13 @@ final class ServerException extends BootUpException
     {
         return new self('Docker did not become available in time. Start Docker manually and try again.');
     }
+
+    public static function dockerRegistryUnreachable(): self
+    {
+        return new self(
+            'Docker could not reach its image registry — a Docker/network problem, not a project problem. '
+            .'Check your internet connection and VPN, restart Docker Desktop, and if it persists point Docker '
+            ."Desktop's DNS at a public resolver (Settings → Resources → Network), then run app:serve again."
+        );
+    }
 }

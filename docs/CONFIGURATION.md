@@ -47,6 +47,7 @@ publishing.
 | ------------------------------------- | ------------------------- | ------- | ---------------------------------------------------------- |
 | `database.create`                     | `BOOT_UP_DB_CREATE`       | `true`  | Create the database when it doesn't exist.                 |
 | `database.prompt_missing_credentials` | `BOOT_UP_DB_PROMPT`       | `true`  | Prompt for missing `DB_*` values and write them to `.env`. |
+| `database.reconcile_credentials`      | `BOOT_UP_DB_RECONCILE`    | `true`  | Offer to fix `DB_*` values another server left behind.     |
 | `migrations.auto`                     | `BOOT_UP_MIGRATIONS_AUTO` | `true`  | Run pending migrations during boot.                        |
 
 ## Frontend

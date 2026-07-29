@@ -50,7 +50,9 @@ php artisan app:serve
 
 ### `app:down`
 
-Stop tracked processes and the server `app:serve` started.
+Stop tracked processes and the server `app:serve` started. After a failed
+Sail boot it also offers `sail down` to clear leftover Docker resources
+(stopped containers, networks, half-pulled images).
 
 ```bash
 php artisan app:down
@@ -164,6 +166,13 @@ and services, shutdown behavior, and the full step pipelines — is documented i
 When serving with Sail, the package offers (once, with your consent) to add the
 `sail` alias to your shell profile, and runs every app-level command inside the
 containers (`./vendor/bin/sail artisan ...`) automatically.
+
+A `sail up` that fails because the application image was never built (an
+earlier boot died mid-scaffold) is retried with `--build` automatically, and an
+unreachable Docker registry fails with network guidance instead of raw compose
+errors. When you switch between Sail and another server, the boot detects the
+`DB_HOST` the other server left in `.env` (Sail's `mysql` vs the host's
+`127.0.0.1`) and offers to fix it.
 
 ### Herd
 

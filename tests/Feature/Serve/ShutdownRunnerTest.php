@@ -14,6 +14,7 @@ use Igne\LaravelBootUp\Servers\ServerSelector;
 use Igne\LaravelBootUp\Servers\StopServerPrompt;
 use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Serve\Fixtures\RecordingServer;
+use Igne\LaravelBootUp\Tests\Feature\Serve\Fixtures\ResidualServer;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -40,7 +41,7 @@ afterEach(function (): void {
 function shutdownRunner(ProcessLedger $ledger, ActiveServerStore $store, bool $promptStop, bool $stopDefault): ShutdownRunner
 {
     $config = new ServersConfig(
-        drivers: ['double' => RecordingServer::class],
+        drivers: ['double' => RecordingServer::class, 'residual' => ResidualServer::class],
         promptStopServer: $promptStop,
         stopServerByDefault: $stopDefault,
     );
@@ -57,6 +58,11 @@ function shutdownRunner(ProcessLedger $ledger, ActiveServerStore $store, bool $p
 function activeDouble(bool $startedByUs): ActiveServerRecord
 {
     return new ActiveServerRecord('double', $startedByUs, (int) getmypid(), date(DATE_ATOM));
+}
+
+function activeResidual(bool $startedByUs): ActiveServerRecord
+{
+    return new ActiveServerRecord('residual', $startedByUs, (int) getmypid(), date(DATE_ATOM));
 }
 
 test('is a friendly no-op when nothing was started', function (): void {
@@ -258,4 +264,98 @@ test('a later shutdown after state was cleared reports nothing to do', function 
 
     expect($this->server->stops)->toBe(1);
     Prompt::assertStrippedOutputContains('Nothing to shut down.');
+});
+
+test('offers residual cleanup after a failed boot and runs it on confirm', function (): void {
+    Prompt::fake(['y', Key::ENTER]);
+    ProcessFaker::fake();
+    app()->instance(ResidualServer::class, $residual = new ResidualServer);
+    $this->store->remember(activeResidual(startedByUs: true));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: true, stopDefault: false)->run();
+
+    Prompt::assertStrippedOutputContains('Residual Server is not running, but the last boot did not finish cleanly.');
+    Prompt::assertStrippedOutputContains("Clean up Residual Server's leftover resources?");
+    Prompt::assertStrippedOutputContains('Residual Server cleaned up.');
+    expect($residual->cleanUps)->toBe(1)
+        ->and($this->store->current())->toBeNull();
+});
+
+test('declining the residual cleanup keeps the leftovers in place', function (): void {
+    Prompt::fake(['n', Key::ENTER]);
+    ProcessFaker::fake();
+    app()->instance(ResidualServer::class, $residual = new ResidualServer);
+    $this->store->remember(activeResidual(startedByUs: true));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: true, stopDefault: false)->run();
+
+    Prompt::assertStrippedOutputContains("Keeping Residual Server's leftover resources in place.");
+    expect($residual->cleanUps)->toBe(0)
+        ->and($this->store->current())->toBeNull();
+});
+
+test('never offers residual cleanup for a server app:serve did not start', function (): void {
+    Prompt::fake();
+    ProcessFaker::fake();
+    app()->instance(ResidualServer::class, $residual = new ResidualServer);
+    $this->store->remember(activeResidual(startedByUs: false));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: true, stopDefault: false)->run();
+
+    expect($residual->cleanUps)->toBe(0);
+});
+
+test('a not-running server without the residual contract stays silent', function (): void {
+    Prompt::fake();
+    ProcessFaker::fake();
+    app()->instance(RecordingServer::class, $this->server = new RecordingServer(running: false));
+    $this->store->remember(activeDouble(startedByUs: true));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: true, stopDefault: false)->run();
+
+    expect($this->server->stops)->toBe(0)
+        ->and($this->store->current())->toBeNull();
+    Prompt::assertStrippedOutputContains('Shutdown complete.');
+});
+
+test('no residual state means no cleanup offer', function (): void {
+    Prompt::fake();
+    ProcessFaker::fake();
+    app()->instance(ResidualServer::class, $residual = new ResidualServer(residualState: false));
+    $this->store->remember(activeResidual(startedByUs: true));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: true, stopDefault: false)->run();
+
+    expect($residual->cleanUps)->toBe(0);
+});
+
+test('a failed cleanup warns but still completes the shutdown', function (): void {
+    Prompt::fake(['y', Key::ENTER]);
+    ProcessFaker::fake();
+    app()->instance(ResidualServer::class, $residual = new ResidualServer(cleanUpThrows: true));
+    $this->store->remember(activeResidual(startedByUs: true));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: true, stopDefault: false)->run();
+
+    Prompt::assertStrippedOutputContains('Could not clean up Residual Server');
+    Prompt::assertStrippedOutputContains('Shutdown complete.');
+    expect($this->store->current())->toBeNull();
+});
+
+test('unattended shutdown only cleans residual state when stops default to yes', function (): void {
+    Prompt::fake();
+    ProcessFaker::fake();
+    app()->instance(ResidualServer::class, $residual = new ResidualServer);
+    $this->store->remember(activeResidual(startedByUs: true));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: false, stopDefault: false)->run();
+
+    expect($residual->cleanUps)->toBe(0);
+
+    app()->instance(ResidualServer::class, $residual = new ResidualServer);
+    $this->store->remember(activeResidual(startedByUs: true));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: false, stopDefault: true)->run();
+
+    expect($residual->cleanUps)->toBe(1);
 });

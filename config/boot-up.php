@@ -101,6 +101,10 @@ return [
     'database' => [
         'create' => env('BOOT_UP_DB_CREATE', true),
         'prompt_missing_credentials' => env('BOOT_UP_DB_PROMPT', true),
+        // Detect DB_* values left behind by another server (e.g. Sail's
+        // `mysql` host after `sail:install`) and offer to fix them for the
+        // server that drives this run.
+        'reconcile_credentials' => env('BOOT_UP_DB_RECONCILE', true),
     ],
 
     'migrations' => [

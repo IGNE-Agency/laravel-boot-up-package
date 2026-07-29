@@ -44,4 +44,18 @@ final class StopServerPrompt
             default: $impact === null && $stopByDefault,
         );
     }
+
+    /**
+     * Residual-state cleanup is project-scoped (WarnsBeforeStop does not
+     * apply), but never runs Docker commands silently unless the user opted
+     * into unattended stops.
+     */
+    public function shouldCleanUp(Server $server): bool
+    {
+        if (! $this->config->promptStopServer) {
+            return $this->config->stopServerByDefault;
+        }
+
+        return terminal()->confirm("Clean up {$server->label()}'s leftover resources?");
+    }
 }

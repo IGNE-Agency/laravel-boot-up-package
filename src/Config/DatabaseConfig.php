@@ -11,6 +11,7 @@ final readonly class DatabaseConfig
     public function __construct(
         public bool $create = true,
         public bool $promptMissingCredentials = true,
+        public bool $reconcileServerCredentials = true,
         public bool $migrationsAuto = true,
     ) {}
 
@@ -19,6 +20,7 @@ final readonly class DatabaseConfig
         return new self(
             create: (bool) $config->get('boot-up.database.create', true),
             promptMissingCredentials: (bool) $config->get('boot-up.database.prompt_missing_credentials', true),
+            reconcileServerCredentials: (bool) $config->get('boot-up.database.reconcile_credentials', true),
             migrationsAuto: (bool) $config->get('boot-up.migrations.auto', true),
         );
     }
