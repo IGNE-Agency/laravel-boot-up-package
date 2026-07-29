@@ -59,7 +59,7 @@ final class ProcessRunner
      */
     public function start(CommandLine $command, string $label): ProcessRecord
     {
-        $logFile = "{$this->logDirectory}/{$label}.log";
+        $logFile = $this->logFile($label);
         $this->ensureDirectory(\dirname($logFile));
 
         // nohup exec()s the command, so the echoed PID belongs to the real
@@ -185,6 +185,15 @@ final class ProcessRunner
         return $this->start($command, $label);
     }
 
+    /**
+     * Where a background process with this label appends its output — also
+     * the file the combined stream tails for the detached artisan serve.
+     */
+    public function logFile(string $label): string
+    {
+        return "{$this->logDirectory}/{$label}.log";
+    }
+
     public function isCommandAvailable(string $binary): bool
     {
         $quoted = escapeshellarg($binary);
@@ -224,19 +233,7 @@ final class ProcessRunner
      */
     private function pending(CommandLine $command, array $tokens): PendingProcess
     {
-        $pending = $this->processes->command($tokens);
-
-        if ($command->cwd !== null) {
-            $pending = $pending->path($command->cwd);
-        }
-
-        if ($command->env !== []) {
-            $pending = $pending->env($command->env);
-        }
-
-        return $command->timeout === null
-            ? $pending->forever()
-            : $pending->timeout($command->timeout);
+        return PendingProcessBuilder::build($this->processes, $command, $tokens);
     }
 
     private function remember(int $pid, string $label, CommandLine $command, ?string $window = null): ProcessRecord

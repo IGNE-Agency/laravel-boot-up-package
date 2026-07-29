@@ -275,6 +275,47 @@ test('the migrations plan line shows without --no-migrate', function (): void {
         ->assertSuccessful();
 });
 
+test('a combined worker degrades to the background when stdout is not interactive', function (): void {
+    // The test runner's stdout is a pipe, so follow resolves to false —
+    // exactly the CI/scripted case the fallback exists for.
+    ProcessFaker::fake([
+        'sh -c nohup php artisan serve*' => Process::result('12345'),
+        'sh -c nohup php artisan queue:work*' => Process::result('12346'),
+    ]);
+    config()->set('boot-up.serve_steps', [
+        StartServer::class,
+        Igne\LaravelBootUp\Queue\Steps\StartQueueWorker::class,
+        AnnounceApplication::class,
+    ]);
+    config()->set('queue.default', 'database');
+
+    $this->artisan('app:serve', ['server' => 'laravel'])
+        ->expectsOutputToContain('no interactive terminal to stream into — running in the background instead.')
+        ->assertSuccessful();
+
+    ProcessFaker::assertRan('sh -c nohup php artisan queue:work*');
+    expect($this->ledger->withLabel('queue-worker'))->toHaveCount(1);
+});
+
+test('--detach is accepted and keeps the boot fully detached', function (): void {
+    ProcessFaker::fake([
+        'sh -c nohup php artisan serve*' => Process::result('12345'),
+        'sh -c nohup php artisan queue:work*' => Process::result('12346'),
+    ]);
+    config()->set('boot-up.serve_steps', [
+        StartServer::class,
+        Igne\LaravelBootUp\Queue\Steps\StartQueueWorker::class,
+        AnnounceApplication::class,
+    ]);
+    config()->set('queue.default', 'database');
+
+    $this->artisan('app:serve', ['server' => 'laravel', '--detach' => true])
+        ->expectsOutputToContain('Application ready.')
+        ->assertSuccessful();
+
+    ProcessFaker::assertRan('sh -c nohup php artisan queue:work*');
+});
+
 test('dead ledger entries are pruned when a new serve boots', function (): void {
     ProcessFaker::fake([
         'kill -0 4444' => Process::result(exitCode: 1),

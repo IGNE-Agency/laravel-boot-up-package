@@ -56,21 +56,31 @@ publishing.
 | -------------------------- | ------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `frontend.package_manager` | `BOOT_UP_PACKAGE_MANAGER` | `bun`      | `bun`, `yarn`, `npm` or `pnpm`.                                                                                              |
 | `frontend.assets`          | `BOOT_UP_ASSETS`          | `watch`    | `watch`, `build` or `skip`.                                                                                                  |
-| `frontend.watch_in`        | `BOOT_UP_ASSETS_WATCH_IN` | `terminal` | `terminal` opens the watcher in its own terminal window; `background` runs it detached with logs in `storage/logs/boot-up/`. |
+| `frontend.watch_in`        | `BOOT_UP_ASSETS_WATCH_IN` | `combined` | `combined`, `terminal` or `background` — see [Queue & workers](#queue--workers).                                             |
 
 ## Queue & workers
+
+Every `run_in` key (including `frontend.watch_in`) accepts the same three modes:
+
+- `combined` — the worker streams into the `app:serve` terminal with a colored
+  `[name]` prefix; Ctrl+C stops everything. Falls
+  back to `background` under `--detach` or a non-interactive stdout.
+- `terminal` — the worker opens in its own terminal window.
+- `background` — the worker runs detached with logs in `storage/logs/boot-up/`.
+
+Modes mix freely per worker (e.g. queue combined, Reverb in its own window).
 
 | Key                          | Env var                    | Default    | Description                                                                    |
 | ---------------------------- | -------------------------- | ---------- | ------------------------------------------------------------------------------ |
 | `queue.enabled`              | `BOOT_UP_QUEUE`            | `true`     | Start a queue worker (only when `QUEUE_CONNECTION` is not `sync`).             |
-| `queue.run_in`               | `BOOT_UP_QUEUE_RUN_IN`     | `terminal` | `terminal` or `background`.                                                    |
+| `queue.run_in`               | `BOOT_UP_QUEUE_RUN_IN`     | `combined` | `combined`, `terminal` or `background`.                                        |
 | `queue.flags`                | —                          | `[]`       | Extra `queue:work` options, e.g. `['--tries' => 3]`.                           |
 | `workers.scheduler.enabled` | `BOOT_UP_SCHEDULER`        | `false`    | Start `schedule:work`. Opt-in.                                                 |
-| `workers.scheduler.run_in`  | `BOOT_UP_SCHEDULER_RUN_IN` | `terminal` | `terminal` or `background`.                                                    |
+| `workers.scheduler.run_in`  | `BOOT_UP_SCHEDULER_RUN_IN` | `combined` | `combined`, `terminal` or `background`.                                        |
 | `workers.horizon.enabled`   | `BOOT_UP_HORIZON`          | `true`     | Start Horizon when `laravel/horizon` is installed (replaces the queue worker). |
-| `workers.horizon.run_in`    | `BOOT_UP_HORIZON_RUN_IN`   | `terminal` | `terminal` or `background`.                                                    |
+| `workers.horizon.run_in`    | `BOOT_UP_HORIZON_RUN_IN`   | `combined` | `combined`, `terminal` or `background`.                                        |
 | `workers.reverb.enabled`    | `BOOT_UP_REVERB`           | `true`     | Start Reverb when `laravel/reverb` is installed.                               |
-| `workers.reverb.run_in`     | `BOOT_UP_REVERB_RUN_IN`    | `terminal` | `terminal` or `background`.                                                    |
+| `workers.reverb.run_in`     | `BOOT_UP_REVERB_RUN_IN`    | `combined` | `combined`, `terminal` or `background`.                                        |
 
 ## Deploy
 

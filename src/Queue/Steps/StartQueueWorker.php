@@ -66,6 +66,7 @@ final class StartQueueWorker implements Step
             name: "Queue worker on [{$connection}]",
             tokens: ['php', 'artisan', 'queue:work', $connection],
             runIn: $this->config->runIn,
+            streamAs: 'queue',
             options: $this->config->flags,
         );
     }

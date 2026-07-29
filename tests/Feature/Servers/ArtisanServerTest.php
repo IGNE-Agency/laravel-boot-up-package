@@ -14,6 +14,7 @@ use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Serve\CombinedRunPlan;
 use Igne\LaravelBootUp\Serve\WorkerLauncher;
 use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
@@ -34,7 +35,7 @@ afterEach(function (): void {
     exec('rm -rf '.escapeshellarg($this->workDir));
 });
 
-function artisanServer(ProcessLedger $ledger, string $workDir, ?ServersConfig $config = null): ArtisanServer
+function artisanServer(ProcessLedger $ledger, string $workDir, ?ServersConfig $config = null, ?CombinedRunPlan $plan = null): ArtisanServer
 {
     $runner = new ProcessRunner(
         processes: app(Factory::class),
@@ -46,11 +47,13 @@ function artisanServer(ProcessLedger $ledger, string $workDir, ?ServersConfig $c
     );
 
     $reaper = new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminalLauncher);
+    $plan ??= new CombinedRunPlan;
 
     return new ArtisanServer(
         $runner,
-        new WorkerLauncher($runner, new CommandRewriter, $ledger, $reaper),
+        new WorkerLauncher($runner, new CommandRewriter, $ledger, $reaper, $plan),
         $config ?? new ServersConfig,
+        $plan,
     );
 }
 
@@ -85,6 +88,37 @@ test('a second start is skipped while the tracked process is alive', function ()
     ProcessFaker::assertRanTimes('*nohup php artisan serve*', 1);
     expect($this->ledger->withLabel('artisan-serve'))->toHaveCount(1);
     Prompt::assertStrippedOutputContains('php artisan serve is already running.');
+});
+
+test('start queues its log as the combined [server] stream', function (): void {
+    ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
+    $plan = new CombinedRunPlan;
+
+    artisanServer($this->ledger, $this->workDir, plan: $plan)->start(new ServeContext(new ServeOptions));
+
+    $services = $plan->services();
+
+    expect($services)->toHaveCount(1)
+        ->and($services[0]->name)->toBe('server')
+        ->and($services[0]->isProcess())->toBeFalse()
+        ->and($services[0]->logFile)->toBe($this->workDir.'/logs/artisan-serve.log')
+        ->and($plan->hasProcesses())->toBeFalse();
+});
+
+test('an already-running serve still queues the [server] stream', function (): void {
+    ProcessFaker::fake([
+        'kill -0 4242' => Process::result(),
+        'ps -p 4242*' => Process::result(output: "php artisan serve --host=127.0.0.1 --port=8000\n"),
+        '*' => Process::result(output: "4242\n"),
+    ]);
+    $plan = new CombinedRunPlan;
+
+    $server = artisanServer($this->ledger, $this->workDir, plan: $plan);
+    $server->start(new ServeContext(new ServeOptions));
+    $server->start(new ServeContext(new ServeOptions));
+
+    expect($plan->services())->toHaveCount(2)
+        ->and($plan->services()[1]->name)->toBe('server');
 });
 
 test('isRunning is false when the tracked pid is dead', function (): void {

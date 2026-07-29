@@ -31,8 +31,10 @@ use Igne\LaravelBootUp\Pipelines\ComposerJson;
 use Igne\LaravelBootUp\Process\LinuxTerminalLauncher;
 use Igne\LaravelBootUp\Process\MacTerminalLauncher;
 use Igne\LaravelBootUp\Process\NullTerminalLauncher;
+use Igne\LaravelBootUp\Process\OutputMultiplexer;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Serve\CombinedRunPlan;
 use Igne\LaravelBootUp\Serve\ShutdownRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Herd\HerdServices;
@@ -73,6 +75,7 @@ final class BootUpServiceProvider extends ServiceProvider
 
         $this->app->singleton(PackageManagerSelector::class);
         $this->app->singleton(ShutdownRunner::class);
+        $this->app->singleton(CombinedRunPlan::class);
     }
 
     private function registerConfigObjects(): void
@@ -124,6 +127,11 @@ final class BootUpServiceProvider extends ServiceProvider
             logDirectory: $app->storagePath('logs/boot-up'),
             runtimeDirectory: $app->storagePath('framework/boot-up'),
             terminalPidTimeout: (int) $app['config']->get('boot-up.process.terminal_pid_timeout', 20),
+        ));
+
+        $this->app->singleton(OutputMultiplexer::class, fn (Application $app) => new OutputMultiplexer(
+            processes: $app->make(Factory::class),
+            ledger: $app->make(ProcessLedger::class),
         ));
     }
 

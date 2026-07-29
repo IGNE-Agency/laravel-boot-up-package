@@ -136,11 +136,11 @@ works through that plan. The steps and their order are published config
 ## Long-running processes
 
 Long-running processes (queue worker, asset watcher, scheduler, Horizon, Reverb)
-**open in their own terminal window by default**, so you see their output live.
-Prefer them out of sight? Set the matching config or env value to `background`
-(e.g. `BOOT_UP_QUEUE_RUN_IN=background`) to run them detached with their output
-in `storage/logs/boot-up/`. Either way they are tracked, so `app:down` stops
-exactly them.
+**stream into the `app:serve` terminal by default**:
+
+To configure the way long-running processes are streamed, see [docs/CONFIGURATION.md - Queue & workers](docs/CONFIGURATION.md#queue--workers)
+
+Every process is tracked, so `app:down` stops exactly them.
 
 ## Shutdown
 

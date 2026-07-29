@@ -7,6 +7,7 @@ use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Enums\PackageManager;
+use Igne\LaravelBootUp\Enums\RunMode;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\Steps\BuildOrWatchAssets;
 use Igne\LaravelBootUp\Process\NullTerminalLauncher;
@@ -21,7 +22,7 @@ use Laravel\Prompts\Prompt;
 /**
  * Call AFTER Process::fake() so the runner and reaper receive the faked factory.
  */
-function bindAssetServices(string $dir, string $assets = 'watch', string $watchIn = 'background'): ProcessLedger
+function bindAssetServices(string $dir, string $assets = 'watch', RunMode $watchIn = RunMode::Background): ProcessLedger
 {
     $ledger = new ProcessLedger($dir.'/processes.json');
 

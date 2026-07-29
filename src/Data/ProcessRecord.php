@@ -12,10 +12,11 @@ final readonly class ProcessRecord
         public string $command,
         public string $startedAt,
         public ?string $window = null,
+        public ?string $mode = null,
     ) {}
 
     /**
-     * @param  array{pid: int, label: string, command: string, started_at: string, window?: string|null}  $data
+     * @param  array{pid: int, label: string, command: string, started_at: string, window?: string|null, mode?: string|null}  $data
      */
     public static function fromArray(array $data): self
     {
@@ -25,24 +26,27 @@ final readonly class ProcessRecord
             command: (string) $data['command'],
             startedAt: (string) $data['started_at'],
             window: isset($data['window']) && $data['window'] !== null ? (string) $data['window'] : null,
+            mode: isset($data['mode']) && $data['mode'] !== null ? (string) $data['mode'] : null,
         );
     }
 
     /**
-     * Where this process's output goes, for the "started"/status lines: its
-     * own terminal window when one was opened, otherwise the background log
-     * file. A terminal-run process writes no log file, so advertising one
-     * would point the user at a path that does not exist.
+     * Where this process's output goes, for the "started"/status lines: the
+     * combined app:serve stream, its own terminal window when one was opened,
+     * or the background log file. A terminal-run process writes no log file,
+     * so advertising one would point the user at a path that does not exist.
      */
     public function outputLocation(): string
     {
-        return $this->window !== null
-            ? 'output is in its terminal window'
-            : "logs: storage/logs/boot-up/{$this->label}.log";
+        return match (true) {
+            $this->mode === 'combined' => 'output streams in the app:serve terminal',
+            $this->window !== null => 'output is in its terminal window',
+            default => "logs: storage/logs/boot-up/{$this->label}.log",
+        };
     }
 
     /**
-     * @return array{pid: int, label: string, command: string, started_at: string, window: string|null}
+     * @return array{pid: int, label: string, command: string, started_at: string, window: string|null, mode: string|null}
      */
     public function toArray(): array
     {
@@ -52,6 +56,7 @@ final readonly class ProcessRecord
             'command' => $this->command,
             'started_at' => $this->startedAt,
             'window' => $this->window,
+            'mode' => $this->mode,
         ];
     }
 }

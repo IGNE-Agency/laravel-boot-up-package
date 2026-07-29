@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Config;
 
+use Igne\LaravelBootUp\Enums\RunMode;
 use Illuminate\Contracts\Config\Repository;
 
 final readonly class QueueConfig
@@ -13,7 +14,7 @@ final readonly class QueueConfig
      */
     public function __construct(
         public bool $enabled = true,
-        public string $runIn = 'terminal',
+        public RunMode $runIn = RunMode::Combined,
         public array $flags = [],
     ) {}
 
@@ -21,7 +22,7 @@ final readonly class QueueConfig
     {
         return new self(
             enabled: (bool) $config->get('boot-up.queue.enabled', true),
-            runIn: (string) $config->get('boot-up.queue.run_in', 'terminal'),
+            runIn: RunMode::fromConfig((string) $config->get('boot-up.queue.run_in', 'combined')),
             flags: (array) $config->get('boot-up.queue.flags', []),
         );
     }

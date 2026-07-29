@@ -10,6 +10,7 @@ use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Deploy\DeployTaskRunner;
 use Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks;
 use Igne\LaravelBootUp\Enums\PackageManager;
+use Igne\LaravelBootUp\Enums\RunMode;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Process\NullTerminalLauncher;
@@ -52,7 +53,7 @@ function bindRunProjectCommandsFixtures(string $dir): void
         ),
         rewriter: new CommandRewriter,
         packageManagers: new PackageManagerSelector(
-            new FrontendConfig(PackageManager::BUN, 'watch', 'background'),
+            new FrontendConfig(PackageManager::BUN, 'watch', RunMode::Background),
             new PackageJson($dir.'/package.json'),
         ),
     ));

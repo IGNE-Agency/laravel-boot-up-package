@@ -9,6 +9,7 @@ use Igne\LaravelBootUp\Data\CommandRewrites;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Enums\PackageManager;
+use Igne\LaravelBootUp\Enums\RunMode;
 use Igne\LaravelBootUp\Exceptions\FrontendException;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
@@ -26,7 +27,7 @@ use Laravel\Prompts\Prompt;
 function bindFrontendInstallServices(string $dir): void
 {
     app()->instance(PackageJson::class, new PackageJson($dir.'/package.json'));
-    app()->instance(FrontendConfig::class, new FrontendConfig(PackageManager::BUN, 'watch', 'background'));
+    app()->instance(FrontendConfig::class, new FrontendConfig(PackageManager::BUN, 'watch', RunMode::Background));
     app()->instance(ProcessRunner::class, new ProcessRunner(
         processes: app(Factory::class),
         ledger: new ProcessLedger($dir.'/processes.json'),

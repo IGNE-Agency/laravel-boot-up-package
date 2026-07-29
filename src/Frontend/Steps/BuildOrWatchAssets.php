@@ -88,6 +88,7 @@ final class BuildOrWatchAssets implements Step
             name: 'Asset watcher',
             tokens: $manager->runCommand('dev'),
             runIn: $this->config->watchIn,
+            streamAs: 'vite',
         ), $context);
     }
 }

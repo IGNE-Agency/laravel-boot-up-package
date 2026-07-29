@@ -12,6 +12,7 @@ use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Deploy\DeployTaskRunner;
 use Igne\LaravelBootUp\Enums\PackageManager;
+use Igne\LaravelBootUp\Enums\RunMode;
 use Igne\LaravelBootUp\Exceptions\DeployException;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
@@ -49,7 +50,7 @@ function projectCommandRunner(string $dir): DeployTaskRunner
         ),
         rewriter: new CommandRewriter,
         packageManagers: new PackageManagerSelector(
-            new FrontendConfig(PackageManager::BUN, 'watch', 'background'),
+            new FrontendConfig(PackageManager::BUN, 'watch', RunMode::Background),
             new PackageJson($dir.'/package.json'),
         ),
     );

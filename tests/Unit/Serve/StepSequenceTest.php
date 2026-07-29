@@ -84,10 +84,16 @@ test('the default pipeline summarizes into twelve readable lines', function (): 
         'Run pending migrations',
         'Cache the framework files',
         'Finalize the application',
-        'Start long-running services when enabled: queue worker, Horizon, Reverb, scheduler',
+        'Start long-running services when enabled: queue worker, Horizon, Reverb, scheduler — combined output streams in this terminal',
         'Build or watch frontend assets',
         'Announce the application URL',
     ]);
+});
+
+test('a detached run drops the combined-stream hint from the services line', function (): void {
+    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions(follow: false));
+
+    expect($plan->summary())->toContain('Start long-running services when enabled: queue worker, Horizon, Reverb, scheduler');
 });
 
 test('a variant entry parses its class and parameters', function (): void {
@@ -153,7 +159,7 @@ test('--without-assets drops the frontend fragments and the assets line', functi
 test('--without-queue drops the queue worker from the services line', function (): void {
     $plan = StepSequence::for(defaultServeSteps(), new ServeOptions(withQueue: false));
 
-    expect($plan->summary())->toContain('Start long-running services when enabled: Horizon, Reverb, scheduler');
+    expect($plan->summary())->toContain('Start long-running services when enabled: Horizon, Reverb, scheduler — combined output streams in this terminal');
 });
 
 test('without a server label the server line stays generic', function (): void {

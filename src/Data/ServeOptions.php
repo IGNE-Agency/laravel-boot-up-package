@@ -6,6 +6,12 @@ namespace Igne\LaravelBootUp\Data;
 
 final readonly class ServeOptions
 {
+    /**
+     * @param  bool  $follow  stream combined worker output in this terminal
+     *                        after the boot; false detaches everything
+     *                        (--detach, or stdout is not an interactive
+     *                        terminal)
+     */
     public function __construct(
         public bool $seed = false,
         public bool $migrate = true,
@@ -13,5 +19,6 @@ final readonly class ServeOptions
         public bool $withQueue = true,
         public bool $withAssets = true,
         public bool $fresh = false,
+        public bool $follow = true,
     ) {}
 }

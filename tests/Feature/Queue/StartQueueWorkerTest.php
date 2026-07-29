@@ -9,6 +9,7 @@ use Igne\LaravelBootUp\Data\CommandRewrites;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Enums\RunMode;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
@@ -155,7 +156,7 @@ test('falls back to config(queue.default) when .env has no connection', function
 
 test('spawns a tracked queue worker with the connection and configured flags', function (): void {
     Process::fake(['*' => Process::result(output: "4242\n")]);
-    $ledger = bindQueueServices($this->dir, new QueueConfig(runIn: 'background', flags: ['--tries' => 3]));
+    $ledger = bindQueueServices($this->dir, new QueueConfig(runIn: RunMode::Background, flags: ['--tries' => 3]));
     file_put_contents($this->dir.'/.env', "QUEUE_CONNECTION=database\n");
 
     app(StartQueueWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
@@ -177,7 +178,7 @@ test('spawns a tracked queue worker with the connection and configured flags', f
 
 test('the worker command is rewritten for the active server', function (): void {
     Process::fake(['*' => Process::result(output: "4242\n")]);
-    bindQueueServices($this->dir, new QueueConfig(runIn: 'background'));
+    bindQueueServices($this->dir, new QueueConfig(runIn: RunMode::Background));
     file_put_contents($this->dir.'/.env', "QUEUE_CONNECTION=database\n");
 
     $context = new ServeContext(new ServeOptions, queueSailServer());
@@ -216,7 +217,7 @@ test('a live queue-worker record skips spawning a second worker', function (): v
 
 test('the .env connection beats a stale config(queue.default)', function (): void {
     Process::fake(['*' => Process::result(output: "4242\n")]);
-    bindQueueServices($this->dir, new QueueConfig(runIn: 'background'));
+    bindQueueServices($this->dir, new QueueConfig(runIn: RunMode::Background));
     file_put_contents($this->dir.'/.env', "QUEUE_CONNECTION=database\n");
     config()->set('queue.default', 'sync');
 

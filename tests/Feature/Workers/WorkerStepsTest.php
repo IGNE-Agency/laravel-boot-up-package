@@ -7,11 +7,13 @@ use Igne\LaravelBootUp\Contracts\TerminalLauncher;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Enums\RunMode;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
 use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Serve\CombinedRunPlan;
 use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Igne\LaravelBootUp\Workers\Steps\StartHorizon;
@@ -105,7 +107,7 @@ test('the scheduler stays off by default', function (): void {
 
 test('an enabled scheduler starts a tracked schedule:work process', function (): void {
     ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
-    $ledger = bindWorkerDeps($this->dir, new WorkersConfig(schedulerEnabled: true, schedulerRunIn: 'background'));
+    $ledger = bindWorkerDeps($this->dir, new WorkersConfig(schedulerEnabled: true, schedulerRunIn: RunMode::Background));
 
     app(StartScheduler::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
@@ -139,7 +141,7 @@ test('horizon is skipped when the project does not require it', function (): voi
 
 test('horizon starts when the project requires it', function (): void {
     ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
-    $ledger = bindWorkerDeps($this->dir, new WorkersConfig(horizonRunIn: 'background'), ['require' => ['laravel/horizon' => '^6.0']]);
+    $ledger = bindWorkerDeps($this->dir, new WorkersConfig(horizonRunIn: RunMode::Background), ['require' => ['laravel/horizon' => '^6.0']]);
 
     app(StartHorizon::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
@@ -148,10 +150,25 @@ test('horizon starts when the project requires it', function (): void {
     Prompt::assertStrippedOutputContains('Horizon started (PID 4242)');
 });
 
-test('horizon opens a terminal window by default', function (): void {
+test('horizon queues into the combined stream by default', function (): void {
+    Process::fake();
+    bindWorkerDeps($this->dir, composer: ['require' => ['laravel/horizon' => '^6.0']]);
+
+    app(StartHorizon::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+
+    $services = app(CombinedRunPlan::class)->services();
+
+    expect($services)->toHaveCount(1)
+        ->and($services[0]->label)->toBe('horizon')
+        ->and($services[0]->command->toString())->toContain('php artisan horizon');
+    Process::assertNothingRan();
+    Prompt::assertStrippedOutputContains('Horizon will stream here as [horizon] once the boot completes.');
+});
+
+test('horizon opens a terminal window when configured', function (): void {
     Process::fake();
     $terminal = fakeServiceTerminal();
-    $ledger = bindWorkerDeps($this->dir, composer: ['require' => ['laravel/horizon' => '^6.0']], terminal: $terminal);
+    $ledger = bindWorkerDeps($this->dir, new WorkersConfig(horizonRunIn: RunMode::Terminal), ['require' => ['laravel/horizon' => '^6.0']], $terminal);
 
     app(StartHorizon::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
@@ -159,6 +176,19 @@ test('horizon opens a terminal window by default', function (): void {
         ->and($terminal->opened[0])->toContain('php artisan horizon')
         ->and($ledger->withLabel('horizon'))->toHaveCount(1);
     Process::assertDidntRun(fn ($process): bool => str_contains(implode(' ', $process->command), 'nohup'));
+});
+
+test('a combined worker falls back to the background without an interactive terminal', function (): void {
+    ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
+    $ledger = bindWorkerDeps($this->dir, composer: ['require' => ['laravel/horizon' => '^6.0']]);
+
+    $context = new ServeContext(new ServeOptions(follow: false));
+    app(StartHorizon::class)->handle($context, fn ($passed) => $passed);
+
+    ProcessFaker::assertRan('*nohup php artisan horizon*horizon.log*');
+    expect(app(CombinedRunPlan::class)->isEmpty())->toBeTrue()
+        ->and($ledger->withLabel('horizon'))->toHaveCount(1);
+    Prompt::assertStrippedOutputContains('no interactive terminal to stream into');
 });
 
 test('horizon can be disabled in configuration even when installed', function (): void {
@@ -172,7 +202,7 @@ test('horizon can be disabled in configuration even when installed', function ()
 
 test('reverb starts when the project requires it', function (): void {
     ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
-    $ledger = bindWorkerDeps($this->dir, new WorkersConfig(reverbRunIn: 'background'), ['require' => ['laravel/reverb' => '^2.0']]);
+    $ledger = bindWorkerDeps($this->dir, new WorkersConfig(reverbRunIn: RunMode::Background), ['require' => ['laravel/reverb' => '^2.0']]);
 
     app(StartReverb::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
@@ -180,10 +210,10 @@ test('reverb starts when the project requires it', function (): void {
     expect($ledger->withLabel('reverb'))->toHaveCount(1);
 });
 
-test('reverb opens a terminal window by default', function (): void {
+test('reverb opens a terminal window when configured', function (): void {
     Process::fake();
     $terminal = fakeServiceTerminal();
-    $ledger = bindWorkerDeps($this->dir, composer: ['require' => ['laravel/reverb' => '^2.0']], terminal: $terminal);
+    $ledger = bindWorkerDeps($this->dir, new WorkersConfig(reverbRunIn: RunMode::Terminal), ['require' => ['laravel/reverb' => '^2.0']], $terminal);
 
     app(StartReverb::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 

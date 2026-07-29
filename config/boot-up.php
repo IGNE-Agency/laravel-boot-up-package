@@ -114,7 +114,7 @@ return [
     'frontend' => [
         'package_manager' => env('BOOT_UP_PACKAGE_MANAGER', 'bun'), // bun | yarn | npm | pnpm
         'assets' => env('BOOT_UP_ASSETS', 'watch'), // watch | build | skip
-        'watch_in' => env('BOOT_UP_ASSETS_WATCH_IN', 'terminal'), // terminal | background
+        'watch_in' => env('BOOT_UP_ASSETS_WATCH_IN', 'combined'), // combined | terminal | background
     ],
 
     /*
@@ -126,7 +126,7 @@ return [
     */
     'queue' => [
         'enabled' => env('BOOT_UP_QUEUE', true),
-        'run_in' => env('BOOT_UP_QUEUE_RUN_IN', 'terminal'), // terminal | background
+        'run_in' => env('BOOT_UP_QUEUE_RUN_IN', 'combined'), // combined | terminal | background
         'flags' => [],
     ],
 
@@ -138,19 +138,24 @@ return [
     | package is installed (and replace/extend the queue worker where it
     | applies). The scheduler is opt-in: schedule:work on a project with
     | no scheduled tasks is pure noise.
+    |
+    | run_in: 'combined' streams the worker into the app:serve terminal with
+    | a colored [name] prefix (Ctrl+C stops everything), 'terminal' opens its
+    | own terminal window, 'background' runs it detached with logs in
+    | storage/logs/boot-up/.
     */
     'workers' => [
         'scheduler' => [
             'enabled' => env('BOOT_UP_SCHEDULER', false),
-            'run_in' => env('BOOT_UP_SCHEDULER_RUN_IN', 'terminal'), // terminal | background
+            'run_in' => env('BOOT_UP_SCHEDULER_RUN_IN', 'combined'), // combined | terminal | background
         ],
         'horizon' => [
             'enabled' => env('BOOT_UP_HORIZON', true),
-            'run_in' => env('BOOT_UP_HORIZON_RUN_IN', 'terminal'), // terminal | background
+            'run_in' => env('BOOT_UP_HORIZON_RUN_IN', 'combined'), // combined | terminal | background
         ],
         'reverb' => [
             'enabled' => env('BOOT_UP_REVERB', true),
-            'run_in' => env('BOOT_UP_REVERB_RUN_IN', 'terminal'), // terminal | background
+            'run_in' => env('BOOT_UP_REVERB_RUN_IN', 'combined'), // combined | terminal | background
         ],
     ],
 

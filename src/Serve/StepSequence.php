@@ -267,8 +267,11 @@ final readonly class StepSequence
         }
 
         $list = $services->implode(', ');
+        $line = "Start long-running services when enabled: {$list}";
 
-        return "Start long-running services when enabled: {$list}";
+        return $this->options->follow
+            ? "{$line} — combined output streams in this terminal"
+            : $line;
     }
 
     /**
