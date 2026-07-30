@@ -15,7 +15,7 @@ use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Queue\Steps\StartQueueWorker;
+use Igne\LaravelBootUp\Queue\Steps\QueueWorker;
 use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -102,7 +102,7 @@ test('skips with a note when --without-queue was passed', function (): void {
 
     $context = new ServeContext(new ServeOptions(withQueue: false));
 
-    $result = app(StartQueueWorker::class)->handle($context, fn ($passed) => $passed);
+    $result = app(QueueWorker::class)->handle($context, fn ($passed) => $passed);
 
     expect($result)->toBe($context);
     Process::assertNothingRan();
@@ -113,7 +113,7 @@ test('skips with a note when the queue is disabled in configuration', function (
     Process::fake();
     bindQueueServices($this->dir, new QueueConfig(enabled: false));
 
-    app(StartQueueWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    app(QueueWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
     Process::assertNothingRan();
     Prompt::assertStrippedOutputContains('disabled in configuration');
@@ -125,7 +125,7 @@ test('skips with a note when horizon is installed and enabled', function (): voi
     file_put_contents($this->dir.'/composer.json', (string) json_encode(['require' => ['laravel/horizon' => '^6.0']]));
     app()->instance(Igne\LaravelBootUp\Pipelines\ComposerJson::class, new Igne\LaravelBootUp\Pipelines\ComposerJson($this->dir.'/composer.json'));
 
-    app(StartQueueWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    app(QueueWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
     Process::assertNothingRan();
     Prompt::assertStrippedOutputContains('laravel/horizon manages the queue');
@@ -137,7 +137,7 @@ test('skips with a note when the .env queue connection is sync', function (): vo
     file_put_contents($this->dir.'/.env', "QUEUE_CONNECTION=sync\n");
     config()->set('queue.default', 'database');
 
-    app(StartQueueWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    app(QueueWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
     Process::assertNothingRan();
     Prompt::assertStrippedOutputContains('no worker needed');
@@ -148,7 +148,7 @@ test('falls back to config(queue.default) when .env has no connection', function
     bindQueueServices($this->dir);
     config()->set('queue.default', 'sync');
 
-    app(StartQueueWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    app(QueueWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
     Process::assertNothingRan();
     Prompt::assertStrippedOutputContains('no worker needed');
@@ -159,7 +159,7 @@ test('spawns a tracked queue worker with the connection and configured flags', f
     $ledger = bindQueueServices($this->dir, new QueueConfig(runIn: RunMode::Background, flags: ['--tries' => 3]));
     file_put_contents($this->dir.'/.env', "QUEUE_CONNECTION=database\n");
 
-    app(StartQueueWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    app(QueueWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
     Process::assertRan(function ($process): bool {
         $command = implode(' ', $process->command);
@@ -183,7 +183,7 @@ test('the worker command is rewritten for the active server', function (): void 
 
     $context = new ServeContext(new ServeOptions, queueSailServer());
 
-    app(StartQueueWorker::class)->handle($context, fn ($passed) => $passed);
+    app(QueueWorker::class)->handle($context, fn ($passed) => $passed);
 
     Process::assertRan(fn ($process): bool => str_contains(
         implode(' ', $process->command),
@@ -207,7 +207,7 @@ test('a live queue-worker record skips spawning a second worker', function (): v
         startedAt: date(DATE_ATOM),
     ));
 
-    app(StartQueueWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    app(QueueWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
     Process::assertDidntRun(fn ($process): bool => str_contains(implode(' ', $process->command), 'nohup'));
 
@@ -221,7 +221,7 @@ test('the .env connection beats a stale config(queue.default)', function (): voi
     file_put_contents($this->dir.'/.env', "QUEUE_CONNECTION=database\n");
     config()->set('queue.default', 'sync');
 
-    app(StartQueueWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    app(QueueWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
 
     Process::assertRan(fn ($process): bool => str_contains(
         implode(' ', $process->command),

@@ -21,15 +21,16 @@ use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
 use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
 use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
-use Igne\LaravelBootUp\Frontend\Steps\BuildOrWatchAssets;
+use Igne\LaravelBootUp\Frontend\Steps\BuildAssets;
 use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
-use Igne\LaravelBootUp\Queue\Steps\StartQueueWorker;
+use Igne\LaravelBootUp\Frontend\Steps\WatchAssets;
+use Igne\LaravelBootUp\Queue\Steps\QueueWorker;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
-use Igne\LaravelBootUp\Workers\Steps\StartHorizon;
-use Igne\LaravelBootUp\Workers\Steps\StartReverb;
-use Igne\LaravelBootUp\Workers\Steps\StartScheduler;
+use Igne\LaravelBootUp\Workers\Steps\HorizonWorker;
+use Igne\LaravelBootUp\Workers\Steps\ReverbWorker;
+use Igne\LaravelBootUp\Workers\Steps\SchedulerWorker;
 use Illuminate\Support\Str;
 use ReflectionClass;
 
@@ -245,10 +246,10 @@ final readonly class StepSequence
     private function workersLine(array $present): ?string
     {
         $services = collect([
-            isset($present[StartQueueWorker::class]) && $this->options->withQueue ? 'queue worker' : null,
-            isset($present[StartHorizon::class]) ? 'Horizon' : null,
-            isset($present[StartReverb::class]) ? 'Reverb' : null,
-            isset($present[StartScheduler::class]) ? 'scheduler' : null,
+            isset($present[QueueWorker::class]) && $this->options->withQueue ? 'queue worker' : null,
+            isset($present[HorizonWorker::class]) ? 'Horizon' : null,
+            isset($present[ReverbWorker::class]) ? 'Reverb' : null,
+            isset($present[SchedulerWorker::class]) ? 'scheduler' : null,
         ])->filter();
 
         if ($services->isEmpty()) {
@@ -287,11 +288,12 @@ final readonly class StepSequence
                 : 'Running pending migrations',
             CacheFrameworkFiles::class => 'Caching framework files',
             FinalizeApplication::class => 'Finalizing the application',
-            StartQueueWorker::class => 'Starting the queue worker',
-            StartHorizon::class => 'Starting Horizon',
-            StartReverb::class => 'Starting Reverb',
-            StartScheduler::class => 'Starting the scheduler',
-            BuildOrWatchAssets::class => 'Building or watching assets',
+            QueueWorker::class => 'Starting the queue worker',
+            HorizonWorker::class => 'Starting Horizon',
+            ReverbWorker::class => 'Starting Reverb',
+            SchedulerWorker::class => 'Starting the scheduler',
+            BuildAssets::class => 'Building assets',
+            WatchAssets::class => 'Watching assets',
             AnnounceApplication::class => 'Announcing the application',
             default => self::fallbackLabel($class, $parameters),
         };

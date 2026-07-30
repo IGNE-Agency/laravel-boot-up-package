@@ -8,6 +8,7 @@ use Igne\LaravelBootUp\Contracts\HasResidualState;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Frontend\Steps\WatchAssets;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
@@ -21,8 +22,7 @@ use Igne\LaravelBootUp\Servers\StopServerPrompt;
  */
 final class ShutdownRunner
 {
-    /** Mirrors BuildOrWatchAssets::LABEL — the ledger label for the Vite watcher. */
-    private const string ASSET_WATCHER_LABEL = 'assets-watch';
+    private const string ASSET_WATCHER_LABEL = WatchAssets::LABEL;
 
     private bool $hasRun = false;
 

@@ -284,7 +284,7 @@ test('a combined worker degrades to the background when stdout is not interactiv
     ]);
     config()->set('boot-up.serve.steps', [
         StartServer::class,
-        Igne\LaravelBootUp\Queue\Steps\StartQueueWorker::class,
+        Igne\LaravelBootUp\Queue\Steps\QueueWorker::class,
         AnnounceApplication::class,
     ]);
     config()->set('queue.default', 'database');
@@ -304,7 +304,7 @@ test('--detach is accepted and keeps the boot fully detached', function (): void
     ]);
     config()->set('boot-up.serve.steps', [
         StartServer::class,
-        Igne\LaravelBootUp\Queue\Steps\StartQueueWorker::class,
+        Igne\LaravelBootUp\Queue\Steps\QueueWorker::class,
         AnnounceApplication::class,
     ]);
     config()->set('queue.default', 'database');

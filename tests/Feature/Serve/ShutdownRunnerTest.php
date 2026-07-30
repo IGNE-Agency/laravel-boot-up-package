@@ -351,3 +351,9 @@ test('unattended shutdown only cleans residual state when stops default to yes',
 
     expect($residual->cleanUps)->toBe(1);
 });
+
+test('the stale-hot-file cleanup shares the exact watcher label with WatchAssets', function (): void {
+    $constant = new ReflectionClassConstant(ShutdownRunner::class, 'ASSET_WATCHER_LABEL');
+
+    expect($constant->getValue())->toBe(Igne\LaravelBootUp\Frontend\Steps\WatchAssets::LABEL);
+});
