@@ -66,7 +66,7 @@ test('the rejection names the configured allowed environments', function (): voi
 test('respects a customised allowed environments list', function (): void {
     file_put_contents($this->dir.'/.env', "APP_ENV=staging\n");
 
-    $config = new EnvironmentConfig(allowedEnvironments: ['staging']);
+    $config = new EnvironmentConfig(allowed: ['staging']);
     $context = new ServeContext(new ServeOptions);
 
     expect(($this->step)($config)->handle($context, fn ($passed) => $passed))->toBe($context);

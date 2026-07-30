@@ -6,10 +6,12 @@ use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Enums\RunMode;
 use Igne\LaravelBootUp\Frontend\PackageJson;
-use Igne\LaravelBootUp\Frontend\Steps\BuildOrWatchAssets;
+use Igne\LaravelBootUp\Frontend\Steps\BuildAssets;
+use Igne\LaravelBootUp\Frontend\Steps\WatchAssets;
 use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
@@ -22,7 +24,7 @@ use Laravel\Prompts\Prompt;
 /**
  * Call AFTER Process::fake() so the runner and reaper receive the faked factory.
  */
-function bindAssetServices(string $dir, string $assets = 'watch', RunMode $watchIn = RunMode::Background): ProcessLedger
+function bindAssetServices(string $dir, AssetMode $assets = AssetMode::Watch, RunMode $watchIn = RunMode::Background): ProcessLedger
 {
     $ledger = new ProcessLedger($dir.'/processes.json');
 
@@ -42,6 +44,18 @@ function bindAssetServices(string $dir, string $assets = 'watch', RunMode $watch
     return $ledger;
 }
 
+/**
+ * Run BOTH asset steps in pipeline order, like the shipped serve.steps —
+ * exactly one of the two may act (or note) per configuration.
+ */
+function runAssetSteps(ServeContext $context): ServeContext
+{
+    app(BuildAssets::class)->handle($context, fn ($passed) => $passed);
+    app(WatchAssets::class)->handle($context, fn ($passed) => $passed);
+
+    return $context;
+}
+
 beforeEach(function (): void {
     $this->dir = sys_get_temp_dir().'/boot-up-frontend-assets-'.bin2hex(random_bytes(4));
     mkdir($this->dir, 0755, true);
@@ -55,57 +69,58 @@ afterEach(function (): void {
     }
 });
 
-test('skips with a note when assets are disabled by flag', function (): void {
+test('skips with ONE note when assets are disabled by flag', function (): void {
     Process::fake();
     bindAssetServices($this->dir);
     file_put_contents($this->dir.'/package.json', '{"scripts":{"dev":"vite"}}');
 
-    $context = new ServeContext(new ServeOptions(withAssets: false));
+    runAssetSteps(new ServeContext(new ServeOptions(withAssets: false)));
 
-    $result = app(BuildOrWatchAssets::class)->handle($context, fn ($passed) => $passed);
-
-    expect($result)->toBe($context);
     Process::assertNothingRan();
     Prompt::assertStrippedOutputContains('--without-assets');
+    expect(substr_count(Prompt::strippedContent(), '--without-assets'))->toBe(1);
 });
 
 test('skips with a note when the configured mode is skip', function (): void {
     Process::fake();
-    bindAssetServices($this->dir, assets: 'skip');
+    bindAssetServices($this->dir, assets: AssetMode::Skip);
     file_put_contents($this->dir.'/package.json', '{"scripts":{"dev":"vite"}}');
 
-    app(BuildOrWatchAssets::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    runAssetSteps(new ServeContext(new ServeOptions));
 
     Process::assertNothingRan();
     Prompt::assertStrippedOutputContains('disabled in configuration');
+    expect(substr_count(Prompt::strippedContent(), 'disabled in configuration'))->toBe(1);
 });
 
 test('skips with a note when no package.json exists', function (): void {
     Process::fake();
     bindAssetServices($this->dir);
 
-    app(BuildOrWatchAssets::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    runAssetSteps(new ServeContext(new ServeOptions));
 
     Process::assertNothingRan();
     Prompt::assertStrippedOutputContains('No package.json found');
 });
 
-test('build mode runs the build script synchronously', function (): void {
+test('build mode runs the build script synchronously and starts no watcher', function (): void {
     Process::fake(['*' => Process::result()]);
-    bindAssetServices($this->dir, assets: 'build');
-    file_put_contents($this->dir.'/package.json', '{"scripts":{"build":"vite build"}}');
+    $ledger = bindAssetServices($this->dir, assets: AssetMode::Build);
+    file_put_contents($this->dir.'/package.json', '{"scripts":{"build":"vite build","dev":"vite"}}');
 
-    app(BuildOrWatchAssets::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    runAssetSteps(new ServeContext(new ServeOptions));
 
     Process::assertRan(fn ($process): bool => implode(' ', $process->command) === 'bun run build');
+    Process::assertDidntRun(fn ($process): bool => str_contains(implode(' ', $process->command), 'nohup'));
+    expect($ledger->withLabel(WatchAssets::LABEL))->toBeEmpty();
 });
 
 test('build mode skips with a note when package.json has no build script', function (): void {
     Process::fake();
-    bindAssetServices($this->dir, assets: 'build');
+    bindAssetServices($this->dir, assets: AssetMode::Build);
     file_put_contents($this->dir.'/package.json', '{"scripts":{"dev":"vite"}}');
 
-    app(BuildOrWatchAssets::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    runAssetSteps(new ServeContext(new ServeOptions));
 
     Process::assertNothingRan();
     Prompt::assertStrippedOutputContains("no 'build' script");
@@ -116,18 +131,18 @@ test('watch mode skips with a note when package.json has no dev script', functio
     bindAssetServices($this->dir);
     file_put_contents($this->dir.'/package.json', '{"scripts":{"build":"vite build"}}');
 
-    app(BuildOrWatchAssets::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    runAssetSteps(new ServeContext(new ServeOptions));
 
     Process::assertNothingRan();
     Prompt::assertStrippedOutputContains("no 'dev' script");
 });
 
-test('watch mode spawns a tracked assets-watch background process without a timeout', function (): void {
+test('watch mode spawns a tracked assets-watch background process without a timeout, and no build', function (): void {
     Process::fake(['*' => Process::result(output: "77\n")]);
     $ledger = bindAssetServices($this->dir);
-    file_put_contents($this->dir.'/package.json', '{"scripts":{"dev":"vite"}}');
+    file_put_contents($this->dir.'/package.json', '{"scripts":{"build":"vite build","dev":"vite"}}');
 
-    app(BuildOrWatchAssets::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    runAssetSteps(new ServeContext(new ServeOptions));
 
     Process::assertRan(function ($process): bool {
         $command = implode(' ', $process->command);
@@ -136,8 +151,9 @@ test('watch mode spawns a tracked assets-watch background process without a time
             && str_contains($command, 'assets-watch.log')
             && $process->timeout === null;
     });
+    Process::assertDidntRun(fn ($process): bool => implode(' ', $process->command) === 'bun run build');
 
-    $records = $ledger->withLabel('assets-watch');
+    $records = $ledger->withLabel(WatchAssets::LABEL);
 
     expect($records)->toHaveCount(1)
         ->and($records->first()->pid)->toBe(77);
@@ -153,12 +169,12 @@ test('a second run with a live assets-watch record skips spawning', function ():
     $ledger = bindAssetServices($this->dir);
     file_put_contents($this->dir.'/package.json', '{"scripts":{"dev":"vite"}}');
 
-    $ledger->record(new ProcessRecord(pid: 77, label: 'assets-watch', command: 'bun run dev', startedAt: date(DATE_ATOM)));
+    $ledger->record(new ProcessRecord(pid: 77, label: WatchAssets::LABEL, command: 'bun run dev', startedAt: date(DATE_ATOM)));
 
-    app(BuildOrWatchAssets::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    runAssetSteps(new ServeContext(new ServeOptions));
 
     Process::assertDidntRun(fn ($process): bool => str_contains(implode(' ', $process->command), 'nohup'));
 
-    expect($ledger->withLabel('assets-watch'))->toHaveCount(1);
+    expect($ledger->withLabel(WatchAssets::LABEL))->toHaveCount(1);
     Prompt::assertStrippedOutputContains('already running');
 });

@@ -16,7 +16,7 @@ use Igne\LaravelBootUp\Data\Lines;
  */
 final class FortrabbitScriptGenerator implements ScriptGenerator
 {
-    private const COMPOSER_FLAGS = '--prefer-dist --no-interaction --no-ansi --no-progress';
+    private const string COMPOSER_FLAGS = '--prefer-dist --no-interaction --no-ansi --no-progress';
 
     public function key(): string
     {

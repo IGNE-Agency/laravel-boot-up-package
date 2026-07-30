@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Tools\Steps;
 
 use Closure;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Config\ToolsConfig;
 use Igne\LaravelBootUp\Contracts\RequiresTools;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ToolOutcome;
 use Igne\LaravelBootUp\Data\VersionConstraint;
+use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Enums\ToolStatus;
 use Igne\LaravelBootUp\Frontend\PackageJson;
@@ -24,6 +27,8 @@ use Igne\LaravelBootUp\Tools\ToolRegistry;
  * its version constraint. Quiet successes are bundled into one summary;
  * installs, updates and warnings printed during the run stay where they are.
  */
+#[Stage(ServeStage::Tools)]
+#[Group('tools')]
 final class EnsureToolsReady implements Step
 {
     public function __construct(

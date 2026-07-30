@@ -49,7 +49,7 @@ final class StageReporter
     {
         if ($step->stage !== $this->currentStage) {
             $this->currentStage = $step->stage;
-            terminal()->section($step->stage->value);
+            terminal()->section($step->stage->label());
         }
 
         if ($this->progress !== null) {

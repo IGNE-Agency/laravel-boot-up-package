@@ -125,7 +125,7 @@ final class EnvFile
             $content .= "\n";
         }
 
-        return $content.$line."\n";
+        return "{$content}{$line}\n";
     }
 
     private function keyPattern(string $key): string

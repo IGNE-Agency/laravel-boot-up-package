@@ -9,18 +9,16 @@ use Illuminate\Contracts\Config\Repository;
 final readonly class EnvironmentConfig
 {
     /**
-     * @param  list<string>  $allowedEnvironments
+     * @param  list<string>  $allowed  APP_ENV values app:serve may run under
      */
     public function __construct(
-        public array $allowedEnvironments = ['local', 'development'],
-        public bool $manageSailAlias = true,
+        public array $allowed = ['local', 'development'],
     ) {}
 
     public static function fromRepository(Repository $config): self
     {
         return new self(
-            allowedEnvironments: (array) $config->get('boot-up.environments', ['local', 'development']),
-            manageSailAlias: (bool) $config->get('boot-up.environment.manage_sail_alias', true),
+            allowed: (array) $config->get('boot-up.environment.allowed', ['local', 'development']),
         );
     }
 }

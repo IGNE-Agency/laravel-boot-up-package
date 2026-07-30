@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Enums;
 
+use Igne\LaravelBootUp\Exceptions\ConfigException;
+
 /**
  * Where a long-running worker's output lives: combined into the app:serve
  * terminal with a colored [name] prefix, its own terminal window, or
@@ -16,11 +18,16 @@ enum RunMode: string
     case Background = 'background';
 
     /**
-     * Unknown strings mean background, preserving the historic loose
-     * fall-through for published configs with unexpected values.
+     * Null and '' mean "use the default"; anything else must be a case —
+     * a typo'd mode silently running a worker in the wrong place is worse
+     * than a boot-time error naming the key.
      */
-    public static function fromConfig(string $value): self
+    public static function fromConfig(mixed $value, string $key, self $default): self
     {
-        return self::tryFrom($value) ?? self::Background;
+        if ($value === null || $value === '') {
+            return $default;
+        }
+
+        return self::tryFrom((string) $value) ?? throw ConfigException::invalidEnumValue($key, (string) $value, self::class);
     }
 }

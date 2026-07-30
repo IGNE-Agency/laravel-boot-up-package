@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Pipelines;
 
 use Igne\LaravelBootUp\Concerns\SharesStandardPipelineShape;
 use Igne\LaravelBootUp\Contracts\PipelineGenerator;
+use Igne\LaravelBootUp\Data\CiJob;
 use Igne\LaravelBootUp\Data\GeneratedFile;
 use Igne\LaravelBootUp\Data\Lines;
 use Igne\LaravelBootUp\Data\PipelinePlan;
@@ -139,11 +140,11 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
                 ->line('steps:')
                 ->indent(2, function (Lines $yaml) use ($plan): void {
                     if ($plan->pint) {
-                        $this->stepDefinition($yaml, $plan, 'lint', 'Lint', node: false);
+                        $this->stepDefinition($yaml, $plan, new CiJob('lint', 'Lint', 'Check the code style', timeoutMinutes: 10, usesNode: false));
                     }
 
-                    $this->stepDefinition($yaml, $plan, 'build', 'Build', node: true);
-                    $this->stepDefinition($yaml, $plan, 'test', 'Test', node: true);
+                    $this->stepDefinition($yaml, $plan, new CiJob('build', 'Build', 'Build the frontend and framework caches', timeoutMinutes: 15, usesNode: true));
+                    $this->stepDefinition($yaml, $plan, new CiJob('test', 'Test', 'Run the test suite', timeoutMinutes: 20, usesNode: true));
                 }))
             ->lineWithBreak('pipelines:')
             ->indent(2, function (Lines $yaml) use ($plan): void {
@@ -174,20 +175,20 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
      * One reusable step anchor calling its shared script. The node cache only
      * helps steps that install Node dependencies via bootstrap.sh.
      */
-    private function stepDefinition(Lines $yaml, PipelinePlan $plan, string $step, string $name, bool $node): void
+    private function stepDefinition(Lines $yaml, PipelinePlan $plan, CiJob $job): void
     {
-        $yaml->line("- step: &{$step}")
+        $yaml->line("- step: &{$job->key}")
             ->indent(4, fn (Lines $yaml) => $yaml
-                ->line("name: {$name}")
+                ->line("name: {$job->name}")
                 ->line('caches:')
                 ->indent(2, fn (Lines $yaml) => $yaml
                     ->line('- composer')
-                    ->when($node && $plan->deployment->frontend, fn (Lines $yaml) => $yaml->line('- node')))
+                    ->when($job->usesNode && $plan->deployment->frontend, fn (Lines $yaml) => $yaml->line('- node')))
                 ->line('script:')
-                ->indent(2, function (Lines $yaml) use ($plan, $step): void {
-                    $this->extraScript($yaml, $plan, $step, 'before');
-                    $yaml->line($this->scalarLine("bash scripts/ci/{$step}.sh"));
-                    $this->extraScript($yaml, $plan, $step, 'after');
+                ->indent(2, function (Lines $yaml) use ($plan, $job): void {
+                    $this->extraScript($yaml, $plan, $job->key, 'before');
+                    $yaml->line($this->scalarLine("bash scripts/ci/{$job->key}.sh"));
+                    $this->extraScript($yaml, $plan, $job->key, 'after');
                 }));
     }
 

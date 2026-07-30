@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Sail;
 
+use Igne\LaravelBootUp\Concerns\ReadsProcessFailureOutput;
+use Igne\LaravelBootUp\Config\SailConfig;
 use Igne\LaravelBootUp\Contracts\HasResidualState;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\RequiresTools;
@@ -20,15 +22,17 @@ use Illuminate\Process\Exceptions\ProcessFailedException;
 
 final class SailServer implements HasResidualState, ProvidesDatabase, RequiresTools, RewritesCommands, Server
 {
+    use ReadsProcessFailureOutput;
+
     public function __construct(
         private readonly Docker $docker,
         private readonly Sail $sail,
         private readonly SailAliasInstaller $aliasInstaller,
         private readonly Poller $poller,
-        private readonly Repository $config,
+        private readonly Repository $laravelConfig,
         private readonly EnvFile $envFile,
         private readonly SailUpFailureDetector $detector,
-        private readonly int $readyTimeoutSeconds = 120,
+        private readonly SailConfig $config,
     ) {}
 
     public function key(): string
@@ -80,14 +84,14 @@ final class SailServer implements HasResidualState, ProvidesDatabase, RequiresTo
 
         $ready = $this->poller->until(
             fn (): bool => $this->sail->hasRunningContainers(),
-            timeoutSeconds: $this->readyTimeoutSeconds,
+            timeoutSeconds: $this->config->readyTimeoutSeconds,
             intervalMs: 1000,
         );
 
         if (! $ready) {
             throw ServerException::startFailed(
                 $this->label(),
-                "containers did not come up within {$this->readyTimeoutSeconds} seconds",
+                "containers did not come up within {$this->config->readyTimeoutSeconds} seconds",
             );
         }
 
@@ -122,11 +126,6 @@ final class SailServer implements HasResidualState, ProvidesDatabase, RequiresTo
                 ? ServerException::dockerRegistryUnreachable()
                 : $retry;
         }
-    }
-
-    private function outputOf(ProcessFailedException $exception): string
-    {
-        return $exception->result->output()."\n".$exception->result->errorOutput();
     }
 
     public function isRunning(): bool
@@ -165,7 +164,7 @@ final class SailServer implements HasResidualState, ProvidesDatabase, RequiresTo
      */
     public function url(): string
     {
-        $url = $this->envFile->valueOr('APP_URL', (string) $this->config->get('app.url'));
+        $url = $this->envFile->valueOr('APP_URL', (string) $this->laravelConfig->get('app.url'));
 
         return $url !== '' ? $url : 'http://localhost';
     }

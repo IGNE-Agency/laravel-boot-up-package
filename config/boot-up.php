@@ -13,36 +13,40 @@ use Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks;
 use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
 use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
 use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
-use Igne\LaravelBootUp\Frontend\Steps\BuildOrWatchAssets;
+use Igne\LaravelBootUp\Frontend\Steps\BuildAssets;
 use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
-use Igne\LaravelBootUp\Queue\Steps\StartQueueWorker;
+use Igne\LaravelBootUp\Frontend\Steps\WatchAssets;
+use Igne\LaravelBootUp\Queue\Steps\QueueWorker;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
 use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
 use Igne\LaravelBootUp\Servers\Herd\HerdServer;
 use Igne\LaravelBootUp\Servers\Sail\SailServer;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
-use Igne\LaravelBootUp\Workers\Steps\StartHorizon;
-use Igne\LaravelBootUp\Workers\Steps\StartReverb;
-use Igne\LaravelBootUp\Workers\Steps\StartScheduler;
+use Igne\LaravelBootUp\Workers\Steps\HorizonWorker;
+use Igne\LaravelBootUp\Workers\Steps\ReverbWorker;
+use Igne\LaravelBootUp\Workers\Steps\SchedulerWorker;
 
 return [
 
     /*
     |--------------------------------------------------------------------------
-    | Allowed environments
+    | Environment guard
     |--------------------------------------------------------------------------
     | app:serve refuses to run when APP_ENV (read from the .env file) is not
-    | in this list. A missing .env or APP_ENV counts as a fresh local setup.
+    | in 'allowed'. A missing .env or APP_ENV counts as a fresh local setup.
     */
-    'environments' => ['local', 'development'],
+    'environment' => [
+        'allowed' => ['local', 'development'],
+    ],
 
     /*
     |--------------------------------------------------------------------------
     | Development server
     |--------------------------------------------------------------------------
     | Extension point: add your own driver under 'drivers' with a string key
-    | and a class implementing Igne\LaravelBootUp\Contracts\Server.
+    | and a class implementing Igne\LaravelBootUp\Contracts\Server. Driver
+    | settings live in their own sections below ('herd', 'artisan', 'sail').
     */
     'server' => [
         'default' => env('BOOT_UP_SERVER'),
@@ -50,30 +54,45 @@ return [
         'drivers' => [
             'herd' => HerdServer::class,
             'sail' => SailServer::class,
-            'laravel' => ArtisanServer::class,
+            'artisan' => ArtisanServer::class,
         ],
-        'herd' => [
-            // Fixed Herd site name (served at https://{name}.test). null
-            // prompts on first link, defaulting to the project folder name.
-            'site' => env('BOOT_UP_HERD_SITE'),
+    ],
 
-            // app:serve does not trust "Herd started" — it verifies Nginx
-            // actually answers the served site. A running Herd is never
-            // restarted (only a down one, once, halfway through the checks),
-            // so a healthy Herd is never disrupted. 'attempts' bounds the
-            // checks (a permanently broken Herd fails fast with guidance
-            // rather than hanging); 'delay_ms' waits between checks;
-            // 'timeout_seconds' caps each reachability request.
-            'health' => [
-                'attempts' => (int) env('BOOT_UP_HERD_HEALTH_ATTEMPTS', 10),
-                'delay_ms' => (int) env('BOOT_UP_HERD_HEALTH_DELAY_MS', 500),
-                'timeout_seconds' => (int) env('BOOT_UP_HERD_HEALTH_TIMEOUT', 5),
-            ],
+    'herd' => [
+        // Fixed Herd site name (served at https://{name}.test). null
+        // prompts on first link, defaulting to the project folder name.
+        'site' => env('BOOT_UP_HERD_SITE'),
+
+        // app:serve does not trust "Herd started" — it verifies Nginx
+        // actually answers the served site. A running Herd is never
+        // restarted (only a down one, once, halfway through the checks),
+        // so a healthy Herd is never disrupted. 'attempts' bounds the
+        // checks (a permanently broken Herd fails fast with guidance
+        // rather than hanging); 'delay_ms' waits between checks;
+        // 'timeout_seconds' caps each reachability request.
+        'health' => [
+            'attempts' => (int) env('BOOT_UP_HERD_HEALTH_ATTEMPTS', 10),
+            'delay_ms' => (int) env('BOOT_UP_HERD_HEALTH_DELAY_MS', 500),
+            'timeout_seconds' => (int) env('BOOT_UP_HERD_HEALTH_TIMEOUT', 5),
         ],
-        'artisan' => [
-            // Where `php artisan serve` binds; also drives the announced URL.
-            'host' => env('BOOT_UP_ARTISAN_HOST', '127.0.0.1'),
-            'port' => (int) env('BOOT_UP_ARTISAN_PORT', 8000),
+    ],
+
+    'artisan' => [
+        // Where `php artisan serve` binds; also drives the announced URL.
+        'host' => env('BOOT_UP_ARTISAN_HOST', '127.0.0.1'),
+        'port' => (int) env('BOOT_UP_ARTISAN_PORT', 8000),
+    ],
+
+    'sail' => [
+        // Offer to add the conventional `sail` alias to the shell profile.
+        'manage_alias' => env('BOOT_UP_SAIL_MANAGE_ALIAS', true),
+
+        // How long `sail up` may take before its containers report running.
+        'ready_timeout_seconds' => (int) env('BOOT_UP_SAIL_READY_TIMEOUT', 120),
+
+        'docker' => [
+            // How long a cold Docker daemon may take to come up.
+            'start_timeout_seconds' => (int) env('BOOT_UP_SAIL_DOCKER_START_TIMEOUT', 60),
         ],
     ],
 
@@ -105,10 +124,9 @@ return [
         // `mysql` host after `sail:install`) and offer to fix them for the
         // server that drives this run.
         'reconcile_credentials' => env('BOOT_UP_DB_RECONCILE', true),
-    ],
-
-    'migrations' => [
-        'auto' => env('BOOT_UP_MIGRATIONS_AUTO', true),
+        'migrations' => [
+            'auto' => env('BOOT_UP_MIGRATIONS_AUTO', true),
+        ],
     ],
 
     'frontend' => [
@@ -144,19 +162,19 @@ return [
     | own terminal window, 'background' runs it detached with logs in
     | storage/logs/boot-up/.
     */
-    'workers' => [
-        'scheduler' => [
-            'enabled' => env('BOOT_UP_SCHEDULER', false),
-            'run_in' => env('BOOT_UP_SCHEDULER_RUN_IN', 'combined'), // combined | terminal | background
-        ],
-        'horizon' => [
-            'enabled' => env('BOOT_UP_HORIZON', true),
-            'run_in' => env('BOOT_UP_HORIZON_RUN_IN', 'combined'), // combined | terminal | background
-        ],
-        'reverb' => [
-            'enabled' => env('BOOT_UP_REVERB', true),
-            'run_in' => env('BOOT_UP_REVERB_RUN_IN', 'combined'), // combined | terminal | background
-        ],
+    'horizon' => [
+        'enabled' => env('BOOT_UP_HORIZON', true),
+        'run_in' => env('BOOT_UP_HORIZON_RUN_IN', 'combined'), // combined | terminal | background
+    ],
+
+    'reverb' => [
+        'enabled' => env('BOOT_UP_REVERB', true),
+        'run_in' => env('BOOT_UP_REVERB_RUN_IN', 'combined'), // combined | terminal | background
+    ],
+
+    'scheduler' => [
+        'enabled' => env('BOOT_UP_SCHEDULER', false),
+        'run_in' => env('BOOT_UP_SCHEDULER_RUN_IN', 'combined'), // combined | terminal | background
     ],
 
     /*
@@ -174,14 +192,84 @@ return [
         'terminal_pid_timeout' => (int) env('BOOT_UP_TERMINAL_PID_TIMEOUT', 20),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Shutdown behaviour
+    |--------------------------------------------------------------------------
+    | Whether teardown (Ctrl+C on app:serve, app:down) asks before stopping
+    | the development server, and what the unattended answer is.
+    */
+    'shutdown' => [
+        'prompt_stop_server' => env('BOOT_UP_SHUTDOWN_PROMPT', true),
+        'stop_server_by_default' => env('BOOT_UP_SHUTDOWN_STOP_SERVER', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | app:serve
+    |--------------------------------------------------------------------------
+    | The full boot, in order. Insert your own Contracts\Step classes anywhere,
+    | remove steps you do not want, or reorder them. 'auto_accept' (or --yes)
+    | skips the confirmation prompt; 'open_browser' opens the served URL when
+    | the boot completes.
+    */
+    'serve' => [
+        'open_browser' => env('BOOT_UP_OPEN_BROWSER', true),
+        'auto_accept' => env('BOOT_UP_SERVE_AUTO_ACCEPT', false),
+        'steps' => [
+            EnsureEnvFile::class,
+            EnsureLocalEnvironment::class,
+            GenerateAppKey::class,
+            EnsureToolsReady::class,
+            StartServer::class,
+            InstallComposerDependencies::class,
+            InstallFrontendDependencies::class,
+            EnsureDatabaseCredentials::class,
+            EnsureDatabaseExists::class,
+            VerifyDatabaseConnection::class,
+            RunDeployTasks::class.':before',
+            RunPendingMigrations::class,
+            RunDeployTasks::class.':after',
+            CacheFrameworkFiles::class,
+            FinalizeApplication::class,
+            QueueWorker::class,
+            HorizonWorker::class,
+            ReverbWorker::class,
+            SchedulerWorker::class,
+            BuildAssets::class,
+            WatchAssets::class,
+            AnnounceApplication::class,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | app:deploy and deploy scripts
+    |--------------------------------------------------------------------------
+    | 'steps' is the deploy-only pipeline subset: no server, no queue worker,
+    | no browser. 'finalize' lists artisan commands run at the end of every
+    | boot/deploy. Extension point for generate:deploy-script:
+    | 'script_generators' maps 'platform' => class implementing
+    | Igne\LaravelBootUp\Contracts\ScriptGenerator (wins over built-ins).
+    */
     'deploy' => [
         // config:cache breaks env() lookups in local development — off by default.
         'cache_framework_files' => env('BOOT_UP_CACHE', false),
-        // Artisan commands run at the end of every boot/deploy.
         'finalize' => ['storage:link'],
-        // Extension point for generate:deploy-script: 'platform' => class implementing
-        // Igne\LaravelBootUp\Contracts\ScriptGenerator (wins over built-ins).
         'script_generators' => [],
+        'auto_accept' => env('BOOT_UP_DEPLOY_AUTO_ACCEPT', false),
+        'steps' => [
+            EnsureEnvFile::class,
+            EnsureLocalEnvironment::class,
+            GenerateAppKey::class,
+            InstallComposerDependencies::class,
+            InstallFrontendDependencies::class,
+            RunDeployTasks::class.':before',
+            RunPendingMigrations::class,
+            RunDeployTasks::class.':after',
+            CacheFrameworkFiles::class,
+            FinalizeApplication::class,
+        ],
     ],
 
     /*
@@ -245,77 +333,5 @@ return [
             //     'provider' => 'github',
             // ],
         ],
-    ],
-
-    'browser' => [
-        'open' => env('BOOT_UP_OPEN_BROWSER', true),
-    ],
-
-    'shutdown' => [
-        'prompt_stop_server' => env('BOOT_UP_SHUTDOWN_PROMPT', true),
-        'stop_server_by_default' => env('BOOT_UP_SHUTDOWN_STOP_SERVER', false),
-    ],
-
-    'environment' => [
-        'manage_sail_alias' => env('BOOT_UP_MANAGE_SAIL_ALIAS', true),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Auto-accept the plan
-    |--------------------------------------------------------------------------
-    | app:serve and app:deploy print what they will do and ask to continue.
-    | Set this true (or pass --yes) to skip that prompt and run straight away.
-    */
-    'auto_accept' => env('BOOT_UP_AUTO_ACCEPT', false),
-
-    /*
-    |--------------------------------------------------------------------------
-    | The app:serve pipeline
-    |--------------------------------------------------------------------------
-    | The full boot, in order. Insert your own Contracts\Step classes anywhere,
-    | remove steps you do not want, or reorder them.
-    */
-    'serve_steps' => [
-        EnsureEnvFile::class,
-        EnsureLocalEnvironment::class,
-        GenerateAppKey::class,
-        EnsureToolsReady::class,
-        StartServer::class,
-        InstallComposerDependencies::class,
-        InstallFrontendDependencies::class,
-        EnsureDatabaseCredentials::class,
-        EnsureDatabaseExists::class,
-        VerifyDatabaseConnection::class,
-        RunDeployTasks::class.':before',
-        RunPendingMigrations::class,
-        RunDeployTasks::class.':after',
-        CacheFrameworkFiles::class,
-        FinalizeApplication::class,
-        StartQueueWorker::class,
-        StartHorizon::class,
-        StartReverb::class,
-        StartScheduler::class,
-        BuildOrWatchAssets::class,
-        AnnounceApplication::class,
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | The app:deploy pipeline
-    |--------------------------------------------------------------------------
-    | The deploy-only subset: no server, no queue worker, no browser.
-    */
-    'deploy_steps' => [
-        EnsureEnvFile::class,
-        EnsureLocalEnvironment::class,
-        GenerateAppKey::class,
-        InstallComposerDependencies::class,
-        InstallFrontendDependencies::class,
-        RunDeployTasks::class.':before',
-        RunPendingMigrations::class,
-        RunDeployTasks::class.':after',
-        CacheFrameworkFiles::class,
-        FinalizeApplication::class,
     ],
 ];

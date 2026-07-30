@@ -4,16 +4,23 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Providers;
 
+use Igne\LaravelBootUp\Config\ArtisanServeConfig;
 use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Config\DeployConfig;
+use Igne\LaravelBootUp\Config\DevServerConfig;
 use Igne\LaravelBootUp\Config\EnvironmentConfig;
 use Igne\LaravelBootUp\Config\FrontendConfig;
+use Igne\LaravelBootUp\Config\HerdConfig;
+use Igne\LaravelBootUp\Config\HorizonConfig;
 use Igne\LaravelBootUp\Config\PipelineConfig;
+use Igne\LaravelBootUp\Config\ProcessConfig;
 use Igne\LaravelBootUp\Config\QueueConfig;
+use Igne\LaravelBootUp\Config\ReverbConfig;
+use Igne\LaravelBootUp\Config\SailConfig;
+use Igne\LaravelBootUp\Config\SchedulerConfig;
 use Igne\LaravelBootUp\Config\ServeConfig;
-use Igne\LaravelBootUp\Config\ServersConfig;
+use Igne\LaravelBootUp\Config\ShutdownConfig;
 use Igne\LaravelBootUp\Config\ToolsConfig;
-use Igne\LaravelBootUp\Config\WorkersConfig;
 use Igne\LaravelBootUp\Console\DeployCommand;
 use Igne\LaravelBootUp\Console\DeployScriptCommand;
 use Igne\LaravelBootUp\Console\DownCommand;
@@ -37,7 +44,6 @@ use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Serve\CombinedRunPlan;
 use Igne\LaravelBootUp\Serve\ShutdownRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
-use Igne\LaravelBootUp\Servers\Herd\HerdServices;
 use Igne\LaravelBootUp\Servers\Herd\HerdSites;
 use Igne\LaravelBootUp\Services\GeneratedFilePublisher;
 use Igne\LaravelBootUp\Services\LockfileConflictDetector;
@@ -50,17 +56,24 @@ use Illuminate\Support\ServiceProvider;
 
 final class BootUpServiceProvider extends ServiceProvider
 {
-    private const CONFIG_CLASSES = [
-        ServeConfig::class,
-        ServersConfig::class,
-        ToolsConfig::class,
+    private const array CONFIG_CLASSES = [
+        ArtisanServeConfig::class,
         DatabaseConfig::class,
-        FrontendConfig::class,
-        QueueConfig::class,
-        EnvironmentConfig::class,
         DeployConfig::class,
+        DevServerConfig::class,
+        EnvironmentConfig::class,
+        FrontendConfig::class,
+        HerdConfig::class,
+        HorizonConfig::class,
         PipelineConfig::class,
-        WorkersConfig::class,
+        ProcessConfig::class,
+        QueueConfig::class,
+        ReverbConfig::class,
+        SailConfig::class,
+        SchedulerConfig::class,
+        ServeConfig::class,
+        ShutdownConfig::class,
+        ToolsConfig::class,
     ];
 
     public function register(): void
@@ -126,7 +139,7 @@ final class BootUpServiceProvider extends ServiceProvider
             poller: $app->make(Poller::class),
             logDirectory: $app->storagePath('logs/boot-up'),
             runtimeDirectory: $app->storagePath('framework/boot-up'),
-            terminalPidTimeout: (int) $app['config']->get('boot-up.process.terminal_pid_timeout', 20),
+            terminalPidTimeout: $app->make(ProcessConfig::class)->terminalPidTimeout,
         ));
 
         $this->app->singleton(OutputMultiplexer::class, fn (Application $app) => new OutputMultiplexer(
@@ -143,17 +156,6 @@ final class BootUpServiceProvider extends ServiceProvider
             return new HerdSites($app->make(Platform::class)->isMacos()
                 ? "{$home}/Library/Application Support/Herd/config/valet/Sites"
                 : "{$home}/.config/valet/Sites");
-        });
-
-        $this->app->singleton(HerdServices::class, function (Application $app): HerdServices {
-            $config = $app->make(ServersConfig::class);
-
-            return new HerdServices(
-                runner: $app->make(ProcessRunner::class),
-                healthAttempts: $config->herdHealthAttempts,
-                healthDelayMs: $config->herdHealthDelayMs,
-                healthTimeoutSeconds: $config->herdHealthTimeoutSeconds,
-            );
         });
     }
 

@@ -116,15 +116,7 @@ final class Terminal
      */
     public function section(string $title, array $lines = [], ?string $description = null): void
     {
-        $block = Lines::make()->line($this->bold($this->cyan($title)));
-
-        if ($description !== null) {
-            $block->line($this->dim($description));
-        }
-
-        $block->indent(2, fn (Lines $body) => $body->lines($lines));
-
-        $this->suspend(fn () => note(implode(PHP_EOL, $block->toArray())));
+        $this->block($title, $lines, description: $description);
     }
 
     /**
@@ -146,15 +138,7 @@ final class Terminal
      */
     public function summary(string $title, array $items, ?string $footer = null): void
     {
-        $block = Lines::make()
-            ->line($this->bold($this->cyan($title)))
-            ->indent(2, fn (Lines $body) => $body->lines(array_map(fn (string $item): string => "• {$item}", $items)));
-
-        if ($footer !== null) {
-            $block->lineWithBreak($footer);
-        }
-
-        $this->suspend(fn () => note(implode(PHP_EOL, $block->toArray())));
+        $this->block($title, array_map(fn (string $item): string => "• {$item}", $items), footer: $footer);
     }
 
     /**
@@ -171,9 +155,30 @@ final class Terminal
             $numbered[] = "{$number}. {$item}";
         }
 
-        $block = Lines::make()
-            ->line($this->bold($this->cyan($title)))
-            ->indent(2, fn (Lines $body) => $body->lines($numbered));
+        $this->block($title, $numbered);
+    }
+
+    /**
+     * The one titled-block shape behind section(), summary() and
+     * orderedList(): bold-cyan title, optional dim description, indented
+     * body, optional footer — rendered as ONE Prompts note so it stays a
+     * single write chunk.
+     *
+     * @param  list<string>  $body
+     */
+    private function block(string $title, array $body, ?string $description = null, ?string $footer = null): void
+    {
+        $block = Lines::make()->line($this->bold($this->cyan($title)));
+
+        if ($description !== null) {
+            $block->line($this->dim($description));
+        }
+
+        $block->indent(2, fn (Lines $lines) => $lines->lines($body));
+
+        if ($footer !== null) {
+            $block->lineWithBreak($footer);
+        }
 
         $this->suspend(fn () => note(implode(PHP_EOL, $block->toArray())));
     }

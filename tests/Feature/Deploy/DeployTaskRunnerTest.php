@@ -11,6 +11,8 @@ use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Deploy\DeployTaskRunner;
+use Igne\LaravelBootUp\Enums\AssetMode;
+use Igne\LaravelBootUp\Enums\DeployPhase;
 use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Enums\RunMode;
 use Igne\LaravelBootUp\Exceptions\DeployException;
@@ -40,7 +42,7 @@ function projectCommandRunner(string $dir): DeployTaskRunner
 {
     return new DeployTaskRunner(
         container: app(),
-        processes: new ProcessRunner(
+        runner: new ProcessRunner(
             processes: app(Factory::class),
             ledger: new ProcessLedger($dir.'/processes.json'),
             terminal: new NullTerminalLauncher,
@@ -50,7 +52,7 @@ function projectCommandRunner(string $dir): DeployTaskRunner
         ),
         rewriter: new CommandRewriter,
         packageManagers: new PackageManagerSelector(
-            new FrontendConfig(PackageManager::BUN, 'watch', RunMode::Background),
+            new FrontendConfig(PackageManager::BUN, AssetMode::Watch, RunMode::Background),
             new PackageJson($dir.'/package.json'),
         ),
     );
@@ -136,7 +138,7 @@ function projectCommandServer(CommandRewrites $rewrites): Server
 test('does nothing when no project command provider is bound', function (): void {
     Process::fake();
 
-    projectCommandRunner($this->dir)->run('before', new ServeContext(new ServeOptions));
+    projectCommandRunner($this->dir)->run(DeployPhase::Before, new ServeContext(new ServeOptions));
 
     Process::assertNothingRan();
 });
@@ -145,7 +147,7 @@ test('runs the before-phase commands as artisan and package manager token arrays
     Process::fake(['*' => Process::result()]);
     bindProjectCommandProvider();
 
-    projectCommandRunner($this->dir)->run('before', new ServeContext(new ServeOptions));
+    projectCommandRunner($this->dir)->run(DeployPhase::Before, new ServeContext(new ServeOptions));
 
     Process::assertRan(fn ($process): bool => projectCommandOf($process) === 'php artisan wayfinder:generate --path=resources/js');
     Process::assertRan(fn ($process): bool => projectCommandOf($process) === 'bun run zodgen');
@@ -157,7 +159,7 @@ test('runs the after-phase commands as composer token arrays', function (): void
     Process::fake(['*' => Process::result()]);
     bindProjectCommandProvider();
 
-    projectCommandRunner($this->dir)->run('after', new ServeContext(new ServeOptions));
+    projectCommandRunner($this->dir)->run(DeployPhase::After, new ServeContext(new ServeOptions));
 
     Process::assertRan(fn ($process): bool => projectCommandOf($process) === 'composer dump-autoload --optimize');
     Process::assertDidntRun(fn ($process): bool => str_starts_with(projectCommandOf($process), 'php artisan'));
@@ -167,7 +169,7 @@ test('runs the before-deploy commands, isolated from the other phases', function
     Process::fake(['*' => Process::result()]);
     bindProjectCommandProvider();
 
-    projectCommandRunner($this->dir)->run('before-deploy', new ServeContext(new ServeOptions));
+    projectCommandRunner($this->dir)->run(DeployPhase::BeforeDeploy, new ServeContext(new ServeOptions));
 
     Process::assertRan(fn ($process): bool => projectCommandOf($process) === 'php artisan pennant:purge');
     Process::assertDidntRun(fn ($process): bool => projectCommandOf($process) === 'php artisan cache:warm');
@@ -178,7 +180,7 @@ test('runs the after-deploy commands, isolated from the other phases', function 
     Process::fake(['*' => Process::result()]);
     bindProjectCommandProvider();
 
-    projectCommandRunner($this->dir)->run('after-deploy', new ServeContext(new ServeOptions));
+    projectCommandRunner($this->dir)->run(DeployPhase::AfterDeploy, new ServeContext(new ServeOptions));
 
     Process::assertRan(fn ($process): bool => projectCommandOf($process) === 'php artisan cache:warm');
     Process::assertDidntRun(fn ($process): bool => projectCommandOf($process) === 'php artisan pennant:purge');
@@ -194,7 +196,7 @@ test('rewrites commands through the active server', function (): void {
         prefix: './vendor/bin/sail',
     ));
 
-    projectCommandRunner($this->dir)->run('before', new ServeContext(new ServeOptions, $server));
+    projectCommandRunner($this->dir)->run(DeployPhase::Before, new ServeContext(new ServeOptions, $server));
 
     Process::assertRan(fn ($process): bool => projectCommandOf($process) === './vendor/bin/sail artisan wayfinder:generate --path=resources/js');
     Process::assertRan(fn ($process): bool => projectCommandOf($process) === './vendor/bin/sail bun run zodgen');
@@ -204,14 +206,6 @@ test('a failing project command aborts the boot with a DeployException', functio
     Process::fake(['*' => Process::result(exitCode: 1, errorOutput: 'boom')]);
     bindProjectCommandProvider();
 
-    expect(fn () => projectCommandRunner($this->dir)->run('before', new ServeContext(new ServeOptions)))
+    expect(fn () => projectCommandRunner($this->dir)->run(DeployPhase::Before, new ServeContext(new ServeOptions)))
         ->toThrow(DeployException::class, 'wayfinder:generate');
-});
-
-test('an unknown phase is rejected', function (): void {
-    Process::fake();
-    bindProjectCommandProvider();
-
-    expect(fn () => projectCommandRunner($this->dir)->run('during', new ServeContext(new ServeOptions)))
-        ->toThrow(InvalidArgumentException::class, 'during');
 });

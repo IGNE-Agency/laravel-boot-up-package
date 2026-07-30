@@ -12,17 +12,20 @@ final class AtomicFile
 {
     public static function write(string $path, string $content): void
     {
-        $directory = \dirname($path);
-
-        if (! is_dir($directory)) {
-            mkdir($directory, 0755, true);
-        }
+        self::ensureDirectory(\dirname($path));
 
         $suffix = bin2hex(random_bytes(4));
         $temporary = "{$path}.tmp-{$suffix}";
 
         file_put_contents($temporary, $content);
         rename($temporary, $path);
+    }
+
+    private static function ensureDirectory(string $directory): void
+    {
+        if (! is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
     }
 
     public static function delete(string $path): void

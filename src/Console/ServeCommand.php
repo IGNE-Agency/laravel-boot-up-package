@@ -4,28 +4,17 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
+use Closure;
 use Igne\LaravelBootUp\Config\ServeConfig;
-use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
-use Igne\LaravelBootUp\Process\OutputMultiplexer;
-use Igne\LaravelBootUp\Process\ProcessReaper;
-use Igne\LaravelBootUp\Serve\CombinedRunPlan;
-use Igne\LaravelBootUp\Serve\ServeProcessProbe;
-use Igne\LaravelBootUp\Serve\ShutdownRunner;
-use Igne\LaravelBootUp\Serve\StageReporter;
-use Igne\LaravelBootUp\Serve\StepSequence;
-use Igne\LaravelBootUp\Servers\ActiveServerStore;
-use Igne\LaravelBootUp\Servers\ServerSelector;
+use Igne\LaravelBootUp\Serve\ServeRunner;
 use Illuminate\Contracts\Console\Isolatable;
-use Illuminate\Pipeline\Pipeline;
 
 final class ServeCommand extends BootUpCommand implements Isolatable
 {
-    private ?StageReporter $reporter = null;
+    private ?ServeRunner $runner = null;
 
-    private ?OutputMultiplexer $streaming = null;
-
-    protected $signature = 'app:serve {server? : The development server to use (herd, sail, laravel, or any driver registered in boot-up.server.drivers)}
+    protected $signature = 'app:serve {server? : The development server to use (herd, sail, artisan, or any driver registered in boot-up.server.drivers)}
         {--s|seed : Seed the database after migrating}
         {--no-migrate : Skip running pending migrations}
         {--fresh : Drop all tables and re-run every migration (asks first)}
@@ -42,98 +31,32 @@ final class ServeCommand extends BootUpCommand implements Isolatable
         return true;
     }
 
-    public function handle(
-        ServerSelector $selector,
-        ServeConfig $config,
-        ShutdownRunner $shutdown,
-        ActiveServerStore $store,
-        ServeProcessProbe $probe,
-        ProcessReaper $reaper,
-        Pipeline $pipeline,
-        StageReporter $reporter,
-        CombinedRunPlan $combined,
-        OutputMultiplexer $multiplexer,
-    ): int {
-        if ($this->anotherServeIsRunning($store, $probe)) {
-            terminal()->warning('Another app:serve is already running for this project. Aborting.');
+    public function handle(ServeRunner $runner, ServeConfig $config): int
+    {
+        // Stored before anything can fail: onFailure() fires from
+        // GuardsAgainstFailures OUTSIDE handle(), where re-resolving
+        // would produce a fresh runner with a fresh, unbound reporter.
+        $this->runner = $runner;
 
+        $plan = $runner->prepare($this->serveOptions(), $this->argument('server'));
+
+        if ($plan === null) {
             return self::FAILURE;
         }
-
-        $reaper->prune();
-
-        $this->announce('Booting the application...');
-
-        $context = new ServeContext($this->serveOptions(), $selector->select($this->argument('server')));
-
-        $plan = StepSequence::for($config->serveSteps, $context->options, $context->server?->label());
 
         if (! $this->confirmPlan($plan, 'app:serve', $config->autoAccept)) {
             return $this->skip('Aborted — nothing was changed.');
         }
 
-        $this->reporter = $reporter;
-        $pipes = $reporter->begin($plan);
-
-        $this->registerShutdownTrap($shutdown, $reporter);
-
-        $pipeline->send($context)->through($pipes)->thenReturn();
-
-        $reporter->finish();
-
-        if ($context->options->follow && $combined->hasProcesses()) {
-            return $this->streamCombinedOutput($combined, $multiplexer, $shutdown);
-        }
-
-        return $this->done('Application ready.');
-    }
-
-    /**
-     * The composer-run-dev experience: after the boot, stay in the
-     * foreground and interleave every combined worker's output here. The
-     * loop ends on Ctrl+C (the trap stops it before tearing down) or when
-     * every worker has exited — either way one shared shutdown path runs,
-     * a friendly no-op when app:down from another terminal already did.
-     */
-    private function streamCombinedOutput(
-        CombinedRunPlan $combined,
-        OutputMultiplexer $multiplexer,
-        ShutdownRunner $shutdown,
-    ): int {
-        terminal()->outro('Application ready.');
-        terminal()->info('Streaming service output below — press Ctrl+C to stop everything.');
-
-        $this->streaming = $multiplexer;
-        $multiplexer->stream($combined);
-        $this->streaming = null;
-
-        $shutdown->run();
-
-        return self::SUCCESS;
-    }
-
-    /**
-     * Ctrl-C / SIGTERM tears everything down through the shared shutdown
-     * path. Must be registered AFTER StageReporter::begin():
-     * Progress::start() installs its own SIGINT handler, which would
-     * otherwise replace this one and skip the shutdown entirely.
-     */
-    private function registerShutdownTrap(ShutdownRunner $shutdown, StageReporter $reporter): void
-    {
-        $this->trap([SIGINT, SIGTERM], function () use ($shutdown, $reporter): void {
-            // Mid-stream Ctrl+C: end the multiplexer loop first so the
-            // teardown prompts render on a quiet terminal. The children
-            // already received the process group's SIGINT.
-            $this->streaming?->stop();
-            $reporter->interrupt();
-            $shutdown->run();
-            exit(self::SUCCESS);
-        });
+        // The runner owns its endings ("Application ready." on both paths);
+        // the trap is handed over as a REGISTRAR because the handler must
+        // close over runner-owned state.
+        return $runner->run(fn (array $signals, Closure $handler) => $this->trap($signals, $handler));
     }
 
     protected function onFailure(): void
     {
-        $this->reporter?->fail();
+        $this->runner?->fail();
     }
 
     protected function failureHint(): void
@@ -161,16 +84,5 @@ final class ServeCommand extends BootUpCommand implements Isolatable
     private function stdoutIsInteractive(): bool
     {
         return \defined('STDOUT') && \function_exists('stream_isatty') && @stream_isatty(STDOUT);
-    }
-
-    private function anotherServeIsRunning(ActiveServerStore $store, ServeProcessProbe $probe): bool
-    {
-        $active = $store->current();
-
-        if ($active === null || $active->servePid === getmypid()) {
-            return false;
-        }
-
-        return $probe->isServing($active->servePid);
     }
 }

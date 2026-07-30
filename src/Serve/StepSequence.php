@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Serve;
 
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Data\StepDescriptor;
 use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseCredentials;
@@ -14,20 +16,23 @@ use Igne\LaravelBootUp\Deploy\Steps\CacheFrameworkFiles;
 use Igne\LaravelBootUp\Deploy\Steps\FinalizeApplication;
 use Igne\LaravelBootUp\Deploy\Steps\InstallComposerDependencies;
 use Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks;
+use Igne\LaravelBootUp\Enums\DeployPhase;
 use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
 use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
 use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
-use Igne\LaravelBootUp\Frontend\Steps\BuildOrWatchAssets;
+use Igne\LaravelBootUp\Frontend\Steps\BuildAssets;
 use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
-use Igne\LaravelBootUp\Queue\Steps\StartQueueWorker;
+use Igne\LaravelBootUp\Frontend\Steps\WatchAssets;
+use Igne\LaravelBootUp\Queue\Steps\QueueWorker;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
-use Igne\LaravelBootUp\Workers\Steps\StartHorizon;
-use Igne\LaravelBootUp\Workers\Steps\StartReverb;
-use Igne\LaravelBootUp\Workers\Steps\StartScheduler;
+use Igne\LaravelBootUp\Workers\Steps\HorizonWorker;
+use Igne\LaravelBootUp\Workers\Steps\ReverbWorker;
+use Igne\LaravelBootUp\Workers\Steps\SchedulerWorker;
 use Illuminate\Support\Str;
+use ReflectionClass;
 
 /**
  * What the configured serve pipeline is about to do: each entry parsed and
@@ -37,56 +42,6 @@ use Illuminate\Support\Str;
  */
 final readonly class StepSequence
 {
-    private const STAGES = [
-        EnsureEnvFile::class => ServeStage::Prepare,
-        EnsureLocalEnvironment::class => ServeStage::Prepare,
-        GenerateAppKey::class => ServeStage::Prepare,
-        EnsureToolsReady::class => ServeStage::Tools,
-        StartServer::class => ServeStage::Server,
-        InstallComposerDependencies::class => ServeStage::Install,
-        InstallFrontendDependencies::class => ServeStage::Install,
-        EnsureDatabaseCredentials::class => ServeStage::Database,
-        EnsureDatabaseExists::class => ServeStage::Database,
-        VerifyDatabaseConnection::class => ServeStage::Database,
-        RunDeployTasks::class => ServeStage::Database,
-        RunPendingMigrations::class => ServeStage::Database,
-        CacheFrameworkFiles::class => ServeStage::Cache,
-        FinalizeApplication::class => ServeStage::Finalize,
-        StartQueueWorker::class => ServeStage::Services,
-        StartHorizon::class => ServeStage::Services,
-        StartReverb::class => ServeStage::Services,
-        StartScheduler::class => ServeStage::Services,
-        BuildOrWatchAssets::class => ServeStage::Assets,
-        AnnounceApplication::class => ServeStage::Announce,
-    ];
-
-    /**
-     * Known steps merge into one summary line per group, emitted at the
-     * group's first occurrence in the configured order.
-     */
-    private const GROUPS = [
-        EnsureEnvFile::class => 'prepare',
-        EnsureLocalEnvironment::class => 'prepare',
-        GenerateAppKey::class => 'prepare',
-        EnsureToolsReady::class => 'tools',
-        StartServer::class => 'server',
-        InstallComposerDependencies::class => 'dependencies',
-        InstallFrontendDependencies::class => 'dependencies',
-        EnsureDatabaseCredentials::class => 'database',
-        EnsureDatabaseExists::class => 'database',
-        VerifyDatabaseConnection::class => 'database',
-        RunDeployTasks::class => 'deploy-tasks',
-        RunPendingMigrations::class => 'migrations',
-        CacheFrameworkFiles::class => 'cache',
-        FinalizeApplication::class => 'finalize',
-        StartQueueWorker::class => 'workers',
-        StartHorizon::class => 'workers',
-        StartReverb::class => 'workers',
-        StartScheduler::class => 'workers',
-        BuildOrWatchAssets::class => 'assets',
-        AnnounceApplication::class => 'announce',
-    ];
-
     /**
      * @param  list<StepDescriptor>  $steps
      */
@@ -107,9 +62,9 @@ final readonly class StepSequence
         foreach (array_values($configuredSteps) as $index => $entry) {
             [$class, $parameters] = self::parse($entry);
 
-            // Unknown classes inherit the stage they are slotted into;
-            // leading unknowns get their own honest "Custom steps" stage.
-            $stage = self::STAGES[$class] ?? $stage ?? ServeStage::Custom;
+            // Steps without a #[Stage] inherit the stage they are slotted
+            // into; leading unknowns get their own honest "Custom steps".
+            $stage = self::stageFor($class) ?? $stage ?? ServeStage::Custom;
 
             $steps[] = new StepDescriptor(
                 $index,
@@ -146,7 +101,8 @@ final readonly class StepSequence
         $emitted = [];
 
         foreach ($this->steps as $step) {
-            $group = self::GROUPS[$step->class] ?? "unknown-{$step->index}";
+            $declared = self::groupFor($step->class);
+            $group = $declared ?? "unknown-{$step->index}";
 
             if (isset($emitted[$group])) {
                 continue;
@@ -154,8 +110,8 @@ final readonly class StepSequence
 
             $emitted[$group] = true;
 
-            $line = isset(self::GROUPS[$step->class])
-                ? $this->groupLine($group, $present)
+            $line = $declared !== null
+                ? $this->groupLine($declared, $present, $step)
                 : $step->label;
 
             if ($line !== null) {
@@ -164,6 +120,38 @@ final readonly class StepSequence
         }
 
         return $lines;
+    }
+
+    /**
+     * The #[Stage] a step class declares, or null — reflection instead of a
+     * hand-maintained class-string map, so third-party steps can join a
+     * stage. class_exists() guards reflection on typo'd config entries,
+     * which must stay a pipeline-time error, not a summary-time one.
+     */
+    private static function stageFor(string $class): ?ServeStage
+    {
+        if (! class_exists($class)) {
+            return null;
+        }
+
+        $attributes = (new ReflectionClass($class))->getAttributes(Stage::class);
+
+        return $attributes === [] ? null : $attributes[0]->newInstance()->stage;
+    }
+
+    /**
+     * The #[Group] a step class declares, or null. Steps sharing a group
+     * merge into one summary line at the group's first occurrence.
+     */
+    private static function groupFor(string $class): ?string
+    {
+        if (! class_exists($class)) {
+            return null;
+        }
+
+        $attributes = (new ReflectionClass($class))->getAttributes(Group::class);
+
+        return $attributes === [] ? null : $attributes[0]->newInstance()->name;
     }
 
     /**
@@ -181,7 +169,7 @@ final readonly class StepSequence
     /**
      * @param  array<string, true>  $present
      */
-    private function groupLine(string $group, array $present): ?string
+    private function groupLine(string $group, array $present, StepDescriptor $step): ?string
     {
         $options = $this->options;
 
@@ -200,6 +188,8 @@ final readonly class StepSequence
             'workers' => $this->workersLine($present),
             'assets' => $options->withAssets ? 'Build or watch frontend assets' : null,
             'announce' => 'Announce the application URL',
+            // A third-party group: its first step's label speaks for it.
+            default => $step->label,
         };
     }
 
@@ -256,10 +246,10 @@ final readonly class StepSequence
     private function workersLine(array $present): ?string
     {
         $services = collect([
-            isset($present[StartQueueWorker::class]) && $this->options->withQueue ? 'queue worker' : null,
-            isset($present[StartHorizon::class]) ? 'Horizon' : null,
-            isset($present[StartReverb::class]) ? 'Reverb' : null,
-            isset($present[StartScheduler::class]) ? 'scheduler' : null,
+            isset($present[QueueWorker::class]) && $this->options->withQueue ? 'queue worker' : null,
+            isset($present[HorizonWorker::class]) ? 'Horizon' : null,
+            isset($present[ReverbWorker::class]) ? 'Reverb' : null,
+            isset($present[SchedulerWorker::class]) ? 'scheduler' : null,
         ])->filter();
 
         if ($services->isEmpty()) {
@@ -290,7 +280,7 @@ final readonly class StepSequence
             EnsureDatabaseCredentials::class => 'Checking database credentials',
             EnsureDatabaseExists::class => 'Ensuring the database exists',
             VerifyDatabaseConnection::class => 'Verifying the database connection',
-            RunDeployTasks::class => ($parameters[0] ?? 'before') === 'after'
+            RunDeployTasks::class => DeployPhase::tryFrom($parameters[0] ?? 'before') === DeployPhase::After
                 ? 'Running project commands (after migrations)'
                 : 'Running project commands (before migrations)',
             RunPendingMigrations::class => $options->fresh && $options->migrate
@@ -298,11 +288,12 @@ final readonly class StepSequence
                 : 'Running pending migrations',
             CacheFrameworkFiles::class => 'Caching framework files',
             FinalizeApplication::class => 'Finalizing the application',
-            StartQueueWorker::class => 'Starting the queue worker',
-            StartHorizon::class => 'Starting Horizon',
-            StartReverb::class => 'Starting Reverb',
-            StartScheduler::class => 'Starting the scheduler',
-            BuildOrWatchAssets::class => 'Building or watching assets',
+            QueueWorker::class => 'Starting the queue worker',
+            HorizonWorker::class => 'Starting Horizon',
+            ReverbWorker::class => 'Starting Reverb',
+            SchedulerWorker::class => 'Starting the scheduler',
+            BuildAssets::class => 'Building assets',
+            WatchAssets::class => 'Watching assets',
             AnnounceApplication::class => 'Announcing the application',
             default => self::fallbackLabel($class, $parameters),
         };

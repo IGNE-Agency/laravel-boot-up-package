@@ -17,6 +17,8 @@
         </include>
     </source>
     <php>
+        <!-- The suite runs in one PHP process; 700+ Laravel app boots outgrow the 128M CLI default. -->
+        <ini name="memory_limit" value="256M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="CACHE_DRIVER" value="array"/>
         <env name="SESSION_DRIVER" value="array"/>

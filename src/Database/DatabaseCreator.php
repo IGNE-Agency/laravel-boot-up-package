@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Database;
 
+use Igne\LaravelBootUp\Data\DatabaseConnection;
 use Igne\LaravelBootUp\Exceptions\DatabaseException;
 use PDO;
 use PDOException;
@@ -12,34 +13,26 @@ use PDOException;
  * Driver-agnostic database existence checks and creation. Server drivers
  * (mysql/pgsql/sqlsrv) connect via PDO without selecting a database — the
  * database may not exist yet; sqlite is a plain file on disk.
- *
- * Connection settings arrive as an explicit array (the shape of a
- * config('database.connections.*') entry) so the class stays container-free.
  */
 final class DatabaseCreator
 {
-    private const EXISTS_QUERIES = [
+    private const array EXISTS_QUERIES = [
         'mysql' => 'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?',
         'pgsql' => 'SELECT datname FROM pg_database WHERE datname = ?',
         'sqlsrv' => 'SELECT name FROM sys.databases WHERE name = ?',
     ];
 
-    /**
-     * @param  array<string, mixed>  $connection
-     */
-    public function databaseExists(array $connection): bool
+    public function databaseExists(DatabaseConnection $connection): bool
     {
         $driver = $this->driver($connection);
 
         if ($driver === 'sqlite') {
-            $path = (string) ($connection['database'] ?? '');
-
-            return $path === ':memory:' || is_file($path);
+            return $connection->database === ':memory:' || is_file($connection->database);
         }
 
         try {
             $statement = $this->connect($connection, $driver)->prepare(self::EXISTS_QUERIES[$driver]);
-            $statement->execute([(string) ($connection['database'] ?? '')]);
+            $statement->execute([$connection->database]);
 
             return $statement->fetchColumn() !== false;
         } catch (PDOException $exception) {
@@ -47,16 +40,12 @@ final class DatabaseCreator
         }
     }
 
-    /**
-     * @param  array<string, mixed>  $connection
-     */
-    public function createDatabase(array $connection): void
+    public function createDatabase(DatabaseConnection $connection): void
     {
         $driver = $this->driver($connection);
-        $database = (string) ($connection['database'] ?? '');
 
         if ($driver === 'sqlite') {
-            $this->createSqliteFile($database);
+            $this->createSqliteFile($connection->database);
 
             return;
         }
@@ -64,17 +53,16 @@ final class DatabaseCreator
         $pdo = $this->connect($connection, $driver);
 
         try {
-            $pdo->exec($this->createStatement($driver, $database));
+            $pdo->exec($this->createStatement($driver, $connection->database));
         } catch (PDOException $exception) {
-            throw DatabaseException::creationFailed($database, $exception->getMessage());
+            throw DatabaseException::creationFailed($connection->database, $exception->getMessage());
         }
     }
 
     /**
-     * @param  array<string, mixed>  $connection
      * @return bool true when the database was created by this call
      */
-    public function createDatabaseIfMissing(array $connection): bool
+    public function createDatabaseIfMissing(DatabaseConnection $connection): bool
     {
         if ($this->databaseExists($connection)) {
             return false;
@@ -85,41 +73,31 @@ final class DatabaseCreator
         return true;
     }
 
-    /**
-     * @param  array<string, mixed>  $connection
-     */
-    private function driver(array $connection): string
+    private function driver(DatabaseConnection $connection): string
     {
-        $driver = (string) ($connection['driver'] ?? '');
-
-        return match ($driver) {
-            'mysql', 'pgsql', 'sqlite', 'sqlsrv' => $driver,
-            default => throw DatabaseException::unsupportedDriver($driver),
+        return match ($connection->driver) {
+            'mysql', 'pgsql', 'sqlite', 'sqlsrv' => $connection->driver,
+            default => throw DatabaseException::unsupportedDriver($connection->driver),
         };
     }
 
     /**
      * Connect to the database server itself — no database selected, so the
      * connection works before the target database exists.
-     *
-     * @param  array<string, mixed>  $connection
      */
-    private function connect(array $connection, string $driver): PDO
+    private function connect(DatabaseConnection $connection, string $driver): PDO
     {
-        $host = (string) ($connection['host'] ?? '127.0.0.1');
-        $port = (string) ($connection['port'] ?? '');
-
         $dsn = match ($driver) {
-            'mysql' => "mysql:host={$host};port={$port}",
-            'pgsql' => "pgsql:host={$host};port={$port}",
-            'sqlsrv' => "sqlsrv:Server={$host},{$port}",
+            'mysql' => "mysql:host={$connection->host};port={$connection->port}",
+            'pgsql' => "pgsql:host={$connection->host};port={$connection->port}",
+            'sqlsrv' => "sqlsrv:Server={$connection->host},{$connection->port}",
         };
 
         try {
             return new PDO(
                 $dsn,
-                (string) ($connection['username'] ?? ''),
-                (string) ($connection['password'] ?? ''),
+                $connection->username,
+                $connection->password,
                 [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION],
             );
         } catch (PDOException $exception) {

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Artisan;
 
-use Igne\LaravelBootUp\Config\ServersConfig;
+use Igne\LaravelBootUp\Config\ArtisanServeConfig;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\CombinedService;
 use Igne\LaravelBootUp\Data\CommandLine;
@@ -14,8 +14,7 @@ use Igne\LaravelBootUp\Serve\CombinedRunPlan;
 use Igne\LaravelBootUp\Serve\WorkerLauncher;
 
 /**
- * Serves via a tracked, detached `php artisan serve` process. Key stays
- * 'laravel' for backwards compatibility with existing config and args.
+ * Serves via a tracked, detached `php artisan serve` process.
  */
 final class ArtisanServer implements Server
 {
@@ -24,13 +23,13 @@ final class ArtisanServer implements Server
     public function __construct(
         private readonly ProcessRunner $runner,
         private readonly WorkerLauncher $launcher,
-        private readonly ServersConfig $config,
+        private readonly ArtisanServeConfig $config,
         private readonly CombinedRunPlan $plan,
     ) {}
 
     public function key(): string
     {
-        return 'laravel';
+        return 'artisan';
     }
 
     public function label(): string
@@ -50,8 +49,8 @@ final class ArtisanServer implements Server
         $record = $this->runner->start(
             CommandLine::make([
                 'php', 'artisan', 'serve',
-                "--host={$this->config->artisanHost}",
-                "--port={$this->config->artisanPort}",
+                "--host={$this->config->host}",
+                "--port={$this->config->port}",
             ])->withTimeout(null),
             self::LABEL,
         );
@@ -89,6 +88,6 @@ final class ArtisanServer implements Server
      */
     public function url(): string
     {
-        return "http://{$this->config->artisanHost}:{$this->config->artisanPort}";
+        return "http://{$this->config->host}:{$this->config->port}";
     }
 }

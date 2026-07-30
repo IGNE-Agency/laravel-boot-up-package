@@ -9,23 +9,21 @@ use Illuminate\Contracts\Config\Repository;
 final readonly class ServeConfig
 {
     /**
-     * @param  list<string>  $serveSteps
-     * @param  list<string>  $deploySteps
+     * @param  list<string>  $steps  the app:serve pipeline; [] here because the
+     *                               canonical list lives in the published config file
      */
     public function __construct(
-        public array $serveSteps,
-        public array $deploySteps,
-        public bool $openBrowser,
-        public bool $autoAccept,
+        public array $steps = [],
+        public bool $openBrowser = true,
+        public bool $autoAccept = false,
     ) {}
 
     public static function fromRepository(Repository $config): self
     {
         return new self(
-            serveSteps: (array) $config->get('boot-up.serve_steps', []),
-            deploySteps: (array) $config->get('boot-up.deploy_steps', []),
-            openBrowser: (bool) $config->get('boot-up.browser.open', true),
-            autoAccept: (bool) $config->get('boot-up.auto_accept', false),
+            steps: (array) $config->get('boot-up.serve.steps', []),
+            openBrowser: (bool) $config->get('boot-up.serve.open_browser', true),
+            autoAccept: (bool) $config->get('boot-up.serve.auto_accept', false),
         );
     }
 }

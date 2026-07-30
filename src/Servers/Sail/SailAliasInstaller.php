@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Sail;
 
-use Igne\LaravelBootUp\Config\EnvironmentConfig;
+use Igne\LaravelBootUp\Config\SailConfig;
 use Igne\LaravelBootUp\Environment\ShellProfile;
 
 /**
@@ -17,12 +17,12 @@ final class SailAliasInstaller
 
     public function __construct(
         private readonly ShellProfile $profile,
-        private readonly EnvironmentConfig $config,
+        private readonly SailConfig $config,
     ) {}
 
     public function ensure(): void
     {
-        if (! $this->config->manageSailAlias || ! $this->profile->exists() || $this->profile->definesAlias('sail')) {
+        if (! $this->config->manageAlias || ! $this->profile->exists() || $this->profile->definesAlias('sail')) {
             return;
         }
 

@@ -27,8 +27,8 @@ beforeEach(function (): void {
         runtimeDirectory: $this->workDir.'/runtime',
     ));
 
-    config()->set('boot-up.deploy_steps', [FinalizeApplication::class]);
-    config()->set('boot-up.auto_accept', true);
+    config()->set('boot-up.deploy.steps', [FinalizeApplication::class]);
+    config()->set('boot-up.deploy.auto_accept', true);
 });
 
 afterEach(function (): void {
@@ -59,7 +59,7 @@ test('shows the execution plan and a progress bar like app:serve', function (): 
 });
 
 test('asks to continue and aborts when declined', function (): void {
-    config()->set('boot-up.auto_accept', false);
+    config()->set('boot-up.deploy.auto_accept', false);
     ProcessFaker::fake();
 
     $this->artisan('app:deploy')
@@ -71,7 +71,7 @@ test('asks to continue and aborts when declined', function (): void {
 });
 
 test('the --yes flag skips the confirmation prompt', function (): void {
-    config()->set('boot-up.auto_accept', false);
+    config()->set('boot-up.deploy.auto_accept', false);
     ProcessFaker::fake([
         'php artisan storage:link' => Process::result('The links have been created.'),
     ]);
@@ -91,7 +91,7 @@ test('a failing finalize command fails the deploy cleanly', function (): void {
 
 test('fails fast on native Windows', function (): void {
     ProcessFaker::fake();
-    app()->instance(Igne\LaravelBootUp\Services\Platform::class, new Igne\LaravelBootUp\Services\Platform('Windows'));
+    app()->instance(Igne\LaravelBootUp\Services\Platform::class, new Igne\LaravelBootUp\Services\Platform(Igne\LaravelBootUp\Enums\OperatingSystem::Windows));
 
     $this->artisan('app:deploy')
         ->expectsOutputToContain('not supported on native Windows')
@@ -102,7 +102,7 @@ test('fails fast on native Windows', function (): void {
 
 test('an unexpected exception fails cleanly instead of dumping a stack trace', function (): void {
     ProcessFaker::fake();
-    config()->set('boot-up.deploy_steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
+    config()->set('boot-up.deploy.steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
 
     $this->artisan('app:deploy')
         ->expectsOutputToContain('Unexpected error: something exploded')

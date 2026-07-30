@@ -8,6 +8,7 @@ use Igne\LaravelBootUp\Contracts\HasResidualState;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Frontend\Steps\WatchAssets;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
@@ -21,8 +22,7 @@ use Igne\LaravelBootUp\Servers\StopServerPrompt;
  */
 final class ShutdownRunner
 {
-    /** Mirrors BuildOrWatchAssets::LABEL — the ledger label for the Vite watcher. */
-    private const ASSET_WATCHER_LABEL = 'assets-watch';
+    private const string ASSET_WATCHER_LABEL = WatchAssets::LABEL;
 
     private bool $hasRun = false;
 
@@ -61,8 +61,11 @@ final class ShutdownRunner
 
     /**
      * The active-server record is always cleared, even if reaping a process
-     * or stopping the server throws — a stale record would otherwise make
-     * the next app:serve think a server it does not own is still active.
+     * throws — a stale record would otherwise make the next app:serve think
+     * a server it does not own is still active. Clearing happens BEFORE the
+     * stop-server prompt: Ctrl+C at a prompt calls exit(), which skips
+     * finally blocks, so state cleared after the prompt would leak.
+     * stopServer() receives everything it needs as arguments.
      */
     private function tearDown(?ActiveServerRecord $active): void
     {
@@ -76,13 +79,13 @@ final class ShutdownRunner
             if ($this->reaper->reapAll()) {
                 $this->ledger->clear();
             }
-
-            if ($active !== null) {
-                $this->stopServer($active->key, $active->startedByUs);
-            }
         } finally {
             $this->store->clear();
             $this->cleanUpStaleHotFile($hadAssetWatcher);
+        }
+
+        if ($active !== null) {
+            $this->stopServer($active->key, $active->startedByUs);
         }
     }
 
@@ -106,7 +109,16 @@ final class ShutdownRunner
 
     private function stopServer(string $key, bool $startedByUs): void
     {
-        $server = $this->selector->driver($key);
+        // A persisted key may belong to a custom driver that no longer
+        // exists in config — the rest of the teardown already ran, so
+        // reporting beats crashing.
+        try {
+            $server = $this->selector->driver($key);
+        } catch (\Throwable) {
+            terminal()->warning("The recorded server [{$key}] is not a known driver — stop it manually if it is still running.");
+
+            return;
+        }
 
         if (! $server->isRunning()) {
             $this->offerResidualCleanup($server, $startedByUs);

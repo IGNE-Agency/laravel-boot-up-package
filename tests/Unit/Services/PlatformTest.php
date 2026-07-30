@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Enums\OperatingSystem;
 use Igne\LaravelBootUp\Services\Platform;
 
 test('each family answers exactly one check', function (): void {
-    $mac = new Platform('Darwin');
-    $linux = new Platform('Linux');
-    $windows = new Platform('Windows');
+    $mac = new Platform(OperatingSystem::Darwin);
+    $linux = new Platform(OperatingSystem::Linux);
+    $windows = new Platform(OperatingSystem::Windows);
 
     expect($mac->isMacos())->toBeTrue()
         ->and($mac->isLinux())->toBeFalse()

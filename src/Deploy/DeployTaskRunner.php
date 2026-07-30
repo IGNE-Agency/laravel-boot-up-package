@@ -4,17 +4,18 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Deploy;
 
+use Igne\LaravelBootUp\Concerns\RunsThroughServer;
 use Igne\LaravelBootUp\Contracts\ProvidesDeployTasks;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Enums\DeployPhase;
 use Igne\LaravelBootUp\Exceptions\DeployException;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Process\Exceptions\ProcessFailedException;
-use InvalidArgumentException;
 
 /**
  * Runs the host application's project commands for a deploy phase. The
@@ -23,17 +24,16 @@ use InvalidArgumentException;
  */
 final class DeployTaskRunner
 {
+    use RunsThroughServer;
+
     public function __construct(
         private readonly Container $container,
-        private readonly ProcessRunner $processes,
+        private readonly ProcessRunner $runner,
         private readonly CommandRewriter $rewriter,
         private readonly PackageManagerSelector $packageManagers,
     ) {}
 
-    /**
-     * @param  string  $phase  'before-deploy', 'before' / 'after' (migrations) or 'after-deploy'
-     */
-    public function run(string $phase, ServeContext $context): void
+    public function run(DeployPhase $phase, ServeContext $context): void
     {
         if (! $this->container->bound(ProvidesDeployTasks::class)) {
             return;
@@ -42,11 +42,10 @@ final class DeployTaskRunner
         $provider = $this->container->make(ProvidesDeployTasks::class);
 
         $commands = match ($phase) {
-            'before-deploy' => $provider->beforeDeploy(),
-            'before' => $provider->beforeMigrations(),
-            'after' => $provider->afterMigrations(),
-            'after-deploy' => $provider->afterDeploy(),
-            default => throw new InvalidArgumentException("Unknown project command phase [{$phase}]; expected 'before-deploy', 'before', 'after' or 'after-deploy'."),
+            DeployPhase::BeforeDeploy => $provider->beforeDeploy(),
+            DeployPhase::Before => $provider->beforeMigrations(),
+            DeployPhase::After => $provider->afterMigrations(),
+            DeployPhase::AfterDeploy => $provider->afterDeploy(),
         };
 
         foreach ($commands as $command) {
@@ -60,13 +59,8 @@ final class DeployTaskRunner
             terminal()->info($command->description);
         }
 
-        $shell = $this->rewriter->rewriteFor(
-            $context,
-            CommandLine::make($this->tokensFor($command)),
-        );
-
         try {
-            $this->processes->run($shell);
+            $this->runThroughServer($context, CommandLine::make($this->tokensFor($command)));
         } catch (ProcessFailedException $exception) {
             throw DeployException::commandFailed($command, $exception->getMessage());
         }

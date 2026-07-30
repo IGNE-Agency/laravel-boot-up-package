@@ -54,7 +54,7 @@ arch('laravel prompts is only touched through the Terminal seam')
     ->not->toUse('Laravel\Prompts')
     ->ignoring([Terminal::class, TrackedProgress::class]);
 
-arch('legacy namespaces are gone for good')
+arch('no role-suffix namespaces — classes live with their domain, traits in Concerns')
     ->expect([
         'Igne\LaravelBootUp\Managers',
         'Igne\LaravelBootUp\Executors',
@@ -77,6 +77,12 @@ arch('only enums live in Enums')
 arch('only traits live in Concerns')
     ->expect('Igne\LaravelBootUp\Concerns')
     ->toBeTraits();
+
+arch('Attributes holds only final readonly PHP attributes')
+    ->expect('Igne\LaravelBootUp\Attributes')
+    ->toBeFinal()
+    ->toBeReadonly()
+    ->toHaveAttribute(Attribute::class);
 
 arch('config classes are final readonly value objects built from the repository')
     ->expect('Igne\LaravelBootUp\Config')

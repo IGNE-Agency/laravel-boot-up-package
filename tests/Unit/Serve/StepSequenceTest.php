@@ -15,16 +15,17 @@ use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
 use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
 use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
-use Igne\LaravelBootUp\Frontend\Steps\BuildOrWatchAssets;
+use Igne\LaravelBootUp\Frontend\Steps\BuildAssets;
 use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
-use Igne\LaravelBootUp\Queue\Steps\StartQueueWorker;
+use Igne\LaravelBootUp\Frontend\Steps\WatchAssets;
+use Igne\LaravelBootUp\Queue\Steps\QueueWorker;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
 use Igne\LaravelBootUp\Serve\StepSequence;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
-use Igne\LaravelBootUp\Workers\Steps\StartHorizon;
-use Igne\LaravelBootUp\Workers\Steps\StartReverb;
-use Igne\LaravelBootUp\Workers\Steps\StartScheduler;
+use Igne\LaravelBootUp\Workers\Steps\HorizonWorker;
+use Igne\LaravelBootUp\Workers\Steps\ReverbWorker;
+use Igne\LaravelBootUp\Workers\Steps\SchedulerWorker;
 
 function defaultServeSteps(): array
 {
@@ -44,11 +45,12 @@ function defaultServeSteps(): array
         RunDeployTasks::class.':after',
         CacheFrameworkFiles::class,
         FinalizeApplication::class,
-        StartQueueWorker::class,
-        StartHorizon::class,
-        StartReverb::class,
-        StartScheduler::class,
-        BuildOrWatchAssets::class,
+        QueueWorker::class,
+        HorizonWorker::class,
+        ReverbWorker::class,
+        SchedulerWorker::class,
+        BuildAssets::class,
+        WatchAssets::class,
         AnnounceApplication::class,
     ];
 }
@@ -58,7 +60,7 @@ test('assigns every default step to its stage, in order', function (): void {
 
     $stages = array_map(fn ($step) => $step->stage, $plan->steps);
 
-    expect($plan->count())->toBe(21)
+    expect($plan->count())->toBe(22)
         ->and($stages)->toBe([
             ServeStage::Prepare, ServeStage::Prepare, ServeStage::Prepare,
             ServeStage::Tools,
@@ -67,7 +69,7 @@ test('assigns every default step to its stage, in order', function (): void {
             ServeStage::Database, ServeStage::Database, ServeStage::Database,
             ServeStage::Cache, ServeStage::Finalize,
             ServeStage::Services, ServeStage::Services, ServeStage::Services, ServeStage::Services,
-            ServeStage::Assets, ServeStage::Announce,
+            ServeStage::Assets, ServeStage::Assets, ServeStage::Announce,
         ]);
 });
 

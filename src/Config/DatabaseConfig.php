@@ -21,7 +21,7 @@ final readonly class DatabaseConfig
             create: (bool) $config->get('boot-up.database.create', true),
             promptMissingCredentials: (bool) $config->get('boot-up.database.prompt_missing_credentials', true),
             reconcileServerCredentials: (bool) $config->get('boot-up.database.reconcile_credentials', true),
-            migrationsAuto: (bool) $config->get('boot-up.migrations.auto', true),
+            migrationsAuto: (bool) $config->get('boot-up.database.migrations.auto', true),
         );
     }
 }

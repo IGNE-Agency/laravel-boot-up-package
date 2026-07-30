@@ -7,6 +7,7 @@ namespace Igne\LaravelBootUp\Process;
 use Closure;
 use Igne\LaravelBootUp\Data\CombinedService;
 use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Enums\RunMode;
 use Igne\LaravelBootUp\Serve\CombinedRunPlan;
 use Illuminate\Process\Factory;
 
@@ -21,7 +22,7 @@ use Illuminate\Process\Factory;
  */
 final class OutputMultiplexer
 {
-    private const PALETTE = ['cyan', 'magenta', 'yellow', 'green', 'blue', 'red'];
+    private const array PALETTE = ['cyan', 'magenta', 'yellow', 'green', 'blue', 'red'];
 
     private bool $stopped = false;
 
@@ -121,7 +122,7 @@ final class OutputMultiplexer
             label: $service->label,
             command: $service->command->toString(),
             startedAt: date(DATE_ATOM),
-            mode: 'combined',
+            mode: RunMode::Combined,
         ));
     }
 

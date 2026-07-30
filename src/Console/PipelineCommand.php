@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
+use Igne\LaravelBootUp\Concerns\ResolvesGenerators;
 use Igne\LaravelBootUp\Config\PipelineConfig;
 use Igne\LaravelBootUp\Contracts\PipelineGenerator;
 use Igne\LaravelBootUp\Data\GeneratedFile;
+use Igne\LaravelBootUp\Data\PipelineContext;
 use Igne\LaravelBootUp\Data\PipelineFile;
 use Igne\LaravelBootUp\Data\PipelinePlan;
 use Igne\LaravelBootUp\Data\PipelineSecret;
@@ -20,7 +22,9 @@ use Igne\LaravelBootUp\Services\GeneratedFilePublisher;
 
 final class PipelineCommand extends BootUpCommand
 {
-    private const BUILT_IN_GENERATORS = [
+    use ResolvesGenerators;
+
+    private const array BUILT_IN_GENERATORS = [
         'github' => GitHubActionsGenerator::class,
         'bitbucket' => BitbucketPipelinesGenerator::class,
     ];
@@ -69,7 +73,7 @@ final class PipelineCommand extends BootUpCommand
     private function validatedPlan(PipelinePlan $plan, PipelineConfig $config, PipelineGenerator $generator): PipelinePlan
     {
         $extensions = (new PipelineExtensionValidator($this->laravel->basePath()))
-            ->validate($config->steps, $config->files, $generator, $plan, array_keys($this->generators()));
+            ->validate($config->steps, $config->files, new PipelineContext($generator, $plan, array_keys($this->generators())));
 
         return $plan->withExtensions($extensions);
     }
@@ -96,7 +100,7 @@ final class PipelineCommand extends BootUpCommand
      */
     private function generators(): array
     {
-        return array_merge(self::BUILT_IN_GENERATORS, $this->laravel->make(PipelineConfig::class)->generators);
+        return $this->mergeGenerators(self::BUILT_IN_GENERATORS, $this->laravel->make(PipelineConfig::class)->generators);
     }
 
     /**
@@ -104,9 +108,7 @@ final class PipelineCommand extends BootUpCommand
      */
     protected function providerOptions(): array
     {
-        return collect($this->generators())
-            ->map(fn (string $class): string => $this->laravel->make($class)->label())
-            ->all();
+        return $this->generatorLabels($this->generators());
     }
 
     /**

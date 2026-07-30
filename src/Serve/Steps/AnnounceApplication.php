@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Serve\Steps;
 
 use Closure;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Config\ServeConfig;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Serve\Browser;
 use Igne\LaravelBootUp\Serve\CombinedRunPlan;
 
+#[Stage(ServeStage::Announce)]
+#[Group('announce')]
 final class AnnounceApplication implements Step
 {
     public function __construct(

@@ -15,8 +15,8 @@ use Igne\LaravelBootUp\Data\DeployTask;
  * Four phases, in execution order. Return an empty array for any phase you
  * do not use. The generated deploy scripts (Forge, Fortrabbit) and CI run
  * every phase; the local app:serve / app:deploy pipeline runs the migration
- * phases by default (add the deploy phases to boot-up.serve_steps /
- * deploy_steps to run those locally too). A failing command aborts the deploy.
+ * phases by default (add the deploy phases to boot-up.serve.steps /
+ * boot-up.deploy.steps to run those locally too). A failing command aborts the deploy.
  */
 interface ProvidesDeployTasks
 {

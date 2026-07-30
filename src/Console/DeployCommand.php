@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootUp\Config\ServeConfig;
+use Igne\LaravelBootUp\Config\DeployConfig;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Serve\StageReporter;
@@ -30,7 +30,7 @@ final class DeployCommand extends BootUpCommand implements Isolatable
         return true;
     }
 
-    public function handle(ServeConfig $config, Pipeline $pipeline, StageReporter $reporter): int
+    public function handle(DeployConfig $config, Pipeline $pipeline, StageReporter $reporter): int
     {
         $this->announce('Deploying the application...');
 
@@ -41,7 +41,7 @@ final class DeployCommand extends BootUpCommand implements Isolatable
             fresh: (bool) $this->option('fresh'),
         );
 
-        $plan = StepSequence::for($config->deploySteps, $options);
+        $plan = StepSequence::for($config->steps, $options);
 
         if (! $this->confirmPlan($plan, 'app:deploy', $config->autoAccept)) {
             return $this->skip('Aborted — nothing was changed.');

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Herd;
 
-use Igne\LaravelBootUp\Config\ServersConfig;
+use Igne\LaravelBootUp\Config\HerdConfig;
 use Igne\LaravelBootUp\Contracts\RequiresTools;
 use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
@@ -22,7 +22,7 @@ final class HerdServer implements RequiresTools, RewritesCommands, Server, Warns
         private readonly ProcessRunner $runner,
         private readonly HerdServices $services,
         private readonly HerdSites $sites,
-        private readonly ServersConfig $config,
+        private readonly HerdConfig $config,
         private readonly ?string $projectPath = null,
     ) {}
 
@@ -137,7 +137,7 @@ final class HerdServer implements RequiresTools, RewritesCommands, Server, Warns
      */
     private function claimSiteName(string $project): string
     {
-        $name = $this->config->herdSite ?? $this->promptForName($project);
+        $name = $this->config->site ?? $this->promptForName($project);
 
         while (! $this->claim($name)) {
             $name = $this->promptForName($project);

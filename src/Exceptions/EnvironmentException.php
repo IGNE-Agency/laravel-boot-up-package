@@ -23,7 +23,7 @@ final class EnvironmentException extends BootUpException
     {
         $environments = implode(', ', $allowed);
 
-        return new self("This command only runs when APP_ENV is one of [{$environments}] (boot-up.environments); APP_ENV is [{$env}].");
+        return new self("This command only runs when APP_ENV is one of [{$environments}] (boot-up.environment.allowed); APP_ENV is [{$env}].");
     }
 
     public static function remoteHost(): self

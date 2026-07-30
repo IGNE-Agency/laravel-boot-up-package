@@ -6,7 +6,7 @@ namespace Igne\LaravelBootUp\Services;
 
 final class LockfileConflictDetector
 {
-    private const PATTERNS = [
+    private const array PATTERNS = [
         'lock file is not up to date',
         'hash does not match',
         'content-hash',
@@ -20,12 +20,6 @@ final class LockfileConflictDetector
 
     public function isLockfileConflict(string $errorMessage): bool
     {
-        foreach (self::PATTERNS as $pattern) {
-            if (stripos($errorMessage, $pattern) !== false) {
-                return true;
-            }
-        }
-
-        return false;
+        return PatternDetector::matchesAny($errorMessage, self::PATTERNS);
     }
 }

@@ -17,13 +17,13 @@ use Closure;
  */
 final class Lines
 {
-    public const KIND_COMMAND = 'command';
+    public const string KIND_COMMAND = 'command';
 
-    public const KIND_COMMENT = 'comment';
+    public const string KIND_COMMENT = 'comment';
 
-    public const KIND_HEADING = 'heading';
+    public const string KIND_HEADING = 'heading';
 
-    public const KIND_WARNING = 'warning';
+    public const string KIND_WARNING = 'warning';
 
     /** @var list<string> */
     private array $lines = [];
