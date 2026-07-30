@@ -2,20 +2,22 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Frontend\FrontendConfig;
-use Igne\LaravelBootUp\Frontend\FrontendException;
+use Igne\LaravelBootUp\Config\FrontendConfig;
+use Igne\LaravelBootUp\Contracts\RewritesCommands;
+use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\CommandRewrites;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Enums\AssetMode;
+use Igne\LaravelBootUp\Enums\PackageManager;
+use Igne\LaravelBootUp\Enums\RunMode;
+use Igne\LaravelBootUp\Exceptions\FrontendException;
 use Igne\LaravelBootUp\Frontend\PackageJson;
-use Igne\LaravelBootUp\Frontend\PackageManager;
 use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
-use Igne\LaravelBootUp\Servers\CommandRewrites;
-use Igne\LaravelBootUp\Servers\Server;
-use Igne\LaravelBootUp\Support\Poller;
-use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
+use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -26,11 +28,11 @@ use Laravel\Prompts\Prompt;
 function bindFrontendInstallServices(string $dir): void
 {
     app()->instance(PackageJson::class, new PackageJson($dir.'/package.json'));
-    app()->instance(FrontendConfig::class, new FrontendConfig(PackageManager::BUN, 'watch', 'background'));
+    app()->instance(FrontendConfig::class, new FrontendConfig(PackageManager::BUN, AssetMode::Watch, RunMode::Background));
     app()->instance(ProcessRunner::class, new ProcessRunner(
         processes: app(Factory::class),
         ledger: new ProcessLedger($dir.'/processes.json'),
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $dir.'/logs',
         runtimeDirectory: $dir.'/runtime',
@@ -39,10 +41,8 @@ function bindFrontendInstallServices(string $dir): void
 
 function frontendSailServer(): Server
 {
-    return new class implements Server
+    return new class implements RewritesCommands, Server
     {
-        use DefaultServerCapabilities;
-
         public function key(): string
         {
             return 'sail';
@@ -51,11 +51,6 @@ function frontendSailServer(): Server
         public function label(): string
         {
             return 'Laravel Sail';
-        }
-
-        public function requiredTools(): array
-        {
-            return [];
         }
 
         public function commandRewrites(): CommandRewrites

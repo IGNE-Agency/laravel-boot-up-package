@@ -13,14 +13,12 @@ final class DownCommand extends BootUpCommand implements Isolatable
 
     protected $description = 'Stop tracked background processes and the server that app:serve started';
 
-    public function perform(ShutdownRunner $shutdown): int
+    public function handle(ShutdownRunner $shutdown): int
     {
-        terminal()->intro('Stopping everything boot-up started...');
+        $this->announce('Stopping everything boot-up started...');
 
         $shutdown->run();
 
-        terminal()->outro('Done.');
-
-        return self::SUCCESS;
+        return $this->done('Done.');
     }
 }

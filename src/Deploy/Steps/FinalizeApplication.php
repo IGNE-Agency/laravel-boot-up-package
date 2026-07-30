@@ -5,16 +5,21 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Deploy\Steps;
 
 use Closure;
-use Igne\LaravelBootUp\Deploy\DeployConfig;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Stage;
+use Igne\LaravelBootUp\Config\DeployConfig;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
 
 /**
- * Runs the configured boot-up.deploy.finalize artisan commands host-side
+ * Runs the deploy config's finalize artisan commands (DeployConfig) host-side
  * (default: storage:link).
  */
+#[Stage(ServeStage::Finalize)]
+#[Group('finalize')]
 final class FinalizeApplication implements Step
 {
     public function __construct(
@@ -33,7 +38,7 @@ final class FinalizeApplication implements Step
 
             terminal()->info("Running php artisan {$command}...");
 
-            $this->processes->run(ShellCommand::make("php artisan {$command}"));
+            $this->processes->run(CommandLine::make("php artisan {$command}"));
         }
 
         return $next($context);
@@ -44,7 +49,8 @@ final class FinalizeApplication implements Step
      * skipped, so a repeat boot never surfaces Laravel's alarming
      * "The [public/storage] link already exists." ERROR. Any other command, a
      * forced relink (--force), or a genuinely missing link falls through to
-     * the normal run. The link set is read exactly as Laravel resolves it.
+     * the normal run. The link set is read from the same source that
+     * `storage:link` itself uses.
      */
     private function storageLinkAlreadySatisfied(string $command): bool
     {

@@ -10,7 +10,7 @@ if (! function_exists('terminal')) {
      * Igne\LaravelBootUp\Facades\Terminal facade fronts, without needing
      * an import: terminal()->info('...').
      */
-    function terminal(): Igne\LaravelBootUp\Support\Terminal
+    function terminal(): Igne\LaravelBootUp\Services\Terminal
     {
         return Terminal::getFacadeRoot();
     }

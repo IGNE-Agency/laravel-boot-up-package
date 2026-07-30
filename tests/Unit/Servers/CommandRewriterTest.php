@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Process\ShellCommand;
+use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Data\CommandRewrites;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
-use Igne\LaravelBootUp\Servers\CommandRewrites;
 
 function sailRewrites(): CommandRewrites
 {
@@ -24,13 +24,13 @@ function herdRewrites(): CommandRewrites
 }
 
 test('sail rewrites php artisan commands to sail artisan', function (): void {
-    $rewritten = new CommandRewriter()->rewrite(ShellCommand::make('php artisan queue:work database'), sailRewrites());
+    $rewritten = new CommandRewriter()->rewrite(CommandLine::make('php artisan queue:work database'), sailRewrites());
 
     expect($rewritten->tokens)->toBe(['./vendor/bin/sail', 'artisan', 'queue:work', 'database']);
 });
 
 test('sail prefixes bare package manager commands', function (): void {
-    $rewritten = new CommandRewriter()->rewrite(ShellCommand::make('bun install'), sailRewrites());
+    $rewritten = new CommandRewriter()->rewrite(CommandLine::make('bun install'), sailRewrites());
 
     expect($rewritten->tokens)->toBe(['./vendor/bin/sail', 'bun', 'install']);
 });
@@ -38,14 +38,14 @@ test('sail prefixes bare package manager commands', function (): void {
 test('herd prefixes php but leaves other binaries alone', function (): void {
     $rewriter = new CommandRewriter;
 
-    expect($rewriter->rewrite(ShellCommand::make('php -v'), herdRewrites())->tokens)
+    expect($rewriter->rewrite(CommandLine::make('php -v'), herdRewrites())->tokens)
         ->toBe(['herd', 'php', '-v'])
-        ->and($rewriter->rewrite(ShellCommand::make('git status'), herdRewrites())->tokens)
+        ->and($rewriter->rewrite(CommandLine::make('git status'), herdRewrites())->tokens)
         ->toBe(['git', 'status']);
 });
 
 test('null rules and empty rules are identity', function (): void {
-    $command = ShellCommand::make('php artisan serve');
+    $command = CommandLine::make('php artisan serve');
     $rewriter = new CommandRewriter;
 
     expect($rewriter->rewrite($command, null))->toBe($command)
@@ -53,13 +53,13 @@ test('null rules and empty rules are identity', function (): void {
 });
 
 test('only the leading binary is prefixed, never later tokens', function (): void {
-    $rewritten = new CommandRewriter()->rewrite(ShellCommand::make('composer run php-check'), sailRewrites());
+    $rewritten = new CommandRewriter()->rewrite(CommandLine::make('composer run php-check'), sailRewrites());
 
     expect($rewritten->tokens)->toBe(['./vendor/bin/sail', 'composer', 'run', 'php-check']);
 });
 
 test('cwd, env and timeout survive rewriting', function (): void {
-    $command = ShellCommand::make('php artisan migrate')->inDirectory('/app')->withTimeout(null);
+    $command = CommandLine::make('php artisan migrate')->inDirectory('/app')->withTimeout(null);
     $rewritten = new CommandRewriter()->rewrite($command, sailRewrites());
 
     expect($rewritten->cwd)->toBe('/app')->and($rewritten->timeout)->toBeNull();

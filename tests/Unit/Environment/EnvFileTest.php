@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Environment\EnvFile;
-use Igne\LaravelBootUp\Environment\EnvironmentException;
+use Igne\LaravelBootUp\Exceptions\EnvironmentException;
 
 beforeEach(function (): void {
     $this->dir = sys_get_temp_dir().'/boot-up-envfile-'.bin2hex(random_bytes(4));

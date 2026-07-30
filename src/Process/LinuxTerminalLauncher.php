@@ -1,0 +1,60 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Igne\LaravelBootUp\Process;
+
+use Igne\LaravelBootUp\Contracts\TerminalLauncher;
+use Igne\LaravelBootUp\Services\Platform;
+use Illuminate\Process\Factory;
+
+final class LinuxTerminalLauncher implements TerminalLauncher
+{
+    public function __construct(
+        private readonly Factory $processes,
+        private readonly Platform $platform,
+    ) {}
+
+    public function available(): bool
+    {
+        return $this->platform->isLinux() && $this->emulator() !== null;
+    }
+
+    public function open(string $command, ?string $directory = null): ?string
+    {
+        $inner = TerminalScript::inDirectory($command, $directory);
+
+        $emulator = $this->emulator();
+
+        $tokens = match ($emulator) {
+            'gnome-terminal' => ['gnome-terminal', '--', 'sh', '-c', $inner],
+            default => ['xterm', '-e', 'sh', '-c', $inner],
+        };
+
+        $this->processes->command($tokens)->run()->throw();
+
+        // gnome-terminal/xterm windows close on their own when the shell they
+        // run exits; we do not track and close individual Linux windows.
+        return null;
+    }
+
+    public function close(?string $handle): void
+    {
+        // No-op: see open().
+    }
+
+    private function emulator(): ?string
+    {
+        foreach (['gnome-terminal', 'xterm'] as $candidate) {
+            $result = $this->processes
+                ->command(['sh', '-c', "command -v {$candidate}"])
+                ->run();
+
+            if ($result->successful()) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+}

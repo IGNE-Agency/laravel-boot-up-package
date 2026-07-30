@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Tools\Installers;
 
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
 
 /**
  * The single Homebrew seam: installs brew itself when missing and runs
@@ -26,7 +26,7 @@ final class Homebrew
         terminal()->info('Homebrew not found. Installing...');
 
         $this->processes->run(
-            ShellCommand::make([
+            CommandLine::make([
                 'bash',
                 '-c',
                 'curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash',
@@ -42,13 +42,13 @@ final class Homebrew
             ? ['brew', 'install', '--cask', $formula]
             : ['brew', 'install', $formula];
 
-        $this->processes->run(ShellCommand::make($tokens)->withTimeout(null));
+        $this->processes->run(CommandLine::make($tokens)->withTimeout(null));
     }
 
     public function upgrade(string $formula): void
     {
         $this->ensureInstalled();
 
-        $this->processes->run(ShellCommand::make(['brew', 'upgrade', $formula])->withTimeout(null));
+        $this->processes->run(CommandLine::make(['brew', 'upgrade', $formula])->withTimeout(null));
     }
 }

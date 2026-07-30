@@ -5,25 +5,36 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Frontend\Steps;
 
 use Closure;
-use Igne\LaravelBootUp\Frontend\FrontendException;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Stage;
+use Igne\LaravelBootUp\Concerns\ReadsProcessFailureOutput;
+use Igne\LaravelBootUp\Concerns\SkipsWithNote;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Exceptions\FrontendException;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
-use Igne\LaravelBootUp\Support\LockfileConflictDetector;
+use Igne\LaravelBootUp\Services\LockfileConflictDetector;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 
+#[Stage(ServeStage::Install)]
+#[Group('dependencies')]
 final class InstallFrontendDependencies implements Step
 {
+    use ReadsProcessFailureOutput;
+
+    use SkipsWithNote;
+
     /**
      * Installing node modules can take minutes on a slow network or a large
      * project; the default per-command timeout is meant for quick commands and
      * would abort a real install mid-way, so it is lifted well clear here.
      */
-    private const INSTALL_TIMEOUT_SECONDS = 1800;
+    private const int INSTALL_TIMEOUT_SECONDS = 1800;
 
     public function __construct(
         private readonly PackageManagerSelector $selector,
@@ -36,23 +47,19 @@ final class InstallFrontendDependencies implements Step
     public function handle(ServeContext $context, Closure $next): mixed
     {
         if (! $context->options->withAssets) {
-            terminal()->note('Frontend dependencies skipped (--without-assets).');
-
-            return $next($context);
+            return $this->skipStep('Frontend dependencies skipped (--without-assets).', $context, $next);
         }
 
         if (! $this->packageJson->exists()) {
-            terminal()->note('No package.json found — skipping frontend dependencies.');
-
-            return $next($context);
+            return $this->skipStep('No package.json found — skipping frontend dependencies.', $context, $next);
         }
 
         $manager = $this->selector->selected();
 
-        $command = $this->rewriter->rewrite(
-            ShellCommand::make($context->options->update ? $manager->updateCommand() : $manager->installCommand())
+        $command = $this->rewriter->rewriteFor(
+            $context,
+            CommandLine::make($context->options->update ? $manager->updateCommand() : $manager->installCommand())
                 ->withTimeout(self::INSTALL_TIMEOUT_SECONDS),
-            $context->server?->commandRewrites(),
         );
 
         terminal()->info(($context->options->update ? 'Updating' : 'Installing')." frontend dependencies with {$manager->value}...");
@@ -72,7 +79,7 @@ final class InstallFrontendDependencies implements Step
      */
     private function recoverFromLockfileConflict(
         string $manager,
-        ShellCommand $command,
+        CommandLine $command,
         ProcessFailedException $exception,
     ): void {
         if (! $this->conflicts->isLockfileConflict($this->failureReason($exception))) {
@@ -90,7 +97,7 @@ final class InstallFrontendDependencies implements Step
 
     private function failureReason(ProcessFailedException $exception): string
     {
-        $output = trim($exception->result->output()."\n".$exception->result->errorOutput());
+        $output = trim($this->outputOf($exception));
 
         return $output !== '' ? $output : $exception->getMessage();
     }

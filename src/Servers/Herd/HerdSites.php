@@ -20,7 +20,7 @@ final class HerdSites
      */
     public function linkedPath(string $name): ?string
     {
-        $link = $this->directory.'/'.$name;
+        $link = "{$this->directory}/{$name}";
 
         if (! is_link($link)) {
             return null;
@@ -35,14 +35,9 @@ final class HerdSites
     public function nameFor(string $projectPath): ?string
     {
         $project = $this->normalize($projectPath);
+        $name = collect($this->links())->search($project, strict: true);
 
-        foreach ($this->links() as $name => $target) {
-            if ($target === $project) {
-                return $name;
-            }
-        }
-
-        return null;
+        return $name === false ? null : $name;
     }
 
     /**
@@ -54,17 +49,13 @@ final class HerdSites
             return [];
         }
 
-        $links = [];
-
-        foreach (scandir($this->directory) ?: [] as $entry) {
-            $path = $this->directory.'/'.$entry;
-
-            if ($entry !== '.' && $entry !== '..' && is_link($path)) {
-                $links[$entry] = $this->normalize((string) readlink($path));
-            }
-        }
-
-        return $links;
+        return collect(scandir($this->directory) ?: [])
+            ->reject(fn (string $entry): bool => $entry === '.' || $entry === '..')
+            ->filter(fn (string $entry): bool => is_link("{$this->directory}/{$entry}"))
+            ->mapWithKeys(fn (string $entry): array => [
+                $entry => $this->normalize((string) readlink("{$this->directory}/{$entry}")),
+            ])
+            ->all();
     }
 
     private function normalize(string $path): string

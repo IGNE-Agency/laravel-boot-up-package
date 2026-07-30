@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Database\Steps;
 
 use Closure;
-use Igne\LaravelBootUp\Database\DatabaseConfig;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Stage;
+use Igne\LaravelBootUp\Concerns\RunsThroughServer;
+use Igne\LaravelBootUp\Config\DatabaseConfig;
+use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Database\PendingMigrations;
+use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Illuminate\Support\Str;
 
@@ -20,8 +25,12 @@ use Illuminate\Support\Str;
  * check and the migrate run through the server's command rewrites;
  * host-side otherwise via the Migrator.
  */
+#[Stage(ServeStage::Database)]
+#[Group('migrations')]
 final class RunPendingMigrations implements Step
 {
+    use RunsThroughServer;
+
     public function __construct(
         private readonly DatabaseConfig $config,
         private readonly PendingMigrations $pendingMigrations,
@@ -45,7 +54,7 @@ final class RunPendingMigrations implements Step
             $this->migrateFresh($context);
 
             return $next($context);
-        } elseif ($context->server !== null && ! $context->server->databaseReachableFromHost()) {
+        } elseif ($context->server instanceof ProvidesDatabase && ! $context->server->databaseReachableFromHost()) {
             $this->migrateThroughServer($context);
         } else {
             $this->migrateFromHost();
@@ -83,10 +92,7 @@ final class RunPendingMigrations implements Step
             $command[] = '--seed';
         }
 
-        $this->runner->run($this->rewriter->rewrite(
-            ShellCommand::make($command),
-            $context->server?->commandRewrites(),
-        ));
+        $this->runThroughServer($context, CommandLine::make($command));
     }
 
     private function seedIfRequested(ServeContext $context): void
@@ -97,18 +103,12 @@ final class RunPendingMigrations implements Step
 
         terminal()->info('Seeding database...');
 
-        $this->runner->run($this->rewriter->rewrite(
-            ShellCommand::make('php artisan db:seed'),
-            $context->server?->commandRewrites(),
-        ));
+        $this->runThroughServer($context, CommandLine::make('php artisan db:seed'));
     }
 
     private function migrateThroughServer(ServeContext $context): bool
     {
-        $status = $this->runner->runSilently($this->rewriter->rewrite(
-            ShellCommand::make('php artisan migrate:status --pending'),
-            $context->server?->commandRewrites(),
-        ));
+        $status = $this->runSilentlyThroughServer($context, CommandLine::make('php artisan migrate:status --pending'));
 
         $output = trim($status->output());
 
@@ -120,10 +120,7 @@ final class RunPendingMigrations implements Step
 
         terminal()->info('Running pending migrations...');
 
-        $this->runner->run($this->rewriter->rewrite(
-            ShellCommand::make('php artisan migrate --force'),
-            $context->server?->commandRewrites(),
-        ));
+        $this->runThroughServer($context, CommandLine::make('php artisan migrate --force'));
 
         return true;
     }
@@ -140,7 +137,7 @@ final class RunPendingMigrations implements Step
 
         terminal()->info("Running {$count} pending ".Str::plural('migration', $count).'...');
 
-        $this->runner->run(ShellCommand::make('php artisan migrate --force'));
+        $this->runner->run(CommandLine::make('php artisan migrate --force'));
 
         return true;
     }

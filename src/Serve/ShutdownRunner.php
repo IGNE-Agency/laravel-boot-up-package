@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Serve;
 
+use Igne\LaravelBootUp\Contracts\HasResidualState;
+use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\ActiveServerRecord;
+use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Frontend\Steps\WatchAssets;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
-use Igne\LaravelBootUp\Process\ProcessRecord;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\ServerSelector;
 use Igne\LaravelBootUp\Servers\StopServerPrompt;
@@ -18,8 +22,7 @@ use Igne\LaravelBootUp\Servers\StopServerPrompt;
  */
 final class ShutdownRunner
 {
-    /** Mirrors BuildOrWatchAssets::LABEL — the ledger label for the Vite watcher. */
-    private const ASSET_WATCHER_LABEL = 'assets-watch';
+    private const string ASSET_WATCHER_LABEL = WatchAssets::LABEL;
 
     private bool $hasRun = false;
 
@@ -47,33 +50,43 @@ final class ShutdownRunner
             return;
         }
 
-        // Captured before reaping clears the ledger: a Vite watcher killed with
-        // SIGKILL cannot remove its own public/hot marker.
-        $hadAssetWatcher = $this->ledger->withLabel(self::ASSET_WATCHER_LABEL)->isNotEmpty();
-
         $this->ledger->all()->each(function (ProcessRecord $record): void {
             terminal()->info("Stopping {$record->label} (pid {$record->pid})...");
         });
 
-        // The active-server record is always cleared, even if reaping a process
-        // or stopping the server throws — a stale record would otherwise make
-        // the next app:serve think a server it does not own is still active.
+        $this->tearDown($active);
+
+        terminal()->success('Shutdown complete.');
+    }
+
+    /**
+     * The active-server record is always cleared, even if reaping a process
+     * throws — a stale record would otherwise make the next app:serve think
+     * a server it does not own is still active. Clearing happens BEFORE the
+     * stop-server prompt: Ctrl+C at a prompt calls exit(), which skips
+     * finally blocks, so state cleared after the prompt would leak.
+     * stopServer() receives everything it needs as arguments.
+     */
+    private function tearDown(?ActiveServerRecord $active): void
+    {
+        // Captured before reaping clears the ledger: a Vite watcher killed with
+        // SIGKILL cannot remove its own public/hot marker.
+        $hadAssetWatcher = $this->ledger->withLabel(self::ASSET_WATCHER_LABEL)->isNotEmpty();
+
         try {
             // reap() already forgets confirmed-dead entries; only remove the
             // ledger file itself when nothing survived the signals.
             if ($this->reaper->reapAll()) {
                 $this->ledger->clear();
             }
-
-            if ($active !== null) {
-                $this->stopServer($active->key, $active->startedByUs);
-            }
         } finally {
             $this->store->clear();
             $this->cleanUpStaleHotFile($hadAssetWatcher);
         }
 
-        terminal()->success('Shutdown complete.');
+        if ($active !== null) {
+            $this->stopServer($active->key, $active->startedByUs);
+        }
     }
 
     /**
@@ -96,9 +109,20 @@ final class ShutdownRunner
 
     private function stopServer(string $key, bool $startedByUs): void
     {
-        $server = $this->selector->driver($key);
+        // A persisted key may belong to a custom driver that no longer
+        // exists in config — the rest of the teardown already ran, so
+        // reporting beats crashing.
+        try {
+            $server = $this->selector->driver($key);
+        } catch (\Throwable) {
+            terminal()->warning("The recorded server [{$key}] is not a known driver — stop it manually if it is still running.");
+
+            return;
+        }
 
         if (! $server->isRunning()) {
+            $this->offerResidualCleanup($server, $startedByUs);
+
             return;
         }
 
@@ -123,5 +147,35 @@ final class ShutdownRunner
         }
 
         terminal()->note("Keeping {$server->label()} running.");
+    }
+
+    /**
+     * A server that is not running may still have left residual state behind
+     * when its boot failed halfway (a failed `sail up` leaves stopped
+     * containers and networks). Only offered for the server this run started.
+     */
+    private function offerResidualCleanup(Server $server, bool $startedByUs): void
+    {
+        if (! $startedByUs || ! $server instanceof HasResidualState || ! $server->hasResidualState()) {
+            return;
+        }
+
+        terminal()->note("{$server->label()} is not running, but the last boot did not finish cleanly.");
+        terminal()->info($server->residualStateImpact());
+
+        if (! $this->prompt->shouldCleanUp($server)) {
+            terminal()->note("Keeping {$server->label()}'s leftover resources in place.");
+
+            return;
+        }
+
+        // Like a failed stop, a failed cleanup is a warning — the rest of the
+        // shutdown (clearing state) must still complete.
+        try {
+            $server->cleanUpResidualState();
+            terminal()->success("{$server->label()} cleaned up.");
+        } catch (\Throwable $exception) {
+            terminal()->warning("Could not clean up {$server->label()}: {$exception->getMessage()} — run the cleanup manually.");
+        }
     }
 }

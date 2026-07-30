@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Contracts\TerminalLauncher;
+use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Process\Terminal\TerminalLauncher;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -54,7 +54,7 @@ function makeRunner(ProcessLedger $ledger, string $workDir): ProcessRunner
     return new ProcessRunner(
         processes: app(Factory::class),
         ledger: $ledger,
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $workDir.'/logs',
         runtimeDirectory: $workDir.'/runtime',
@@ -64,13 +64,13 @@ function makeRunner(ProcessLedger $ledger, string $workDir): ProcessRunner
 test('run throws on failure', function (): void {
     Process::fake(['*' => Process::result(exitCode: 1, errorOutput: 'boom')]);
 
-    makeRunner($this->ledger, $this->workDir)->run(ShellCommand::make('composer install'));
+    makeRunner($this->ledger, $this->workDir)->run(CommandLine::make('composer install'));
 })->throws(ProcessFailedException::class);
 
 test('runSilently never throws on failure and returns the result', function (): void {
     Process::fake(['*' => Process::result(exitCode: 127)]);
 
-    $result = makeRunner($this->ledger, $this->workDir)->runSilently(ShellCommand::make('command -v missing'));
+    $result = makeRunner($this->ledger, $this->workDir)->runSilently(CommandLine::make('command -v missing'));
 
     expect($result->successful())->toBeFalse()->and($result->exitCode())->toBe(127);
 });
@@ -79,7 +79,7 @@ test('start spawns a detached nohup wrapper and records the pid in the ledger', 
     Process::fake(['*' => Process::result(output: "4242\n")]);
 
     $record = makeRunner($this->ledger, $this->workDir)
-        ->start(ShellCommand::make('php artisan serve'), 'artisan-serve');
+        ->start(CommandLine::make('php artisan serve'), 'artisan-serve');
 
     Process::assertRan(function ($process): bool {
         $command = is_array($process->command) ? implode(' ', $process->command) : $process->command;
@@ -97,14 +97,14 @@ test('start spawns a detached nohup wrapper and records the pid in the ledger', 
 test('start throws when no pid is echoed back', function (): void {
     Process::fake(['*' => Process::result(output: '')]);
 
-    makeRunner($this->ledger, $this->workDir)->start(ShellCommand::make('php artisan serve'), 'artisan-serve');
-})->throws(Igne\LaravelBootUp\Process\ProcessException::class);
+    makeRunner($this->ledger, $this->workDir)->start(CommandLine::make('php artisan serve'), 'artisan-serve');
+})->throws(Igne\LaravelBootUp\Exceptions\ProcessException::class);
 
 test('startInTerminal degrades to a tracked background start when no terminal exists', function (): void {
     Process::fake(['*' => Process::result(output: "77\n")]);
 
     $record = makeRunner($this->ledger, $this->workDir)
-        ->startInTerminal(ShellCommand::make('bun run dev'), 'assets-watch');
+        ->startInTerminal(CommandLine::make('bun run dev'), 'assets-watch');
 
     expect($record->pid)->toBe(77)
         ->and($this->ledger->withLabel('assets-watch'))->toHaveCount(1);
@@ -124,7 +124,7 @@ test('startInTerminal recovers the PID from the process table when the pid file 
         terminalPidTimeout: 0,
     );
 
-    $record = $runner->startInTerminal(ShellCommand::make('php artisan queue:work database'), 'queue-worker');
+    $record = $runner->startInTerminal(CommandLine::make('php artisan queue:work database'), 'queue-worker');
 
     expect($record->pid)->toBe(9999)
         ->and($record->window)->toBe('42')
@@ -156,7 +156,7 @@ test('startInTerminal closes the window and falls back to background when no PID
         terminalPidTimeout: 0,
     );
 
-    $record = $runner->startInTerminal(ShellCommand::make('bun run dev'), 'assets-watch');
+    $record = $runner->startInTerminal(CommandLine::make('bun run dev'), 'assets-watch');
 
     expect($record->pid)->toBe(555)
         ->and($terminal->closed)->toBe(['42'])

@@ -2,18 +2,20 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Config\DevServerConfig;
+use Igne\LaravelBootUp\Config\ShutdownConfig;
+use Igne\LaravelBootUp\Data\ActiveServerRecord;
+use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
-use Igne\LaravelBootUp\Process\ProcessRecord;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Serve\ShutdownRunner;
-use Igne\LaravelBootUp\Servers\ActiveServerRecord;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
-use Igne\LaravelBootUp\Servers\ServersConfig;
 use Igne\LaravelBootUp\Servers\ServerSelector;
 use Igne\LaravelBootUp\Servers\StopServerPrompt;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Serve\Fixtures\RecordingServer;
+use Igne\LaravelBootUp\Tests\Feature\Serve\Fixtures\ResidualServer;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -39,24 +41,26 @@ afterEach(function (): void {
  */
 function shutdownRunner(ProcessLedger $ledger, ActiveServerStore $store, bool $promptStop, bool $stopDefault): ShutdownRunner
 {
-    $config = new ServersConfig(
-        drivers: ['double' => RecordingServer::class],
-        promptStopServer: $promptStop,
-        stopServerByDefault: $stopDefault,
-    );
+    $drivers = new DevServerConfig(drivers: ['double' => RecordingServer::class, 'residual' => ResidualServer::class]);
+    $shutdown = new ShutdownConfig(promptStopServer: $promptStop, stopServerByDefault: $stopDefault);
 
     return new ShutdownRunner(
         $ledger,
-        new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminal),
+        new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminalLauncher),
         $store,
-        new ServerSelector(app(), $config),
-        new StopServerPrompt($config),
+        new ServerSelector(app(), $drivers),
+        new StopServerPrompt($shutdown),
     );
 }
 
 function activeDouble(bool $startedByUs): ActiveServerRecord
 {
     return new ActiveServerRecord('double', $startedByUs, (int) getmypid(), date(DATE_ATOM));
+}
+
+function activeResidual(bool $startedByUs): ActiveServerRecord
+{
+    return new ActiveServerRecord('residual', $startedByUs, (int) getmypid(), date(DATE_ATOM));
 }
 
 test('is a friendly no-op when nothing was started', function (): void {
@@ -147,18 +151,12 @@ test('keeps the ledger entry when a process cannot be stopped', function (): voi
         'kill -KILL 4242' => Process::result(),
     ]);
 
-    $config = new ServersConfig(
-        drivers: ['double' => RecordingServer::class],
-        promptStopServer: false,
-        stopServerByDefault: true,
-    );
-
     (new ShutdownRunner(
         $this->ledger,
-        new ProcessReaper(app(Factory::class), $this->ledger, new Poller, new NullTerminal, termGraceSeconds: 0, killGraceSeconds: 0),
+        new ProcessReaper(app(Factory::class), $this->ledger, new Poller, new NullTerminalLauncher, termGraceSeconds: 0, killGraceSeconds: 0),
         $this->store,
-        new ServerSelector(app(), $config),
-        new StopServerPrompt($config),
+        new ServerSelector(app(), new DevServerConfig(drivers: ['double' => RecordingServer::class])),
+        new StopServerPrompt(new ShutdownConfig(promptStopServer: false, stopServerByDefault: true)),
     ))->run();
 
     expect($this->ledger->all())->toHaveCount(1);
@@ -258,4 +256,104 @@ test('a later shutdown after state was cleared reports nothing to do', function 
 
     expect($this->server->stops)->toBe(1);
     Prompt::assertStrippedOutputContains('Nothing to shut down.');
+});
+
+test('offers residual cleanup after a failed boot and runs it on confirm', function (): void {
+    Prompt::fake(['y', Key::ENTER]);
+    ProcessFaker::fake();
+    app()->instance(ResidualServer::class, $residual = new ResidualServer);
+    $this->store->remember(activeResidual(startedByUs: true));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: true, stopDefault: false)->run();
+
+    Prompt::assertStrippedOutputContains('Residual Server is not running, but the last boot did not finish cleanly.');
+    Prompt::assertStrippedOutputContains("Clean up Residual Server's leftover resources?");
+    Prompt::assertStrippedOutputContains('Residual Server cleaned up.');
+    expect($residual->cleanUps)->toBe(1)
+        ->and($this->store->current())->toBeNull();
+});
+
+test('declining the residual cleanup keeps the leftovers in place', function (): void {
+    Prompt::fake(['n', Key::ENTER]);
+    ProcessFaker::fake();
+    app()->instance(ResidualServer::class, $residual = new ResidualServer);
+    $this->store->remember(activeResidual(startedByUs: true));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: true, stopDefault: false)->run();
+
+    Prompt::assertStrippedOutputContains("Keeping Residual Server's leftover resources in place.");
+    expect($residual->cleanUps)->toBe(0)
+        ->and($this->store->current())->toBeNull();
+});
+
+test('never offers residual cleanup for a server app:serve did not start', function (): void {
+    Prompt::fake();
+    ProcessFaker::fake();
+    app()->instance(ResidualServer::class, $residual = new ResidualServer);
+    $this->store->remember(activeResidual(startedByUs: false));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: true, stopDefault: false)->run();
+
+    expect($residual->cleanUps)->toBe(0);
+});
+
+test('a not-running server without the residual contract stays silent', function (): void {
+    Prompt::fake();
+    ProcessFaker::fake();
+    app()->instance(RecordingServer::class, $this->server = new RecordingServer(running: false));
+    $this->store->remember(activeDouble(startedByUs: true));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: true, stopDefault: false)->run();
+
+    expect($this->server->stops)->toBe(0)
+        ->and($this->store->current())->toBeNull();
+    Prompt::assertStrippedOutputContains('Shutdown complete.');
+});
+
+test('no residual state means no cleanup offer', function (): void {
+    Prompt::fake();
+    ProcessFaker::fake();
+    app()->instance(ResidualServer::class, $residual = new ResidualServer(residualState: false));
+    $this->store->remember(activeResidual(startedByUs: true));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: true, stopDefault: false)->run();
+
+    expect($residual->cleanUps)->toBe(0);
+});
+
+test('a failed cleanup warns but still completes the shutdown', function (): void {
+    Prompt::fake(['y', Key::ENTER]);
+    ProcessFaker::fake();
+    app()->instance(ResidualServer::class, $residual = new ResidualServer(cleanUpThrows: true));
+    $this->store->remember(activeResidual(startedByUs: true));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: true, stopDefault: false)->run();
+
+    Prompt::assertStrippedOutputContains('Could not clean up Residual Server');
+    Prompt::assertStrippedOutputContains('Shutdown complete.');
+    expect($this->store->current())->toBeNull();
+});
+
+test('unattended shutdown only cleans residual state when stops default to yes', function (): void {
+    Prompt::fake();
+    ProcessFaker::fake();
+    app()->instance(ResidualServer::class, $residual = new ResidualServer);
+    $this->store->remember(activeResidual(startedByUs: true));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: false, stopDefault: false)->run();
+
+    expect($residual->cleanUps)->toBe(0);
+
+    app()->instance(ResidualServer::class, $residual = new ResidualServer);
+    $this->store->remember(activeResidual(startedByUs: true));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: false, stopDefault: true)->run();
+
+    expect($residual->cleanUps)->toBe(1);
+});
+
+test('the stale-hot-file cleanup shares the exact watcher label with WatchAssets', function (): void {
+    $constant = new ReflectionClassConstant(ShutdownRunner::class, 'ASSET_WATCHER_LABEL');
+
+    expect($constant->getValue())->toBe(Igne\LaravelBootUp\Frontend\Steps\WatchAssets::LABEL);
 });

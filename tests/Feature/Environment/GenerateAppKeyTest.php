@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -24,7 +24,7 @@ beforeEach(function (): void {
     $this->step = fn (): GenerateAppKey => new GenerateAppKey($this->envFile, new ProcessRunner(
         processes: app(Factory::class),
         ledger: new ProcessLedger($this->dir.'/processes.json'),
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $this->dir.'/logs',
         runtimeDirectory: $this->dir.'/runtime',

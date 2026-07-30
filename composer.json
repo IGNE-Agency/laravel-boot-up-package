@@ -58,7 +58,7 @@
   "extra": {
     "laravel": {
       "providers": [
-        "Igne\\LaravelBootUp\\BootUpServiceProvider"
+        "Igne\\LaravelBootUp\\Providers\\BootUpServiceProvider"
       ]
     }
   },

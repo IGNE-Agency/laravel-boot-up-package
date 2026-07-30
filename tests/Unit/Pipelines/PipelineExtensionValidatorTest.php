@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Deploy\Scripts\DeploymentEnvironment;
-use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlan;
-use Igne\LaravelBootUp\Frontend\PackageManager;
+use Igne\LaravelBootUp\Data\DeploymentPlan;
+use Igne\LaravelBootUp\Data\PipelinePlan;
+use Igne\LaravelBootUp\Enums\DeployHookHost;
+use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
+use Igne\LaravelBootUp\Enums\PackageManager;
+use Igne\LaravelBootUp\Exceptions\PipelineException;
 use Igne\LaravelBootUp\Pipelines\CiScripts;
-use Igne\LaravelBootUp\Pipelines\DeployHookHost;
 use Igne\LaravelBootUp\Pipelines\GitHubActionsGenerator;
-use Igne\LaravelBootUp\Pipelines\PipelineException;
 use Igne\LaravelBootUp\Pipelines\PipelineExtensionValidator;
-use Igne\LaravelBootUp\Pipelines\PipelinePlan;
 
 function validatorPlan(bool $pint = true, DeployHookHost $host = DeployHookHost::FORTRABBIT): PipelinePlan
 {
@@ -37,7 +37,7 @@ function validatorPlan(bool $pint = true, DeployHookHost $host = DeployHookHost:
 function validate(array $steps = [], array $files = [], ?string $basePath = null, array $providers = ['github', 'bitbucket']): Igne\LaravelBootUp\Pipelines\PipelineExtensions
 {
     return (new PipelineExtensionValidator($basePath ?? sys_get_temp_dir()))
-        ->validate($steps, $files, new GitHubActionsGenerator(new CiScripts), validatorPlan(), $providers);
+        ->validate($steps, $files, new Igne\LaravelBootUp\Data\PipelineContext(new GitHubActionsGenerator(new CiScripts), validatorPlan(), $providers));
 }
 
 test('a valid step and inline file pass through to the extensions', function (): void {

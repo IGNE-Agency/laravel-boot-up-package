@@ -3,11 +3,11 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Deploy\Steps\FinalizeApplication;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -21,14 +21,14 @@ beforeEach(function (): void {
     app()->singleton(ProcessRunner::class, fn ($app) => new ProcessRunner(
         processes: $app->make(Factory::class),
         ledger: new ProcessLedger($this->workDir.'/processes.json'),
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $this->workDir.'/logs',
         runtimeDirectory: $this->workDir.'/runtime',
     ));
 
-    config()->set('boot-up.deploy_steps', [FinalizeApplication::class]);
-    config()->set('boot-up.auto_accept', true);
+    config()->set('boot-up.deploy.steps', [FinalizeApplication::class]);
+    config()->set('boot-up.deploy.auto_accept', true);
 });
 
 afterEach(function (): void {
@@ -59,7 +59,7 @@ test('shows the execution plan and a progress bar like app:serve', function (): 
 });
 
 test('asks to continue and aborts when declined', function (): void {
-    config()->set('boot-up.auto_accept', false);
+    config()->set('boot-up.deploy.auto_accept', false);
     ProcessFaker::fake();
 
     $this->artisan('app:deploy')
@@ -71,7 +71,7 @@ test('asks to continue and aborts when declined', function (): void {
 });
 
 test('the --yes flag skips the confirmation prompt', function (): void {
-    config()->set('boot-up.auto_accept', false);
+    config()->set('boot-up.deploy.auto_accept', false);
     ProcessFaker::fake([
         'php artisan storage:link' => Process::result('The links have been created.'),
     ]);
@@ -91,7 +91,7 @@ test('a failing finalize command fails the deploy cleanly', function (): void {
 
 test('fails fast on native Windows', function (): void {
     ProcessFaker::fake();
-    app()->instance(Igne\LaravelBootUp\Support\Platform::class, new Igne\LaravelBootUp\Support\Platform('Windows'));
+    app()->instance(Igne\LaravelBootUp\Services\Platform::class, new Igne\LaravelBootUp\Services\Platform(Igne\LaravelBootUp\Enums\OperatingSystem::Windows));
 
     $this->artisan('app:deploy')
         ->expectsOutputToContain('not supported on native Windows')
@@ -102,7 +102,7 @@ test('fails fast on native Windows', function (): void {
 
 test('an unexpected exception fails cleanly instead of dumping a stack trace', function (): void {
     ProcessFaker::fake();
-    config()->set('boot-up.deploy_steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
+    config()->set('boot-up.deploy.steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
 
     $this->artisan('app:deploy')
         ->expectsOutputToContain('Unexpected error: something exploded')

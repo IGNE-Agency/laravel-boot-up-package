@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Config\EnvironmentConfig;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Environment\EnvFile;
-use Igne\LaravelBootUp\Environment\EnvironmentConfig;
-use Igne\LaravelBootUp\Environment\EnvironmentException;
 use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Exceptions\EnvironmentException;
 
 beforeEach(function (): void {
     $this->dir = sys_get_temp_dir().'/boot-up-local-env-'.bin2hex(random_bytes(4));
@@ -66,7 +66,7 @@ test('the rejection names the configured allowed environments', function (): voi
 test('respects a customised allowed environments list', function (): void {
     file_put_contents($this->dir.'/.env', "APP_ENV=staging\n");
 
-    $config = new EnvironmentConfig(allowedEnvironments: ['staging']);
+    $config = new EnvironmentConfig(allowed: ['staging']);
     $context = new ServeContext(new ServeOptions);
 
     expect(($this->step)($config)->handle($context, fn ($passed) => $passed))->toBe($context);

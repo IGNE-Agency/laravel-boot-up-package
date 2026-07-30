@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Environment\Steps;
 
 use Closure;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Stage;
+use Igne\LaravelBootUp\Config\EnvironmentConfig;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Environment\EnvFile;
-use Igne\LaravelBootUp\Environment\EnvironmentConfig;
-use Igne\LaravelBootUp\Environment\EnvironmentException;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
+use Igne\LaravelBootUp\Exceptions\EnvironmentException;
 
+#[Stage(ServeStage::Prepare)]
+#[Group('prepare')]
 final class EnsureLocalEnvironment implements Step
 {
     /**
@@ -31,8 +36,8 @@ final class EnsureLocalEnvironment implements Step
         $environment = $this->envFile->get('APP_ENV');
         $environment = ($environment === null || $environment === '') ? 'local' : $environment;
 
-        if (! \in_array($environment, $this->config->allowedEnvironments, true)) {
-            throw EnvironmentException::unsupportedEnvironment($environment, $this->config->allowedEnvironments);
+        if (! \in_array($environment, $this->config->allowed, true)) {
+            throw EnvironmentException::unsupportedEnvironment($environment, $this->config->allowed);
         }
 
         if ($this->isRemoteHost()) {

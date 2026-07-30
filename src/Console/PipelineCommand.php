@@ -4,24 +4,27 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootUp\Console\Support\Selection;
+use Igne\LaravelBootUp\Concerns\ResolvesGenerators;
+use Igne\LaravelBootUp\Config\PipelineConfig;
+use Igne\LaravelBootUp\Contracts\PipelineGenerator;
+use Igne\LaravelBootUp\Data\GeneratedFile;
+use Igne\LaravelBootUp\Data\PipelineContext;
+use Igne\LaravelBootUp\Data\PipelineFile;
+use Igne\LaravelBootUp\Data\PipelinePlan;
+use Igne\LaravelBootUp\Data\PipelineSecret;
+use Igne\LaravelBootUp\Enums\DeployHookHost;
 use Igne\LaravelBootUp\Pipelines\BitbucketPipelinesGenerator;
-use Igne\LaravelBootUp\Pipelines\DeployHookHost;
-use Igne\LaravelBootUp\Pipelines\GeneratedFile;
 use Igne\LaravelBootUp\Pipelines\GitHubActionsGenerator;
-use Igne\LaravelBootUp\Pipelines\PipelineConfig;
 use Igne\LaravelBootUp\Pipelines\PipelineEnvFile;
 use Igne\LaravelBootUp\Pipelines\PipelineExtensionValidator;
-use Igne\LaravelBootUp\Pipelines\PipelineFile;
-use Igne\LaravelBootUp\Pipelines\PipelineGenerator;
-use Igne\LaravelBootUp\Pipelines\PipelinePlan;
 use Igne\LaravelBootUp\Pipelines\PipelinePlanner;
-use Igne\LaravelBootUp\Pipelines\PipelineSecret;
-use Igne\LaravelBootUp\Support\AtomicFile;
+use Igne\LaravelBootUp\Services\GeneratedFilePublisher;
 
 final class PipelineCommand extends BootUpCommand
 {
-    private const BUILT_IN_GENERATORS = [
+    use ResolvesGenerators;
+
+    private const array BUILT_IN_GENERATORS = [
         'github' => GitHubActionsGenerator::class,
         'bitbucket' => BitbucketPipelinesGenerator::class,
     ];
@@ -34,98 +37,92 @@ final class PipelineCommand extends BootUpCommand
 
     protected $description = 'Generate a CI/CD pipeline, its shared scripts/ci files and .env.pipeline for a git provider, based on this package\'s config';
 
-    public function perform(PipelinePlanner $planner, PipelineConfig $config, PipelineEnvFile $envFile, Selection $selection): int
-    {
-        terminal()->intro('Generating the CI/CD pipeline...');
+    public function handle(
+        PipelinePlanner $planner,
+        PipelineConfig $config,
+        PipelineEnvFile $envFile,
+        GeneratedFilePublisher $publisher,
+    ): int {
+        $this->announce('Generating the CI/CD pipeline...');
 
-        $generators = array_merge(self::BUILT_IN_GENERATORS, $config->generators);
-
-        $provider = $this->provider($generators, $selection);
-
-        if (! isset($generators[$provider])) {
-            terminal()->error("Unknown provider [{$provider}]. Available: ".implode(', ', array_keys($generators)));
-
-            return self::FAILURE;
-        }
+        $provider = $this->choose('provider', 'Which git provider should the pipeline target?');
 
         /** @var PipelineGenerator $generator */
-        $generator = $this->laravel->make($generators[$provider]);
+        $generator = $this->laravel->make($this->generators()[$provider]);
 
-        $host = $this->host($selection);
+        $host = DeployHookHost::from(
+            $this->choose('host', 'Which host receives the deploy hook?', DeployHookHost::FORTRABBIT->value),
+        );
 
-        if (\is_string($host)) {
-            terminal()->error("Unknown host [{$host}]. Available: ".implode(', ', array_column(DeployHookHost::cases(), 'value')));
+        $plan = $this->validatedPlan($planner->plan($host), $config, $generator);
 
-            return self::FAILURE;
-        }
+        $files = $this->generatedFiles($generator, $plan, $envFile, $provider);
 
-        $plan = $planner->plan($host);
-
-        $extensions = (new PipelineExtensionValidator($this->laravel->basePath()))
-            ->validate($config->steps, $config->files, $generator, $plan, array_keys($generators));
-
-        $plan = $plan->withExtensions($extensions);
-
-        $files = [
-            ...$generator->files($plan),
-            new GeneratedFile($envFile->path(), $envFile->generate($this->appKey($envFile))),
-            ...array_map(
-                fn (PipelineFile $file): GeneratedFile => new GeneratedFile($file->path, $file->contents, $file->executable),
-                $extensions->filesFor($provider),
-            ),
-        ];
-
-        if (! $this->confirmOverwrites($files)) {
+        if (! $publisher->publish($files, (bool) $this->option('force'))) {
             return self::SUCCESS;
-        }
-
-        foreach ($files as $file) {
-            $this->write($file);
         }
 
         $this->instructions($generator, $plan);
 
-        terminal()->outro('Pipeline generated.');
-
-        return self::SUCCESS;
+        return $this->done('Pipeline generated.');
     }
 
     /**
-     * @param  array<string, class-string<PipelineGenerator>>  $generators
+     * The plan with the project's validated step/file extensions applied.
      */
-    private function provider(array $generators, Selection $selection): string
+    private function validatedPlan(PipelinePlan $plan, PipelineConfig $config, PipelineGenerator $generator): PipelinePlan
     {
-        $options = [];
+        $extensions = (new PipelineExtensionValidator($this->laravel->basePath()))
+            ->validate($config->steps, $config->files, new PipelineContext($generator, $plan, array_keys($this->generators())));
 
-        foreach ($generators as $key => $class) {
-            $options[$key] = $this->laravel->make($class)->label();
-        }
-
-        return $selection->resolve($this->argument('provider'), $options, 'Which git provider should the pipeline target?');
+        return $plan->withExtensions($extensions);
     }
 
     /**
-     * The chosen deploy-hook host, or the unrecognized argument verbatim so
-     * the caller can report it. For real hosts only the printed guidance
-     * differs — the generated files work with any HTTPS deploy hook; picking
-     * none generates a checks-only pipeline without deploy steps.
+     * Everything one generate run writes: the provider's own files,
+     * .env.pipeline, and the project's extra files for this provider.
+     *
+     * @return list<GeneratedFile>
      */
-    private function host(Selection $selection): DeployHookHost|string
+    private function generatedFiles(PipelineGenerator $generator, PipelinePlan $plan, PipelineEnvFile $envFile, string $provider): array
     {
-        $options = [];
+        return [
+            ...$generator->files($plan),
+            new GeneratedFile($envFile->path(), $envFile->generate($this->appKey($envFile))),
+            ...collect($plan->extensions->filesFor($provider))
+                ->map(fn (PipelineFile $file): GeneratedFile => new GeneratedFile($file->path, $file->contents, $file->executable))
+                ->all(),
+        ];
+    }
 
-        foreach (DeployHookHost::cases() as $host) {
-            $options[$host->value] = $host->label();
-        }
+    /**
+     * @return array<string, class-string<PipelineGenerator>>
+     */
+    private function generators(): array
+    {
+        return $this->mergeGenerators(self::BUILT_IN_GENERATORS, $this->laravel->make(PipelineConfig::class)->generators);
+    }
 
-        $choice = $selection->resolve(
-            $this->argument('host'),
-            $options,
-            'Which host receives the deploy hook?',
-            DeployHookHost::FORTRABBIT->value,
-        );
+    /**
+     * @return array<string, string>
+     */
+    protected function providerOptions(): array
+    {
+        return $this->generatorLabels($this->generators());
+    }
 
-        return DeployHookHost::tryFrom($choice) ?? $choice;
+    /**
+     * For real hosts only the printed guidance differs — the generated
+     * files work with any HTTPS deploy hook; picking none generates a
+     * checks-only pipeline without deploy steps.
+     *
+     * @return array<string, string>
+     */
+    protected function hostOptions(): array
+    {
+        return collect(DeployHookHost::cases())
+            ->mapWithKeys(fn (DeployHookHost $host): array => [$host->value => $host->label()])
+            ->all();
     }
 
     /**
@@ -149,57 +146,6 @@ final class PipelineCommand extends BootUpCommand
         return $envFile->currentAppKey((string) file_get_contents($path));
     }
 
-    /**
-     * All-or-nothing: the pipeline file and its scripts reference each other,
-     * so a partial write could leave YAML calling scripts that were never
-     * updated. One prompt covers everything that would be overwritten;
-     * declining writes nothing.
-     *
-     * @param  list<GeneratedFile>  $files
-     */
-    private function confirmOverwrites(array $files): bool
-    {
-        if ($this->option('force')) {
-            return true;
-        }
-
-        $existing = [];
-
-        foreach ($files as $file) {
-            if (is_file($this->laravel->basePath($file->path))) {
-                $existing[] = $file->path;
-            }
-        }
-
-        $confirmed = match (\count($existing)) {
-            0 => true,
-            1 => terminal()->confirm("{$existing[0]} already exists. Overwrite it?", default: false),
-            default => terminal()->confirm(
-                'Overwrite these '.\count($existing).' existing files? '.implode(', ', $existing),
-                default: false,
-            ),
-        };
-
-        if (! $confirmed) {
-            terminal()->warning('Nothing written — declined to overwrite existing files.');
-        }
-
-        return $confirmed;
-    }
-
-    private function write(GeneratedFile $file): void
-    {
-        $path = $this->laravel->basePath($file->path);
-
-        AtomicFile::write($path, $file->contents);
-
-        if ($file->executable) {
-            chmod($path, 0755);
-        }
-
-        terminal()->success("Wrote {$file->path}.");
-    }
-
     private function instructions(PipelineGenerator $generator, PipelinePlan $plan): void
     {
         $secrets = $generator->secrets($plan);
@@ -207,7 +153,7 @@ final class PipelineCommand extends BootUpCommand
         if ($secrets !== []) {
             terminal()->table(
                 ['Secret', 'Add under (git provider)', 'Purpose'],
-                array_map(fn (PipelineSecret $secret) => [$secret->name, $secret->location, $secret->purpose], $secrets),
+                collect($secrets)->map(fn (PipelineSecret $secret): array => [$secret->name, $secret->location, $secret->purpose])->all(),
             );
         }
 

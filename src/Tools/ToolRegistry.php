@@ -4,17 +4,19 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Tools;
 
+use Igne\LaravelBootUp\Config\ToolsConfig;
+use Igne\LaravelBootUp\Contracts\InstallsTool;
+use Igne\LaravelBootUp\Enums\Tool;
+use Igne\LaravelBootUp\Exceptions\ToolException;
 use Igne\LaravelBootUp\Tools\Installers\ComposerInstaller;
-use Igne\LaravelBootUp\Tools\Installers\DockerInstaller;
-use Igne\LaravelBootUp\Tools\Installers\HerdInstaller;
-use Igne\LaravelBootUp\Tools\Installers\NodeInstaller;
+use Igne\LaravelBootUp\Tools\Installers\HomebrewInstaller;
 use Igne\LaravelBootUp\Tools\Installers\PackageManagerInstaller;
 use Igne\LaravelBootUp\Tools\Installers\PhpInstaller;
 use Illuminate\Contracts\Container\Container;
 
 /**
- * Maps a tool id to its installer. Project overrides from
- * config('boot-up.tools.installers') win over the built-ins.
+ * Maps a tool id to its installer. Project overrides from the tools
+ * config (ToolsConfig) win over the built-ins.
  */
 final class ToolRegistry
 {
@@ -33,10 +35,10 @@ final class ToolRegistry
 
         return match (Tool::tryFrom($id)) {
             Tool::PHP => $this->container->make(PhpInstaller::class),
-            Tool::NODE => $this->container->make(NodeInstaller::class),
             Tool::COMPOSER => $this->container->make(ComposerInstaller::class),
-            Tool::DOCKER => $this->container->make(DockerInstaller::class),
-            Tool::HERD => $this->container->make(HerdInstaller::class),
+            Tool::NODE => $this->container->make(HomebrewInstaller::class, ['tool' => Tool::NODE]),
+            Tool::DOCKER,
+            Tool::HERD => $this->container->make(HomebrewInstaller::class, ['tool' => Tool::from($id), 'cask' => true]),
             Tool::BUN,
             Tool::YARN,
             Tool::NPM,

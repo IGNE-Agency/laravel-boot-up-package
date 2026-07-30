@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootUp\Serve\ServeConfig;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Config\DeployConfig;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Serve\StageReporter;
 use Igne\LaravelBootUp\Serve\StepSequence;
 use Illuminate\Contracts\Console\Isolatable;
@@ -14,8 +14,6 @@ use Illuminate\Pipeline\Pipeline;
 
 final class DeployCommand extends BootUpCommand implements Isolatable
 {
-    protected bool $requiresUnix = true;
-
     protected $signature = 'app:deploy
         {--s|seed : Seed the database after migrating}
         {--no-migrate : Skip running pending migrations}
@@ -27,9 +25,14 @@ final class DeployCommand extends BootUpCommand implements Isolatable
 
     private ?StageReporter $reporter = null;
 
-    public function perform(ServeConfig $config, Pipeline $pipeline, StageReporter $reporter): int
+    protected function requiresUnix(): bool
     {
-        terminal()->intro('Deploying the application...');
+        return true;
+    }
+
+    public function handle(DeployConfig $config, Pipeline $pipeline, StageReporter $reporter): int
+    {
+        $this->announce('Deploying the application...');
 
         $options = new ServeOptions(
             seed: (bool) $this->option('seed'),
@@ -38,12 +41,10 @@ final class DeployCommand extends BootUpCommand implements Isolatable
             fresh: (bool) $this->option('fresh'),
         );
 
-        $plan = StepSequence::for($config->deploySteps, $options);
+        $plan = StepSequence::for($config->steps, $options);
 
         if (! $this->confirmPlan($plan, 'app:deploy', $config->autoAccept)) {
-            terminal()->note('Aborted — nothing was changed.');
-
-            return self::SUCCESS;
+            return $this->skip('Aborted — nothing was changed.');
         }
 
         $this->reporter = $reporter;
@@ -52,9 +53,8 @@ final class DeployCommand extends BootUpCommand implements Isolatable
         $pipeline->send(new ServeContext($options))->through($pipes)->thenReturn();
 
         $reporter->finish();
-        terminal()->outro('Deploy complete.');
 
-        return self::SUCCESS;
+        return $this->done('Deploy complete.');
     }
 
     protected function onFailure(): void

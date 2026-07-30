@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
-use Igne\LaravelBootUp\Support\Lines;
+use Igne\LaravelBootUp\Concerns\SharesStandardPipelineShape;
+use Igne\LaravelBootUp\Contracts\PipelineGenerator;
+use Igne\LaravelBootUp\Data\CiJob;
+use Igne\LaravelBootUp\Data\GeneratedFile;
+use Igne\LaravelBootUp\Data\Lines;
+use Igne\LaravelBootUp\Data\PipelinePlan;
+use Igne\LaravelBootUp\Data\PipelineSecret;
 
 /**
  * Renders a GitHub Actions workflow: lint, build and test run as parallel
@@ -15,6 +21,8 @@ use Igne\LaravelBootUp\Support\Lines;
  */
 final class GitHubActionsGenerator implements PipelineGenerator
 {
+    use SharesStandardPipelineShape;
+
     public function __construct(private readonly CiScripts $scripts) {}
 
     public function key(): string
@@ -25,16 +33,6 @@ final class GitHubActionsGenerator implements PipelineGenerator
     public function label(): string
     {
         return 'GitHub Actions';
-    }
-
-    public function anchors(PipelinePlan $plan): array
-    {
-        return array_values(array_filter([
-            $plan->pint ? 'lint' : null,
-            'build',
-            'test',
-            $plan->host->deploys() ? 'deploy' : null,
-        ]));
     }
 
     public function files(PipelinePlan $plan): array
@@ -109,24 +107,21 @@ final class GitHubActionsGenerator implements PipelineGenerator
      *
      * @return list<string>
      */
-    private function deployHookDetails(PipelinePlan $plan): array
+    protected function deployHookHeader(PipelinePlan $plan): array
     {
-        $environments = array_values($plan->branchEnvironments);
+        $environments = implode(', ', array_values($plan->branchEnvironments));
 
-        $details = [
-            'Configure a DEPLOY_HOOK for EACH environment: '.implode(', ', $environments).'.',
+        return [
+            "Configure a DEPLOY_HOOK for EACH environment: {$environments}.",
             'Add under, in your GitHub repository: Settings → Environments → <environment> → Environment secrets (create each environment first).',
         ];
+    }
 
-        foreach ($plan->branchEnvironments as $branch => $environment) {
-            $details[] = "{$environment} (deploys on push to {$branch}):";
+    private function branchesLine(PipelinePlan $plan): string
+    {
+        $branches = implode(', ', array_keys($plan->branchEnvironments));
 
-            foreach ($plan->host->hookValueGuidance($environment) as $line) {
-                $details[] = '  '.$line;
-            }
-        }
-
-        return $details;
+        return "branches: [{$branches}]";
     }
 
     private function workflow(PipelinePlan $plan): string
@@ -149,7 +144,7 @@ final class GitHubActionsGenerator implements PipelineGenerator
             ->indent(2, fn (Lines $yaml) => $yaml
                 ->line('push:')
                 ->indent(2, fn (Lines $yaml) => $yaml
-                    ->line('branches: ['.implode(', ', array_keys($plan->branchEnvironments)).']'))
+                    ->line($this->branchesLine($plan)))
                 ->line('pull_request:'))
             ->lineWithBreak('permissions:')
             ->indent(2, fn (Lines $yaml) => $yaml->line('contents: read'))
@@ -174,33 +169,33 @@ final class GitHubActionsGenerator implements PipelineGenerator
     private function checkJobs(Lines $yaml, PipelinePlan $plan): void
     {
         if ($plan->pint) {
-            $this->checkJob($yaml, $plan, 'lint', 'Lint', 'Check the code style', 10);
+            $this->checkJob($yaml, $plan, new CiJob('lint', 'Lint', 'Check the code style', timeoutMinutes: 10, usesNode: false));
         }
 
-        $this->checkJob($yaml, $plan, 'build', 'Build', 'Build the frontend and framework caches', 15);
-        $this->checkJob($yaml, $plan, 'test', 'Test', 'Run the test suite', 20);
+        $this->checkJob($yaml, $plan, new CiJob('build', 'Build', 'Build the frontend and framework caches', timeoutMinutes: 15, usesNode: true));
+        $this->checkJob($yaml, $plan, new CiJob('test', 'Test', 'Run the test suite', timeoutMinutes: 20, usesNode: true));
     }
 
-    private function checkJob(Lines $yaml, PipelinePlan $plan, string $job, string $name, string $step, int $timeout): void
+    private function checkJob(Lines $yaml, PipelinePlan $plan, CiJob $job): void
     {
-        $yaml->line("{$job}:")
-            ->indent(2, function (Lines $yaml) use ($plan, $job, $name, $step, $timeout): void {
-                $yaml->line("name: {$name}")
+        $yaml->line("{$job->key}:")
+            ->indent(2, function (Lines $yaml) use ($plan, $job): void {
+                $yaml->line("name: {$job->name}")
                     ->line('runs-on: ubuntu-latest')
-                    ->line("timeout-minutes: {$timeout}")
+                    ->line("timeout-minutes: {$job->timeoutMinutes}")
                     ->line('steps:')
-                    ->indent(2, function (Lines $yaml) use ($plan, $job, $step): void {
+                    ->indent(2, function (Lines $yaml) use ($plan, $job): void {
                         $this->setupSteps($yaml, $plan);
 
-                        $this->extraSteps($yaml, $plan, $job, 'before');
+                        $this->extraSteps($yaml, $plan, $job->key, 'before');
 
-                        $yaml->lineWithBreak("- name: {$step}")
+                        $yaml->lineWithBreak("- name: {$job->description}")
                             ->indent(2, function (Lines $yaml) use ($plan, $job): void {
                                 $this->composerAuth($yaml, $plan);
-                                $yaml->line("run: bash scripts/ci/{$job}.sh");
+                                $yaml->line("run: bash scripts/ci/{$job->key}.sh");
                             });
 
-                        $this->extraSteps($yaml, $plan, $job, 'after');
+                        $this->extraSteps($yaml, $plan, $job->key, 'after');
                     });
             })
             ->blank();

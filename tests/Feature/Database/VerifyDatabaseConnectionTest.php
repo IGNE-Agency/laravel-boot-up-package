@@ -2,18 +2,19 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Database\DatabaseException;
+use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
+use Igne\LaravelBootUp\Contracts\RewritesCommands;
+use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\CommandRewrites;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Database\Steps\VerifyDatabaseConnection;
+use Igne\LaravelBootUp\Exceptions\DatabaseException;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
-use Igne\LaravelBootUp\Servers\CommandRewrites;
-use Igne\LaravelBootUp\Servers\Server;
-use Igne\LaravelBootUp\Support\Poller;
-use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
+use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -29,7 +30,7 @@ beforeEach(function (): void {
         new ProcessRunner(
             processes: app(Factory::class),
             ledger: new ProcessLedger($this->dir.'/processes.json'),
-            terminal: new NullTerminal,
+            terminal: new NullTerminalLauncher,
             poller: new Poller,
             logDirectory: $this->dir.'/logs',
             runtimeDirectory: $this->dir.'/runtime',
@@ -38,10 +39,8 @@ beforeEach(function (): void {
         config(),
     );
 
-    $this->sailServer = new class implements Server
+    $this->sailServer = new class implements ProvidesDatabase, RewritesCommands, Server
     {
-        use DefaultServerCapabilities;
-
         public function databaseReachableFromHost(): bool
         {
             return false;
@@ -55,11 +54,6 @@ beforeEach(function (): void {
         public function label(): string
         {
             return 'Laravel Sail';
-        }
-
-        public function requiredTools(): array
-        {
-            return [];
         }
 
         public function commandRewrites(): CommandRewrites

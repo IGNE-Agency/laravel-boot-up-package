@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Herd;
 
+use Igne\LaravelBootUp\Config\HerdConfig;
+use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Servers\ServerException;
 
 /**
  * Owns Herd's runtime health. Two distinct signals:
@@ -28,15 +29,13 @@ final class HerdServices
 
     public function __construct(
         private readonly ProcessRunner $runner,
-        private readonly int $healthAttempts = 10,
-        private readonly int $healthDelayMs = 500,
-        private readonly int $healthTimeoutSeconds = 5,
+        private readonly HerdConfig $config,
     ) {}
 
     public function isRunning(): bool
     {
         foreach (self::SERVICE_PATTERNS as $pattern) {
-            if ($this->runner->runSilently(ShellCommand::make(['pgrep', '-f', $pattern]))->successful()) {
+            if ($this->runner->runSilently(CommandLine::make(['pgrep', '-f', $pattern]))->successful()) {
                 return true;
             }
         }
@@ -53,11 +52,11 @@ final class HerdServices
      */
     public function isReachable(string $url): bool
     {
-        $result = $this->runner->runSilently(ShellCommand::make([
+        $result = $this->runner->runSilently(CommandLine::make([
             'curl', '--silent', '--insecure', '--output', '/dev/null',
             '--write-out', '%{http_code}',
             '--retry', '3', '--retry-connrefused', '--retry-delay', '1',
-            '--max-time', (string) $this->healthTimeoutSeconds,
+            '--max-time', (string) $this->config->healthTimeoutSeconds,
             $url,
         ]));
 
@@ -66,12 +65,12 @@ final class HerdServices
 
     public function boot(): void
     {
-        $this->runner->runSilently(ShellCommand::make('herd start'));
+        $this->runner->runSilently(CommandLine::make('herd start'));
     }
 
     public function restart(): void
     {
-        $this->runner->runSilently(ShellCommand::make('herd restart'));
+        $this->runner->runSilently(CommandLine::make('herd restart'));
     }
 
     /**
@@ -87,9 +86,9 @@ final class HerdServices
      */
     public function ensureReachable(string $url): void
     {
-        $restartAt = intdiv($this->healthAttempts, 2);
+        $restartAt = intdiv($this->config->healthAttempts, 2);
 
-        for ($attempt = 1; $attempt <= $this->healthAttempts; $attempt++) {
+        for ($attempt = 1; $attempt <= $this->config->healthAttempts; $attempt++) {
             if ($this->isReachable($url)) {
                 return;
             }
@@ -99,9 +98,9 @@ final class HerdServices
                 $this->restart();
             }
 
-            usleep($this->healthDelayMs * 1000);
+            usleep($this->config->healthDelayMs * 1000);
         }
 
-        throw ServerException::unreachable($url, $this->healthAttempts);
+        throw ServerException::unreachable($url, $this->config->healthAttempts);
     }
 }

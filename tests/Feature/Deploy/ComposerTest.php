@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Deploy\Composer;
-use Igne\LaravelBootUp\Deploy\DeployException;
+use Igne\LaravelBootUp\Exceptions\DeployException;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Support\LockfileConflictDetector;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\LockfileConflictDetector;
+use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -37,7 +37,7 @@ function deployComposer(string $dir): Composer
         new ProcessRunner(
             processes: app(Factory::class),
             ledger: new ProcessLedger($dir.'/processes.json'),
-            terminal: new NullTerminal,
+            terminal: new NullTerminalLauncher,
             poller: new Poller,
             logDirectory: $dir.'/logs',
             runtimeDirectory: $dir.'/runtime',

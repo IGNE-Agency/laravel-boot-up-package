@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Process;
 
-use Igne\LaravelBootUp\Process\Terminal\TerminalLauncher;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Contracts\TerminalLauncher;
+use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
 
 /**
@@ -58,6 +59,23 @@ final class ProcessReaper
         // descendant slip through the KILL pass.
         $targets = [...$this->descendants($record->pid), $record->pid];
 
+        if (! $this->terminate($targets)) {
+            terminal()->warning("Could not stop {$record->label} (pid {$record->pid}) — it stays in the ledger; stop it manually or re-run app:down.");
+
+            return false;
+        }
+
+        return $this->settle($record);
+    }
+
+    /**
+     * TERM the targets and wait; escalate to KILL for survivors. Returns
+     * whether every target is confirmed gone.
+     *
+     * @param  list<int>  $targets
+     */
+    private function terminate(array $targets): bool
+    {
         $this->signalAll($targets, 'TERM');
 
         $terminated = $this->poller->until(
@@ -66,23 +84,17 @@ final class ProcessReaper
             intervalMs: 250,
         );
 
-        if (! $terminated) {
-            $this->signalAll($targets, 'KILL');
-
-            $terminated = $this->poller->until(
-                fn (): bool => $this->allGone($targets),
-                timeoutSeconds: $this->killGraceSeconds,
-                intervalMs: 250,
-            );
+        if ($terminated) {
+            return true;
         }
 
-        if (! $terminated) {
-            terminal()->warning("Could not stop {$record->label} (pid {$record->pid}) — it stays in the ledger; stop it manually or re-run app:down.");
+        $this->signalAll($targets, 'KILL');
 
-            return false;
-        }
-
-        return $this->settle($record);
+        return $this->poller->until(
+            fn (): bool => $this->allGone($targets),
+            timeoutSeconds: $this->killGraceSeconds,
+            intervalMs: 250,
+        );
     }
 
     /**
@@ -177,10 +189,12 @@ final class ProcessReaper
             return [];
         }
 
-        return array_values(array_filter(
-            array_map(static fn (string $line): int => (int) trim($line), explode(PHP_EOL, $output)),
-            static fn (int $child): bool => $child > 0,
-        ));
+        return str($output)
+            ->explode(PHP_EOL)
+            ->map(fn (string $line): int => (int) trim($line))
+            ->filter(fn (int $child): bool => $child > 0)
+            ->values()
+            ->all();
     }
 
     private function signal(int $pid, string $signal): bool

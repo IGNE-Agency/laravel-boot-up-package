@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Deploy\ProjectCommand;
-use Igne\LaravelBootUp\Deploy\Scripts\DeploymentEnvironment;
-use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlan;
+use Igne\LaravelBootUp\Data\DeploymentPlan;
+use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Deploy\Scripts\FortrabbitScriptGenerator;
-use Igne\LaravelBootUp\Frontend\PackageManager;
+use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
+use Igne\LaravelBootUp\Enums\PackageManager;
 
 function fortrabbitPlan(array $overrides = []): DeploymentPlan
 {
@@ -55,10 +55,10 @@ SCRIPT);
 
 test('renders bound commands for all four phases in the canonical order', function (): void {
     $script = fortrabbitScript([
-        'beforeDeploy' => [ProjectCommand::artisan('pennant:purge')],
-        'beforeMigrations' => [ProjectCommand::artisan('wayfinder:generate')],
-        'afterMigrations' => [ProjectCommand::artisan('model:typer')],
-        'afterDeploy' => [ProjectCommand::artisan('cache:warm')],
+        'beforeDeploy' => [DeployTask::artisan('pennant:purge')],
+        'beforeMigrations' => [DeployTask::artisan('wayfinder:generate')],
+        'afterMigrations' => [DeployTask::artisan('model:typer')],
+        'afterDeploy' => [DeployTask::artisan('cache:warm')],
     ]);
 
     expect($script)
@@ -82,8 +82,8 @@ test('npm needs no global install line, non-npm managers do', function (): void 
 
 test('project commands wrap the migrate line in the post-deploy section', function (): void {
     $script = fortrabbitScript([
-        'beforeMigrations' => [ProjectCommand::artisan('wayfinder:generate', 'Generating routes...')],
-        'afterMigrations' => [ProjectCommand::composer('dump-autoload --optimize')],
+        'beforeMigrations' => [DeployTask::artisan('wayfinder:generate', 'Generating routes...')],
+        'afterMigrations' => [DeployTask::composer('dump-autoload --optimize')],
     ]);
 
     $before = strpos($script, 'php artisan wayfinder:generate');

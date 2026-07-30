@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Deploy;
 
+use Igne\LaravelBootUp\Concerns\ReadsProcessFailureOutput;
+use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Exceptions\DeployException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Support\LockfileConflictDetector;
+use Igne\LaravelBootUp\Services\LockfileConflictDetector;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 
 /**
@@ -16,13 +18,15 @@ use Illuminate\Process\Exceptions\ProcessFailedException;
  */
 final class Composer
 {
+    use ReadsProcessFailureOutput;
+
     /**
      * A dependency install can legitimately take many minutes on a slow
      * network or a large project; the default per-command timeout is meant for
      * quick commands and would abort a real install mid-way, so it is lifted
      * well clear here while still bounding a genuinely hung process.
      */
-    private const INSTALL_TIMEOUT_SECONDS = 1800;
+    private const int INSTALL_TIMEOUT_SECONDS = 1800;
 
     public function __construct(
         private readonly ProcessRunner $processes,
@@ -61,13 +65,13 @@ final class Composer
      */
     private function installNeeded(): bool
     {
-        $installed = $this->basePath.'/vendor/composer/installed.json';
+        $installed = "{$this->basePath}/vendor/composer/installed.json";
 
-        if (! is_file($this->basePath.'/vendor/autoload.php') || ! is_file($installed)) {
+        if (! is_file("{$this->basePath}/vendor/autoload.php") || ! is_file($installed)) {
             return true;
         }
 
-        $lock = $this->basePath.'/composer.lock';
+        $lock = "{$this->basePath}/composer.lock";
 
         if (! is_file($lock)) {
             return true;
@@ -79,7 +83,7 @@ final class Composer
             return true;
         }
 
-        $manifest = $this->basePath.'/composer.json';
+        $manifest = "{$this->basePath}/composer.json";
 
         return is_file($manifest) && (int) filemtime($manifest) > $installedAt;
     }
@@ -98,11 +102,6 @@ final class Composer
 
     private function run(string $command): void
     {
-        $this->processes->run(ShellCommand::make($command)->withTimeout(self::INSTALL_TIMEOUT_SECONDS));
-    }
-
-    private function outputOf(ProcessFailedException $exception): string
-    {
-        return $exception->result->output()."\n".$exception->result->errorOutput();
+        $this->processes->run(CommandLine::make($command)->withTimeout(self::INSTALL_TIMEOUT_SECONDS));
     }
 }

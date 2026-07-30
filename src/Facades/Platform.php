@@ -11,12 +11,12 @@ use Illuminate\Support\Facades\Facade;
  * @method static bool isLinux()
  * @method static bool isWindows()
  *
- * @see \Igne\LaravelBootUp\Support\Platform
+ * @see \Igne\LaravelBootUp\Services\Platform
  */
 final class Platform extends Facade
 {
     protected static function getFacadeAccessor(): string
     {
-        return \Igne\LaravelBootUp\Support\Platform::class;
+        return \Igne\LaravelBootUp\Services\Platform::class;
     }
 }

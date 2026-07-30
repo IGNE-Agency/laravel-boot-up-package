@@ -2,20 +2,18 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Config\ToolsConfig;
+use Igne\LaravelBootUp\Exceptions\ToolException;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\RegistryCustomToolSpy;
 use Igne\LaravelBootUp\Tools\Installers\ComposerInstaller;
-use Igne\LaravelBootUp\Tools\Installers\DockerInstaller;
-use Igne\LaravelBootUp\Tools\Installers\HerdInstaller;
-use Igne\LaravelBootUp\Tools\Installers\NodeInstaller;
+use Igne\LaravelBootUp\Tools\Installers\HomebrewInstaller;
 use Igne\LaravelBootUp\Tools\Installers\PackageManagerInstaller;
 use Igne\LaravelBootUp\Tools\Installers\PhpInstaller;
-use Igne\LaravelBootUp\Tools\ToolException;
 use Igne\LaravelBootUp\Tools\ToolRegistry;
-use Igne\LaravelBootUp\Tools\ToolsConfig;
 use Illuminate\Process\Factory;
 
 beforeEach(function (): void {
@@ -25,7 +23,7 @@ beforeEach(function (): void {
     $this->app->instance(ProcessRunner::class, new ProcessRunner(
         processes: app(Factory::class),
         ledger: new ProcessLedger($this->workDir.'/processes.json'),
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $this->workDir.'/logs',
         runtimeDirectory: $this->workDir.'/runtime',
@@ -53,10 +51,10 @@ test('resolves the built-in installer for each known tool id', function (string 
         ->and($installer->id())->toBe($id);
 })->with([
     'php' => ['php', PhpInstaller::class],
-    'node' => ['node', NodeInstaller::class],
+    'node' => ['node', HomebrewInstaller::class],
     'composer' => ['composer', ComposerInstaller::class],
-    'docker' => ['docker', DockerInstaller::class],
-    'herd' => ['herd', HerdInstaller::class],
+    'docker' => ['docker', HomebrewInstaller::class],
+    'herd' => ['herd', HomebrewInstaller::class],
     'bun' => ['bun', PackageManagerInstaller::class],
     'yarn' => ['yarn', PackageManagerInstaller::class],
     'npm' => ['npm', PackageManagerInstaller::class],

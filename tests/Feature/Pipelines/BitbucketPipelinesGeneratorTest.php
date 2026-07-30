@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Deploy\Scripts\DeploymentEnvironment;
-use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlan;
-use Igne\LaravelBootUp\Frontend\PackageManager;
+use Igne\LaravelBootUp\Data\DeploymentPlan;
+use Igne\LaravelBootUp\Data\PipelineJobStep;
+use Igne\LaravelBootUp\Data\PipelinePlan;
+use Igne\LaravelBootUp\Enums\DeployHookHost;
+use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
+use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Pipelines\BitbucketPipelinesGenerator;
 use Igne\LaravelBootUp\Pipelines\CiScripts;
-use Igne\LaravelBootUp\Pipelines\DeployHookHost;
 use Igne\LaravelBootUp\Pipelines\GitHubActionsGenerator;
 use Igne\LaravelBootUp\Pipelines\PipelineExtensions;
-use Igne\LaravelBootUp\Pipelines\PipelinePlan;
-use Igne\LaravelBootUp\Pipelines\PipelineStep;
 
 function bitbucketPipelinePlan(array $overrides = [], array $deploymentOverrides = []): PipelinePlan
 {
@@ -50,8 +50,8 @@ function bitbucketGenerator(): BitbucketPipelinesGenerator
 
 test('injects configured extra steps into a step script before and after its command', function (): void {
     $plan = bitbucketPipelinePlan(['extensions' => new PipelineExtensions([
-        new PipelineStep('prep', 'test', 'before', 'Prepare', 'echo prep'),
-        new PipelineStep('notify', 'test', 'after', 'Notify', 'bash notify.sh'),
+        new PipelineJobStep('prep', 'test', 'before', 'Prepare', 'echo prep'),
+        new PipelineJobStep('notify', 'test', 'after', 'Notify', 'bash notify.sh'),
     ])]);
 
     $yaml = bitbucketGenerator()->files($plan)[0]->contents;

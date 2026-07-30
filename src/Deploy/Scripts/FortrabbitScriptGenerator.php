@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Deploy\Scripts;
 
-use Igne\LaravelBootUp\Deploy\ProjectCommand;
-use Igne\LaravelBootUp\Support\Lines;
+use Igne\LaravelBootUp\Contracts\ScriptGenerator;
+use Igne\LaravelBootUp\Data\DeploymentPlan;
+use Igne\LaravelBootUp\Data\Lines;
 
 /**
  * Renders the two command lists Fortrabbit's dashboard expects per
@@ -15,6 +16,8 @@ use Igne\LaravelBootUp\Support\Lines;
  */
 final class FortrabbitScriptGenerator implements ScriptGenerator
 {
+    private const string COMPOSER_FLAGS = '--prefer-dist --no-interaction --no-ansi --no-progress';
+
     public function key(): string
     {
         return 'fortrabbit';
@@ -27,6 +30,8 @@ final class FortrabbitScriptGenerator implements ScriptGenerator
 
     public function generate(DeploymentPlan $plan): Lines
     {
+        $snippets = new DeployScriptSnippets($plan, artisan: 'php artisan', composer: 'composer');
+
         return Lines::make()
             ->comment(
                 "Fortrabbit deployment commands ({$plan->environment->value})",
@@ -36,50 +41,27 @@ final class FortrabbitScriptGenerator implements ScriptGenerator
             )
             ->blank()
             ->heading('─── Build commands ────────────────────────────────────────────')
-            ->line($this->composerInstall($plan))
+            ->line($snippets->composerInstall(self::COMPOSER_FLAGS))
             ->when($plan->frontend, fn (Lines $script) => $script
                 ->lines($plan->packageManager->buildScriptLines(ensureInstalled: true)))
             ->blank()
             ->heading('─── Post deploy commands ──────────────────────────────────────')
-            ->lines($this->postDeployCommands($plan));
+            ->lines($this->postDeployCommands($snippets));
     }
 
-    private function composerInstall(DeploymentPlan $plan): string
+    private function postDeployCommands(DeployScriptSnippets $snippets): Lines
     {
-        $noDev = $plan->environment->includeDevDependencies() ? '' : ' --no-dev';
+        $plan = $snippets->plan;
 
-        return "composer install{$noDev} --prefer-dist --no-interaction --no-ansi --no-progress";
-    }
-
-    private function postDeployCommands(DeploymentPlan $plan): Lines
-    {
         return Lines::make()
-            ->lines($this->projectCommands($plan->beforeDeploy, $plan))
-            ->lines($this->projectCommands($plan->beforeMigrations, $plan))
-            ->lineIf($plan->migrate, 'php artisan migrate --force')
-            ->lines($this->projectCommands($plan->afterMigrations, $plan))
-            ->lineIf($plan->environment->optimize(), 'php artisan optimize')
+            ->lines($snippets->deployTasks($plan->beforeDeploy))
+            ->lines($snippets->deployTasks($plan->beforeMigrations))
+            ->lineIf($plan->migrate, $snippets->artisan('migrate --force'))
+            ->lines($snippets->deployTasks($plan->afterMigrations))
+            ->lineIf($plan->environment->optimize(), $snippets->artisan('optimize'))
             ->each($plan->finalize, fn (Lines $script, string $command) => $script
-                ->line("php artisan {$command}"))
-            ->lines($this->projectCommands($plan->afterDeploy, $plan))
-            ->lineIf($plan->restartQueues, 'php artisan queue:restart');
-    }
-
-    /**
-     * @param  list<ProjectCommand>  $commands
-     */
-    private function projectCommands(array $commands, DeploymentPlan $plan): Lines
-    {
-        return Lines::make()->each(
-            $commands,
-            fn (Lines $script, ProjectCommand $command) => $script->lines($this->projectCommand($command, $plan)),
-        );
-    }
-
-    private function projectCommand(ProjectCommand $command, DeploymentPlan $plan): Lines
-    {
-        return Lines::make()
-            ->commentIf($command->description !== null, (string) $command->description)
-            ->line($command->shellLine('php artisan', 'composer', $plan->packageManager->value));
+                ->line($snippets->artisan($command)))
+            ->lines($snippets->deployTasks($plan->afterDeploy))
+            ->lineIf($plan->restartQueues, $snippets->artisan('queue:restart'));
     }
 }

@@ -2,16 +2,23 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Config\ArtisanServeConfig;
+use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
+use Igne\LaravelBootUp\Contracts\RequiresTools;
+use Igne\LaravelBootUp\Contracts\RewritesCommands;
+use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
+use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
-use Igne\LaravelBootUp\Process\ProcessRecord;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Serve\CombinedRunPlan;
+use Igne\LaravelBootUp\Serve\WorkerLauncher;
 use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
-use Igne\LaravelBootUp\Servers\ServersConfig;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Servers\CommandRewriter;
+use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -28,22 +35,25 @@ afterEach(function (): void {
     exec('rm -rf '.escapeshellarg($this->workDir));
 });
 
-function artisanServer(ProcessLedger $ledger, string $workDir, ?ServersConfig $config = null): ArtisanServer
+function artisanServer(ProcessLedger $ledger, string $workDir, ?ArtisanServeConfig $config = null, ?CombinedRunPlan $plan = null): ArtisanServer
 {
     $runner = new ProcessRunner(
         processes: app(Factory::class),
         ledger: $ledger,
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $workDir.'/logs',
         runtimeDirectory: $workDir.'/runtime',
     );
 
+    $reaper = new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminalLauncher);
+    $plan ??= new CombinedRunPlan;
+
     return new ArtisanServer(
         $runner,
-        $ledger,
-        new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminal),
-        $config ?? new ServersConfig,
+        new WorkerLauncher($runner, new CommandRewriter, $ledger, $reaper, $plan),
+        $config ?? new ArtisanServeConfig,
+        $plan,
     );
 }
 
@@ -78,6 +88,37 @@ test('a second start is skipped while the tracked process is alive', function ()
     ProcessFaker::assertRanTimes('*nohup php artisan serve*', 1);
     expect($this->ledger->withLabel('artisan-serve'))->toHaveCount(1);
     Prompt::assertStrippedOutputContains('php artisan serve is already running.');
+});
+
+test('start queues its log as the combined [server] stream', function (): void {
+    ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
+    $plan = new CombinedRunPlan;
+
+    artisanServer($this->ledger, $this->workDir, plan: $plan)->start(new ServeContext(new ServeOptions));
+
+    $services = $plan->services();
+
+    expect($services)->toHaveCount(1)
+        ->and($services[0]->name)->toBe('server')
+        ->and($services[0]->isProcess())->toBeFalse()
+        ->and($services[0]->logFile)->toBe($this->workDir.'/logs/artisan-serve.log')
+        ->and($plan->hasProcesses())->toBeFalse();
+});
+
+test('an already-running serve still queues the [server] stream', function (): void {
+    ProcessFaker::fake([
+        'kill -0 4242' => Process::result(),
+        'ps -p 4242*' => Process::result(output: "php artisan serve --host=127.0.0.1 --port=8000\n"),
+        '*' => Process::result(output: "4242\n"),
+    ]);
+    $plan = new CombinedRunPlan;
+
+    $server = artisanServer($this->ledger, $this->workDir, plan: $plan);
+    $server->start(new ServeContext(new ServeOptions));
+    $server->start(new ServeContext(new ServeOptions));
+
+    expect($plan->services())->toHaveCount(2)
+        ->and($plan->services()[1]->name)->toBe('server');
 });
 
 test('isRunning is false when the tracked pid is dead', function (): void {
@@ -125,28 +166,27 @@ test('url derives from the configured bind address, never app.url', function ():
     config()->set('app.url', 'http://example.test');
     expect(artisanServer($this->ledger, $this->workDir)->url())->toBe('http://127.0.0.1:8000');
 
-    $custom = artisanServer($this->ledger, $this->workDir, new ServersConfig(artisanHost: '0.0.0.0', artisanPort: 8080));
+    $custom = artisanServer($this->ledger, $this->workDir, new ArtisanServeConfig(host: '0.0.0.0', port: 8080));
     expect($custom->url())->toBe('http://0.0.0.0:8080');
 });
 
 test('start passes the configured host and port to artisan serve', function (): void {
     ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
 
-    artisanServer($this->ledger, $this->workDir, new ServersConfig(artisanHost: '0.0.0.0', artisanPort: 8080))
+    artisanServer($this->ledger, $this->workDir, new ArtisanServeConfig(host: '0.0.0.0', port: 8080))
         ->start(new ServeContext(new ServeOptions));
 
     ProcessFaker::assertRan('*php artisan serve --host=0.0.0.0 --port=8080*');
 });
 
-test('identity, tools and rewrites', function (): void {
+test('identity, with no optional capabilities', function (): void {
     ProcessFaker::fake();
     $server = artisanServer($this->ledger, $this->workDir);
-    $rewrites = $server->commandRewrites();
 
-    expect($server->key())->toBe('laravel')
+    expect($server->key())->toBe('artisan')
         ->and($server->label())->toBe('Laravel (php artisan serve)')
-        ->and($server->requiredTools())->toBe([])
-        ->and($rewrites->replaces)->toBe([])
-        ->and($rewrites->prefixes)->toBe([])
-        ->and($rewrites->prefix)->toBeNull();
+        ->and($server)->not->toBeInstanceOf(RequiresTools::class)
+        ->and($server)->not->toBeInstanceOf(RewritesCommands::class)
+        ->and($server)->not->toBeInstanceOf(ProvidesDatabase::class)
+        ->and($server)->not->toBeInstanceOf(WarnsBeforeStop::class);
 });

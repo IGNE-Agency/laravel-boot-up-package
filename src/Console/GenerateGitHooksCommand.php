@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
-use Igne\LaravelBootUp\Pipelines\GeneratedFile;
 use Igne\LaravelBootUp\Pipelines\GitHooks;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Support\AtomicFile;
+use Igne\LaravelBootUp\Services\GeneratedFilePublisher;
 
 final class GenerateGitHooksCommand extends BootUpCommand
 {
@@ -18,9 +17,9 @@ final class GenerateGitHooksCommand extends BootUpCommand
 
     protected $description = 'Install git hooks that run the pipeline\'s checks locally before a commit';
 
-    public function perform(ComposerJson $composerJson, ProcessRunner $processes): int
+    public function handle(ComposerJson $composerJson, ProcessRunner $processes, GeneratedFilePublisher $publisher): int
     {
-        terminal()->intro('Installing git hooks...');
+        $this->announce('Installing git hooks...');
 
         if (! $this->insideGitWorkTree($processes)) {
             terminal()->error('Not a git repository — run this from the root of a git working tree.');
@@ -33,62 +32,37 @@ final class GenerateGitHooksCommand extends BootUpCommand
         $hook = (new GitHooks)->preCommit($pint);
 
         if ($hook === null) {
-            terminal()->note('Install laravel/pint to enable the pre-commit lint hook — nothing to install yet.');
+            return $this->skip('Install laravel/pint to enable the pre-commit lint hook — nothing to install yet.');
+        }
 
+        if (! $publisher->publish([$hook], (bool) $this->option('force'))) {
             return self::SUCCESS;
         }
 
-        if (! $this->confirmOverwrite($hook)) {
-            return self::SUCCESS;
-        }
+        $this->pointGitAtHooksPath($processes);
 
-        $this->write($hook);
+        $directory = GitHooks::DIRECTORY;
+        terminal()->note("Commit {$directory}/ so your team shares the hook.");
 
-        $processes->runSilently(
-            ShellCommand::make(['git', 'config', 'core.hooksPath', GitHooks::DIRECTORY])
-                ->inDirectory($this->laravel->basePath()),
-        );
-        terminal()->success('Pointed git config core.hooksPath at '.GitHooks::DIRECTORY.'.');
-
-        terminal()->note('Commit '.GitHooks::DIRECTORY.'/ so your team shares the hook.');
-        terminal()->outro('Git hooks installed.');
-
-        return self::SUCCESS;
+        return $this->done('Git hooks installed.');
     }
 
     private function insideGitWorkTree(ProcessRunner $processes): bool
     {
         return $processes->runSilently(
-            ShellCommand::make(['git', 'rev-parse', '--is-inside-work-tree'])
+            CommandLine::make(['git', 'rev-parse', '--is-inside-work-tree'])
                 ->inDirectory($this->laravel->basePath()),
         )->successful();
     }
 
-    private function confirmOverwrite(GeneratedFile $hook): bool
+    private function pointGitAtHooksPath(ProcessRunner $processes): void
     {
-        if ($this->option('force') || ! is_file($this->laravel->basePath($hook->path))) {
-            return true;
-        }
+        $processes->runSilently(
+            CommandLine::make(['git', 'config', 'core.hooksPath', GitHooks::DIRECTORY])
+                ->inDirectory($this->laravel->basePath()),
+        );
 
-        $confirmed = terminal()->confirm("{$hook->path} already exists. Overwrite it?", default: false);
-
-        if (! $confirmed) {
-            terminal()->warning('Nothing written — declined to overwrite the existing hook.');
-        }
-
-        return $confirmed;
-    }
-
-    private function write(GeneratedFile $hook): void
-    {
-        $path = $this->laravel->basePath($hook->path);
-
-        AtomicFile::write($path, $hook->contents);
-
-        if ($hook->executable) {
-            chmod($path, 0755);
-        }
-
-        terminal()->success("Wrote {$hook->path}.");
+        $directory = GitHooks::DIRECTORY;
+        terminal()->success("Pointed git config core.hooksPath at {$directory}.");
     }
 }

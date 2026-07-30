@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Servers\Steps;
 
 use Closure;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
-use Igne\LaravelBootUp\Servers\ActiveServerRecord;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Stage;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\ActiveServerRecord;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 
 /**
@@ -15,6 +18,8 @@ use Igne\LaravelBootUp\Servers\ActiveServerStore;
  * start() runs (write-ahead) so a crash mid-start still leaves shutdown
  * enough state to clean up.
  */
+#[Stage(ServeStage::Server)]
+#[Group('server')]
 final class StartServer implements Step
 {
     public function __construct(private readonly ActiveServerStore $store) {}

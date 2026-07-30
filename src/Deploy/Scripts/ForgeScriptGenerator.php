@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Deploy\Scripts;
 
-use Igne\LaravelBootUp\Deploy\ProjectCommand;
-use Igne\LaravelBootUp\Support\Lines;
+use Igne\LaravelBootUp\Contracts\ScriptGenerator;
+use Igne\LaravelBootUp\Data\DeploymentPlan;
+use Igne\LaravelBootUp\Data\Lines;
 
 /**
  * Renders a Laravel Forge deployment script: the zero-downtime release
@@ -15,6 +16,8 @@ use Igne\LaravelBootUp\Support\Lines;
  */
 final class ForgeScriptGenerator implements ScriptGenerator
 {
+    private const string COMPOSER_FLAGS = '--no-interaction --prefer-dist --optimize-autoloader';
+
     public function key(): string
     {
         return 'forge';
@@ -27,13 +30,17 @@ final class ForgeScriptGenerator implements ScriptGenerator
 
     public function generate(DeploymentPlan $plan): Lines
     {
+        $snippets = new DeployScriptSnippets($plan, artisan: '$FORGE_PHP artisan', composer: '$FORGE_COMPOSER');
+
         return $plan->zeroDowntime
-            ? $this->zeroDowntime($plan)
-            : $this->classic($plan);
+            ? $this->zeroDowntime($snippets)
+            : $this->classic($snippets);
     }
 
-    private function zeroDowntime(DeploymentPlan $plan): Lines
+    private function zeroDowntime(DeployScriptSnippets $snippets): Lines
     {
+        $plan = $snippets->plan;
+
         return Lines::make()
             ->comment(
                 "Laravel Forge deployment script ({$plan->environment->value}, zero-downtime)",
@@ -45,20 +52,22 @@ final class ForgeScriptGenerator implements ScriptGenerator
             )
             ->lineWithBreak('$CREATE_RELEASE()')
             ->lineWithBreak('cd $FORGE_RELEASE_DIRECTORY')
-            ->lineWithBreak($this->composerInstall($plan))
-            ->linesWithBreak($this->artisanBlock($plan, '$FORGE_PHP'))
+            ->lineWithBreak($snippets->composerInstall(self::COMPOSER_FLAGS))
+            ->linesWithBreak($this->artisanBlock($snippets))
             ->when($plan->frontend, fn (Lines $script) => $script
                 ->linesWithBreak($plan->packageManager->buildScriptLines(ensureInstalled: false)))
             ->lineWithBreak('$ACTIVATE_RELEASE()')
             // afterDeploy runs post-swap: the symlink now points at this release.
             ->when($plan->afterDeploy !== [], fn (Lines $script) => $script
                 ->blank()
-                ->lines($this->projectCommands($plan->afterDeploy, $plan)))
+                ->lines($snippets->deployTasks($plan->afterDeploy)))
             ->lineWithBreakIf($plan->restartQueues, '$RESTART_QUEUES()');
     }
 
-    private function classic(DeploymentPlan $plan): Lines
+    private function classic(DeployScriptSnippets $snippets): Lines
     {
+        $plan = $snippets->plan;
+
         return Lines::make()
             ->comment(
                 "Laravel Forge deployment script ({$plan->environment->value}, classic)",
@@ -67,13 +76,13 @@ final class ForgeScriptGenerator implements ScriptGenerator
             )
             ->lineWithBreak('cd $FORGE_SITE_PATH')
             ->lineWithBreak('git pull origin $FORGE_SITE_BRANCH')
-            ->lineWithBreak($this->composerInstall($plan))
-            ->linesWithBreak($this->artisanBlock($plan, '$FORGE_PHP'))
+            ->lineWithBreak($snippets->composerInstall(self::COMPOSER_FLAGS))
+            ->linesWithBreak($this->artisanBlock($snippets))
             ->when($plan->frontend, fn (Lines $script) => $script
                 ->linesWithBreak($plan->packageManager->buildScriptLines(ensureInstalled: false)))
             ->when($plan->afterDeploy !== [], fn (Lines $script) => $script
-                ->linesWithBreak($this->projectCommands($plan->afterDeploy, $plan)))
-            ->lineWithBreakIf($plan->restartQueues, '$FORGE_PHP artisan queue:restart')
+                ->linesWithBreak($snippets->deployTasks($plan->afterDeploy)))
+            ->lineWithBreakIf($plan->restartQueues, $snippets->artisan('queue:restart'))
             ->blank()
             ->comment('Prevent concurrent PHP-FPM reloads...')
             ->line('touch /tmp/fpmlock 2>/dev/null || true')
@@ -85,40 +94,17 @@ final class ForgeScriptGenerator implements ScriptGenerator
             ->line(') 9</tmp/fpmlock');
     }
 
-    private function composerInstall(DeploymentPlan $plan): string
+    private function artisanBlock(DeployScriptSnippets $snippets): Lines
     {
-        $noDev = $plan->environment->includeDevDependencies() ? '' : ' --no-dev';
+        $plan = $snippets->plan;
 
-        return "\$FORGE_COMPOSER install{$noDev} --no-interaction --prefer-dist --optimize-autoloader";
-    }
-
-    private function artisanBlock(DeploymentPlan $plan, string $php): Lines
-    {
         return Lines::make()
-            ->lines($this->projectCommands($plan->beforeDeploy, $plan))
-            ->lineIf($plan->environment->optimize(), "{$php} artisan optimize")
+            ->lines($snippets->deployTasks($plan->beforeDeploy))
+            ->lineIf($plan->environment->optimize(), $snippets->artisan('optimize'))
             ->each($plan->finalize, fn (Lines $script, string $command) => $script
-                ->line("{$php} artisan {$command}"))
-            ->lines($this->projectCommands($plan->beforeMigrations, $plan))
-            ->lineIf($plan->migrate, "{$php} artisan migrate --force")
-            ->lines($this->projectCommands($plan->afterMigrations, $plan));
-    }
-
-    /**
-     * @param  list<ProjectCommand>  $commands
-     */
-    private function projectCommands(array $commands, DeploymentPlan $plan): Lines
-    {
-        return Lines::make()->each(
-            $commands,
-            fn (Lines $script, ProjectCommand $command) => $script->lines($this->projectCommand($command, $plan)),
-        );
-    }
-
-    private function projectCommand(ProjectCommand $command, DeploymentPlan $plan): Lines
-    {
-        return Lines::make()
-            ->commentIf($command->description !== null, (string) $command->description)
-            ->line($command->shellLine('$FORGE_PHP artisan', '$FORGE_COMPOSER', $plan->packageManager->value));
+                ->line($snippets->artisan($command)))
+            ->lines($snippets->deployTasks($plan->beforeMigrations))
+            ->lineIf($plan->migrate, $snippets->artisan('migrate --force'))
+            ->lines($snippets->deployTasks($plan->afterMigrations));
     }
 }

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Contracts\TerminalLauncher;
+use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
-use Igne\LaravelBootUp\Process\ProcessRecord;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Process\Terminal\TerminalLauncher;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -33,7 +33,7 @@ function reaper(ProcessLedger $ledger, ?TerminalLauncher $terminal = null): Proc
         app(Factory::class),
         $ledger,
         new Poller,
-        $terminal ?? new NullTerminal,
+        $terminal ?? new NullTerminalLauncher,
         termGraceSeconds: 0,
         killGraceSeconds: 0,
     );

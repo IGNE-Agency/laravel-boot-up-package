@@ -8,18 +8,17 @@ Generators and warmers that run across four deploy phases (`beforeDeploy`,
 `beforeMigrations`, `afterMigrations`, `afterDeploy`) during `app:serve` /
 `app:deploy` and get embedded in exported deployment scripts.
 
-1. Implement `Igne\LaravelBootUp\Deploy\ProvidesProjectCommands` (all four
+1. Implement `Igne\LaravelBootUp\Contracts\ProvidesDeployTasks` (all four
    methods; return `[]` for phases you don't use).
 2. Bind it as a singleton in your `AppServiceProvider::register()`.
 
 Full guide: [CUSTOM_COMMANDS.md](CUSTOM_COMMANDS.md) — example:
-[examples/ProjectCommands.php](../examples/ProjectCommands.php).
+[examples/DeployTasks.php](../examples/DeployTasks.php).
 
 ## Custom pipeline steps
 
-1. Implement `Igne\LaravelBootUp\Serve\Step`.
-2. Insert the class anywhere in the published `boot-up.serve_steps` /
-   `boot-up.deploy_steps` arrays.
+1. Implement `Igne\LaravelBootUp\Contracts\Step`.
+2. Insert the class anywhere in the published    `boot-up.serve.steps` / `boot-up.deploy.steps` arrays.
 
 Print through the package's terminal for consistent styling: the global
 `terminal()` helper (no import needed — `terminal()->success('Done.')`) or the
@@ -30,25 +29,34 @@ too.
 
 ## Custom servers
 
-1. Implement `Igne\LaravelBootUp\Servers\Server`.
+1. Implement `Igne\LaravelBootUp\Contracts\Server`.
 2. Register it under `boot-up.server.drivers`, e.g.
    `'valet' => ValetServer::class`.
 
 It becomes selectable by argument, config, and prompt, and participates in state
 tracking, shutdown, and command rewriting automatically.
 
-The interface declares three capability methods you must implement:
+Beyond the core `Server` interface, optional capability interfaces opt your
+driver into extra behaviour:
 
-- `providesDatabase()` — the server provisions the database itself, so creation
-  is skipped.
-- `databaseReachableFromHost()` — return `false` to route database checks and
-  migrations through your command rewrites (like Sail does).
-- `stopImpact()` — a non-null warning makes stopping require an explicit yes
-  (like Herd's machine-wide stop).
+- `ProvidesDatabase` — the server provisions the database itself, so creation
+  is skipped; `databaseReachableFromHost()` returns `false` to route database
+  checks and migrations through your command rewrites (like Sail does).
+- `WarnsBeforeStop` — `stopImpact()` describes what stopping reaches beyond
+  this project; it is shown and never acted on without an explicit yes (like
+  Herd's machine-wide stop).
+- `HasResidualState` — a failed boot can leave state behind even when the
+  server reports not-running (like Sail's stopped containers). Shutdown shows
+  `residualStateImpact()` and offers `cleanUpResidualState()` instead of
+  silently skipping the server.
+- `RequiresTools` — `requiredTools()` lists tools the server needs installed
+  (like Sail's Docker).
+- `RewritesCommands` — `commandRewrites()` reroutes project commands through
+  the server (like Sail's `./vendor/bin/sail` prefix).
 
 ## Custom tools
 
-1. Implement `Igne\LaravelBootUp\Tools\InstallsTool`.
+1. Implement `Igne\LaravelBootUp\Contracts\InstallsTool`.
 2. Map it under `boot-up.tools.installers` with a version constraint under
    `boot-up.tools.required`.
 
@@ -57,7 +65,7 @@ install Node via nvm).
 
 ## Custom deployment platforms
 
-1. Implement `Igne\LaravelBootUp\Deploy\Scripts\ScriptGenerator`.
+1. Implement `Igne\LaravelBootUp\Contracts\ScriptGenerator`.
 2. Register it under `boot-up.deploy.script_generators`, e.g.
    `'envoyer' => EnvoyerScriptGenerator::class`.
 
@@ -65,7 +73,7 @@ It becomes selectable in `generate:deploy-script` alongside Forge and fortrabbit
 
 ## Custom git providers
 
-1. Implement `Igne\LaravelBootUp\Pipelines\PipelineGenerator` — `files()`
+1. Implement `Igne\LaravelBootUp\Contracts\PipelineGenerator` — `files()`
    returns the `GeneratedFile`s to write, `secrets()` the instructions-table
    rows and their detail sections, and `anchors()` the job names project config
    may inject extra steps into (see
@@ -75,4 +83,4 @@ It becomes selectable in `generate:deploy-script` alongside Forge and fortrabbit
 
 It becomes selectable in `generate:pipeline` alongside GitHub and Bitbucket. Reuse
 `Igne\LaravelBootUp\Pipelines\CiScripts` to ship the same shared scripts, and
-`Igne\LaravelBootUp\Support\Lines` to build documents.
+`Igne\LaravelBootUp\Data\Lines` to build documents.

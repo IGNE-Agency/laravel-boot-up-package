@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Environment\EnvFile;
-use Igne\LaravelBootUp\Environment\EnvironmentException;
 use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Exceptions\EnvironmentException;
 use Laravel\Prompts\Prompt;
 
 beforeEach(function (): void {

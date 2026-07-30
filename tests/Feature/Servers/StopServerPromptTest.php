@@ -2,24 +2,26 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Servers\CommandRewrites;
-use Igne\LaravelBootUp\Servers\Server;
-use Igne\LaravelBootUp\Servers\ServersConfig;
+use Igne\LaravelBootUp\Config\ShutdownConfig;
+use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
+use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Servers\StopServerPrompt;
-use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\DefaultServerCapabilities;
+use Igne\LaravelBootUp\Tests\Feature\Serve\Fixtures\RecordingServer;
 use Laravel\Prompts\Key;
 use Laravel\Prompts\Prompt;
 
 function stopPromptServer(?string $impact = null): Server
 {
-    return new class($impact) implements Server
+    if ($impact === null) {
+        return new RecordingServer;
+    }
+
+    return new class($impact) implements Server, WarnsBeforeStop
     {
-        use DefaultServerCapabilities;
+        public function __construct(private readonly string $impact) {}
 
-        public function __construct(private readonly ?string $impact = null) {}
-
-        public function stopImpact(): ?string
+        public function stopImpact(): string
         {
             return $this->impact;
         }
@@ -32,16 +34,6 @@ function stopPromptServer(?string $impact = null): Server
         public function label(): string
         {
             return 'Double Server';
-        }
-
-        public function requiredTools(): array
-        {
-            return [];
-        }
-
-        public function commandRewrites(): CommandRewrites
-        {
-            return CommandRewrites::none();
         }
 
         public function isRunning(): bool
@@ -63,8 +55,8 @@ function stopPromptServer(?string $impact = null): Server
 test('returns the configured default without prompting when the prompt is disabled', function (): void {
     Prompt::fake();
 
-    $keep = new StopServerPrompt(new ServersConfig(promptStopServer: false, stopServerByDefault: false));
-    $stop = new StopServerPrompt(new ServersConfig(promptStopServer: false, stopServerByDefault: true));
+    $keep = new StopServerPrompt(new ShutdownConfig(promptStopServer: false, stopServerByDefault: false));
+    $stop = new StopServerPrompt(new ShutdownConfig(promptStopServer: false, stopServerByDefault: true));
 
     expect($keep->shouldStop(stopPromptServer()))->toBeFalse()
         ->and($stop->shouldStop(stopPromptServer()))->toBeTrue();
@@ -73,7 +65,7 @@ test('returns the configured default without prompting when the prompt is disabl
 test('confirms with the server label and honours the answer', function (): void {
     Prompt::fake(['y', Key::ENTER]);
 
-    $prompt = new StopServerPrompt(new ServersConfig(promptStopServer: true, stopServerByDefault: false));
+    $prompt = new StopServerPrompt(new ShutdownConfig(promptStopServer: true, stopServerByDefault: false));
 
     expect($prompt->shouldStop(stopPromptServer()))->toBeTrue();
     Prompt::assertStrippedOutputContains('Stop Double Server? Other projects may be using it.');
@@ -82,7 +74,7 @@ test('confirms with the server label and honours the answer', function (): void 
 test('enter accepts the configured default answer', function (): void {
     Prompt::fake([Key::ENTER]);
 
-    $prompt = new StopServerPrompt(new ServersConfig(promptStopServer: true, stopServerByDefault: false));
+    $prompt = new StopServerPrompt(new ShutdownConfig(promptStopServer: true, stopServerByDefault: false));
 
     expect($prompt->shouldStop(stopPromptServer()))->toBeFalse();
 });
@@ -90,7 +82,7 @@ test('enter accepts the configured default answer', function (): void {
 test('a server with stop impact is never stopped silently, even when configured to', function (): void {
     Prompt::fake();
 
-    $prompt = new StopServerPrompt(new ServersConfig(promptStopServer: false, stopServerByDefault: true));
+    $prompt = new StopServerPrompt(new ShutdownConfig(promptStopServer: false, stopServerByDefault: true));
 
     expect($prompt->shouldStop(stopPromptServer('stopping halts every site.')))->toBeFalse();
     Prompt::assertStrippedOutputContains('Leaving Double Server running');
@@ -100,7 +92,7 @@ test('a server with stop impact is never stopped silently, even when configured 
 test('the stop impact is shown as a warning before the confirm and forces a no default', function (): void {
     Prompt::fake([Key::ENTER]);
 
-    $prompt = new StopServerPrompt(new ServersConfig(promptStopServer: true, stopServerByDefault: true));
+    $prompt = new StopServerPrompt(new ShutdownConfig(promptStopServer: true, stopServerByDefault: true));
 
     expect($prompt->shouldStop(stopPromptServer('stopping halts every site.')))->toBeFalse();
     Prompt::assertStrippedOutputContains('stopping halts every site.');
@@ -109,7 +101,34 @@ test('the stop impact is shown as a warning before the confirm and forces a no d
 test('an explicit yes still stops a server with stop impact', function (): void {
     Prompt::fake(['y', Key::ENTER]);
 
-    $prompt = new StopServerPrompt(new ServersConfig(promptStopServer: true, stopServerByDefault: false));
+    $prompt = new StopServerPrompt(new ShutdownConfig(promptStopServer: true, stopServerByDefault: false));
 
     expect($prompt->shouldStop(stopPromptServer('stopping halts every site.')))->toBeTrue();
+});
+
+test('cleanup confirms with the server label and honours the answer', function (): void {
+    Prompt::fake(['n', Key::ENTER]);
+
+    $prompt = new StopServerPrompt(new ShutdownConfig(promptStopServer: true, stopServerByDefault: false));
+
+    expect($prompt->shouldCleanUp(stopPromptServer()))->toBeFalse();
+    Prompt::assertStrippedOutputContains("Clean up Double Server's leftover resources?");
+});
+
+test('cleanup defaults to yes at the prompt', function (): void {
+    Prompt::fake([Key::ENTER]);
+
+    $prompt = new StopServerPrompt(new ShutdownConfig(promptStopServer: true, stopServerByDefault: false));
+
+    expect($prompt->shouldCleanUp(stopPromptServer()))->toBeTrue();
+});
+
+test('unattended cleanup follows the stop-by-default setting', function (): void {
+    Prompt::fake();
+
+    $keep = new StopServerPrompt(new ShutdownConfig(promptStopServer: false, stopServerByDefault: false));
+    $clean = new StopServerPrompt(new ShutdownConfig(promptStopServer: false, stopServerByDefault: true));
+
+    expect($keep->shouldCleanUp(stopPromptServer()))->toBeFalse()
+        ->and($clean->shouldCleanUp(stopPromptServer()))->toBeTrue();
 });

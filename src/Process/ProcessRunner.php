@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Process;
 
-use Igne\LaravelBootUp\Process\Terminal\TerminalLauncher;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Contracts\TerminalLauncher;
+use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Exceptions\ProcessException;
+use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Process\Factory;
 use Illuminate\Process\PendingProcess;
@@ -33,7 +36,7 @@ final class ProcessRunner
         private readonly int $terminalPidTimeout = 20,
     ) {}
 
-    public function run(ShellCommand $command): ProcessResult
+    public function run(CommandLine $command): ProcessResult
     {
         // Stream sub-process output with the active progress bar out of the
         // way: it is erased before the output and redrawn once afterward, so
@@ -45,7 +48,7 @@ final class ProcessRunner
             ->throw());
     }
 
-    public function runSilently(ShellCommand $command): ProcessResult
+    public function runSilently(CommandLine $command): ProcessResult
     {
         return $this->pending($command, $command->tokens)->run();
     }
@@ -54,9 +57,9 @@ final class ProcessRunner
      * Start a detached background process that survives this PHP process.
      * Output is appended to storage/logs/boot-up/{label}.log.
      */
-    public function start(ShellCommand $command, string $label): ProcessRecord
+    public function start(CommandLine $command, string $label): ProcessRecord
     {
-        $logFile = $this->logDirectory.'/'.$label.'.log';
+        $logFile = $this->logFile($label);
         $this->ensureDirectory(\dirname($logFile));
 
         // nohup exec()s the command, so the echoed PID belongs to the real
@@ -91,13 +94,14 @@ final class ProcessRunner
      * The pid-file poll waits up to `terminalPidTimeout` seconds, because a new
      * window's shell may source a heavy startup profile before the shim runs.
      */
-    public function startInTerminal(ShellCommand $command, string $label): ProcessRecord
+    public function startInTerminal(CommandLine $command, string $label): ProcessRecord
     {
         if (! $this->terminal->available()) {
             return $this->start($command, $label);
         }
 
-        $pidFile = $this->runtimeDirectory.'/pids/'.$label.'-'.bin2hex(random_bytes(4)).'.pid';
+        $suffix = bin2hex(random_bytes(4));
+        $pidFile = "{$this->runtimeDirectory}/pids/{$label}-{$suffix}.pid";
         $this->ensureDirectory(\dirname($pidFile));
 
         $shim = sprintf(
@@ -110,11 +114,31 @@ final class ProcessRunner
             $window = $this->terminal->open($shim, $command->cwd ?? getcwd() ?: null);
         } catch (\Throwable $exception) {
             @unlink($pidFile);
-            terminal()->warning("Could not open a terminal window for [{$label}] ({$exception->getMessage()}) — starting it in the background instead.");
 
-            return $this->start($command, $label);
+            return $this->fallBackToBackground(
+                $command,
+                $label,
+                "Could not open a terminal window for [{$label}] ({$exception->getMessage()})",
+            );
         }
 
+        $pid = $this->pidFromFile($pidFile);
+
+        if ($pid > 0) {
+            return $this->remember($pid, $label, $command, $window);
+        }
+
+        return $this->trackWindowWithoutPidFile($command, $label, $window);
+    }
+
+    /**
+     * Wait for the shim to write the real PID, then remove the file. Zero
+     * when nothing usable appeared within `terminalPidTimeout` seconds —
+     * the poll is generous because a new window's shell may source a heavy
+     * startup profile before the shim runs.
+     */
+    private function pidFromFile(string $pidFile): int
+    {
         $captured = $this->poller->until(
             fn (): bool => is_file($pidFile) && trim((string) file_get_contents($pidFile)) !== '',
             timeoutSeconds: $this->terminalPidTimeout,
@@ -124,13 +148,18 @@ final class ProcessRunner
         $pid = $captured ? (int) trim((string) file_get_contents($pidFile)) : 0;
         @unlink($pidFile);
 
-        if ($pid > 0) {
-            return $this->remember($pid, $label, $command, $window);
-        }
+        return $pid;
+    }
 
-        // The window is open and the process may well be running; it just did
-        // not write its PID in time (usually a slow shell startup). Recover the
-        // real PID from the process table so the process stays tracked.
+    /**
+     * The window is open and the process may well be running; it just did
+     * not write its PID in time (usually a slow shell startup). Recover the
+     * real PID from the process table so the process stays tracked; only
+     * when that also fails, close the window and start in the background so
+     * the boot is never left with an untracked window and never aborts.
+     */
+    private function trackWindowWithoutPidFile(CommandLine $command, string $label, ?string $window): ProcessRecord
+    {
         $recovered = $this->recoverPid($command);
 
         if ($recovered !== null) {
@@ -139,18 +168,37 @@ final class ProcessRunner
             return $this->remember($recovered, $label, $command, $window);
         }
 
-        // Nothing to recover: close the window we opened and fall back to a
-        // plain background process so the boot is never left with an untracked
-        // window and never aborts.
-        terminal()->warning("Could not capture a PID for [{$label}] from its terminal window — starting it in the background instead. (Tip: set its run_in option to 'background' to skip terminal windows.)");
         $this->terminal->close($window);
+
+        return $this->fallBackToBackground(
+            $command,
+            $label,
+            "Could not capture a PID for [{$label}] from its terminal window",
+            " (Tip: set its run_in option to 'background' to skip terminal windows.)",
+        );
+    }
+
+    private function fallBackToBackground(CommandLine $command, string $label, string $reason, string $tip = ''): ProcessRecord
+    {
+        terminal()->warning("{$reason} — starting it in the background instead.{$tip}");
 
         return $this->start($command, $label);
     }
 
+    /**
+     * Where a background process with this label appends its output — also
+     * the file the combined stream tails for the detached artisan serve.
+     */
+    public function logFile(string $label): string
+    {
+        return "{$this->logDirectory}/{$label}.log";
+    }
+
     public function isCommandAvailable(string $binary): bool
     {
-        return $this->runSilently(ShellCommand::make(['sh', '-c', 'command -v '.escapeshellarg($binary)]))
+        $quoted = escapeshellarg($binary);
+
+        return $this->runSilently(CommandLine::make(['sh', '-c', "command -v {$quoted}"]))
             ->successful();
     }
 
@@ -161,7 +209,7 @@ final class ProcessRunner
      * started wins over any older look-alike. Null when nothing matches — e.g.
      * the window's shell has not exec'd the command yet, or it never started.
      */
-    private function recoverPid(ShellCommand $command): ?int
+    private function recoverPid(CommandLine $command): ?int
     {
         $signature = implode(' ', $command->tokens);
 
@@ -183,24 +231,12 @@ final class ProcessRunner
     /**
      * @param  list<string>  $tokens
      */
-    private function pending(ShellCommand $command, array $tokens): PendingProcess
+    private function pending(CommandLine $command, array $tokens): PendingProcess
     {
-        $pending = $this->processes->command($tokens);
-
-        if ($command->cwd !== null) {
-            $pending = $pending->path($command->cwd);
-        }
-
-        if ($command->env !== []) {
-            $pending = $pending->env($command->env);
-        }
-
-        return $command->timeout === null
-            ? $pending->forever()
-            : $pending->timeout($command->timeout);
+        return PendingProcessBuilder::build($this->processes, $command, $tokens);
     }
 
-    private function remember(int $pid, string $label, ShellCommand $command, ?string $window = null): ProcessRecord
+    private function remember(int $pid, string $label, CommandLine $command, ?string $window = null): ProcessRecord
     {
         $record = new ProcessRecord(
             pid: $pid,

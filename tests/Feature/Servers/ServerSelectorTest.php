@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Config\DevServerConfig;
+use Igne\LaravelBootUp\Exceptions\ServerException;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
 use Igne\LaravelBootUp\Servers\Herd\HerdServer;
 use Igne\LaravelBootUp\Servers\Sail\SailServer;
-use Igne\LaravelBootUp\Servers\ServerException;
-use Igne\LaravelBootUp\Servers\ServersConfig;
 use Igne\LaravelBootUp\Servers\ServerSelector;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ValetServer;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -28,7 +28,7 @@ beforeEach(function (): void {
     app()->singleton(ProcessRunner::class, fn (): ProcessRunner => new ProcessRunner(
         processes: app(Factory::class),
         ledger: app(ProcessLedger::class),
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $this->workDir.'/logs',
         runtimeDirectory: $this->workDir.'/runtime',
@@ -41,7 +41,7 @@ afterEach(function (): void {
 
 function serverSelector(?string $default = null, bool $prompt = true): ServerSelector
 {
-    return new ServerSelector(app(), new ServersConfig(default: $default, prompt: $prompt));
+    return new ServerSelector(app(), new DevServerConfig(default: $default, prompt: $prompt));
 }
 
 test('an explicit argument resolves its driver, case-insensitively', function (): void {
@@ -67,7 +67,7 @@ test('prompting disabled without a default falls back to the laravel driver', fu
     $server = serverSelector(prompt: false)->select(null);
 
     expect($server)->toBeInstanceOf(ArtisanServer::class)
-        ->and($server->key())->toBe('laravel');
+        ->and($server->key())->toBe('artisan');
 });
 
 test('prompts a select over the driver labels when nothing is preconfigured', function (): void {
@@ -84,7 +84,7 @@ test('prompts a select over the driver labels when nothing is preconfigured', fu
 test('driver resolves project-registered drivers from config', function (): void {
     config()->set('boot-up.server.drivers', ['valet' => ValetServer::class]);
 
-    $selector = new ServerSelector(app(), ServersConfig::fromRepository(config()));
+    $selector = new ServerSelector(app(), DevServerConfig::fromRepository(config()));
 
     expect($selector->driver('valet'))->toBeInstanceOf(ValetServer::class)
         ->and($selector->select('valet'))->toBeInstanceOf(ValetServer::class)

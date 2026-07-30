@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Data\ActiveServerRecord;
+use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
-use Igne\LaravelBootUp\Process\ProcessRecord;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Servers\ActiveServerRecord;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -25,7 +25,7 @@ beforeEach(function (): void {
     app()->singleton(ProcessRunner::class, fn ($app) => new ProcessRunner(
         processes: $app->make(Factory::class),
         ledger: $this->ledger,
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $this->workDir.'/logs',
         runtimeDirectory: $this->workDir.'/runtime',
@@ -55,7 +55,7 @@ test('shows the active server, its serve pid state, and every tracked process', 
         'kill -0 5555' => Process::result(exitCode: 1),
     ]);
 
-    $this->store->remember(new ActiveServerRecord('laravel', true, 99999, date(DATE_ATOM)));
+    $this->store->remember(new ActiveServerRecord('artisan', true, 99999, date(DATE_ATOM)));
     $this->ledger->record(new ProcessRecord(4242, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM)));
     $this->ledger->record(new ProcessRecord(5555, 'assets-watch', 'bun run dev', date(DATE_ATOM)));
 
@@ -74,7 +74,7 @@ test('a dead serve pid is reported, not hidden', function (): void {
         'ps -p 99999*' => Process::result(''),
     ]);
 
-    $this->store->remember(new ActiveServerRecord('laravel', false, 99999, date(DATE_ATOM)));
+    $this->store->remember(new ActiveServerRecord('artisan', false, 99999, date(DATE_ATOM)));
 
     $this->artisan('app:status')
         ->expectsOutputToContain('The server was already running before app:serve started.')

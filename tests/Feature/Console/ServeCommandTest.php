@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Data\ActiveServerRecord;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
-use Igne\LaravelBootUp\Servers\ActiveServerRecord;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -26,30 +26,30 @@ beforeEach(function (): void {
     app()->singleton(ProcessRunner::class, fn ($app) => new ProcessRunner(
         processes: $app->make(Factory::class),
         ledger: $this->ledger,
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $this->workDir.'/logs',
         runtimeDirectory: $this->workDir.'/runtime',
     ));
 
-    config()->set('boot-up.serve_steps', [
+    config()->set('boot-up.serve.steps', [
         StartServer::class,
         AnnounceApplication::class,
     ]);
-    config()->set('boot-up.browser.open', false);
-    config()->set('boot-up.auto_accept', true);
+    config()->set('boot-up.serve.open_browser', false);
+    config()->set('boot-up.serve.auto_accept', true);
 });
 
 afterEach(function (): void {
     exec('rm -rf '.escapeshellarg($this->workDir));
 });
 
-test('boots the laravel driver end to end: tracked artisan serve + persisted state', function (): void {
+test('boots the artisan driver end to end: tracked artisan serve + persisted state', function (): void {
     ProcessFaker::fake([
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
 
-    $this->artisan('app:serve', ['server' => 'laravel'])->assertSuccessful();
+    $this->artisan('app:serve', ['server' => 'artisan'])->assertSuccessful();
 
     ProcessFaker::assertRan('sh -c nohup php artisan serve*');
 
@@ -60,7 +60,7 @@ test('boots the laravel driver end to end: tracked artisan serve + persisted sta
 
     $active = $this->store->current();
     expect($active)->not->toBeNull()
-        ->and($active->key)->toBe('laravel')
+        ->and($active->key)->toBe('artisan')
         ->and($active->startedByUs)->toBeTrue()
         ->and($active->servePid)->toBe((int) getmypid());
 });
@@ -72,9 +72,9 @@ test('does not start a second artisan serve when one is already tracked and aliv
     ]);
 
     // Seed a live artisan-serve record; the driver must self-skip.
-    $this->ledger->record(new Igne\LaravelBootUp\Process\ProcessRecord(12345, 'artisan-serve', 'php artisan serve', date(DATE_ATOM)));
+    $this->ledger->record(new Igne\LaravelBootUp\Data\ProcessRecord(12345, 'artisan-serve', 'php artisan serve', date(DATE_ATOM)));
 
-    $this->artisan('app:serve', ['server' => 'laravel'])->assertSuccessful();
+    $this->artisan('app:serve', ['server' => 'artisan'])->assertSuccessful();
 
     ProcessFaker::assertDidntRun('sh -c nohup*');
     expect($this->ledger->withLabel('artisan-serve'))->toHaveCount(1);
@@ -85,9 +85,9 @@ test('aborts when another app:serve is already running for this project', functi
         'ps -p 99999*' => Process::result('php artisan app:serve laravel'),
     ]);
 
-    $this->store->remember(new ActiveServerRecord('laravel', true, 99999, date(DATE_ATOM)));
+    $this->store->remember(new ActiveServerRecord('artisan', true, 99999, date(DATE_ATOM)));
 
-    $this->artisan('app:serve', ['server' => 'laravel'])->assertFailed();
+    $this->artisan('app:serve', ['server' => 'artisan'])->assertFailed();
 
     ProcessFaker::assertDidntRun('sh -c nohup*');
 });
@@ -98,9 +98,9 @@ test('a stale active-server record from a dead process does not block a new serv
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
 
-    $this->store->remember(new ActiveServerRecord('laravel', true, 99999, date(DATE_ATOM)));
+    $this->store->remember(new ActiveServerRecord('artisan', true, 99999, date(DATE_ATOM)));
 
-    $this->artisan('app:serve', ['server' => 'laravel'])->assertSuccessful();
+    $this->artisan('app:serve', ['server' => 'artisan'])->assertSuccessful();
 });
 
 test('a failing step surfaces as a clean failure, not a stack trace', function (): void {
@@ -108,7 +108,7 @@ test('a failing step surfaces as a clean failure, not a stack trace', function (
         'sh -c nohup php artisan serve*' => Process::result(output: '', exitCode: 1),
     ]);
 
-    $this->artisan('app:serve', ['server' => 'laravel'])->assertFailed();
+    $this->artisan('app:serve', ['server' => 'artisan'])->assertFailed();
 });
 
 test('rejects an unknown server argument with a clean, actionable failure', function (): void {
@@ -121,9 +121,9 @@ test('rejects an unknown server argument with a clean, actionable failure', func
 
 test('fails fast on native Windows', function (): void {
     ProcessFaker::fake();
-    app()->instance(Igne\LaravelBootUp\Support\Platform::class, new Igne\LaravelBootUp\Support\Platform('Windows'));
+    app()->instance(Igne\LaravelBootUp\Services\Platform::class, new Igne\LaravelBootUp\Services\Platform(Igne\LaravelBootUp\Enums\OperatingSystem::Windows));
 
-    $this->artisan('app:serve', ['server' => 'laravel'])
+    $this->artisan('app:serve', ['server' => 'artisan'])
         ->expectsOutputToContain('not supported on native Windows')
         ->assertFailed();
 
@@ -132,9 +132,9 @@ test('fails fast on native Windows', function (): void {
 
 test('an unexpected exception fails cleanly with an app:down hint', function (): void {
     ProcessFaker::fake();
-    config()->set('boot-up.serve_steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
+    config()->set('boot-up.serve.steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
 
-    $this->artisan('app:serve', ['server' => 'laravel'])
+    $this->artisan('app:serve', ['server' => 'artisan'])
         ->expectsOutputToContain('Unexpected error: something exploded')
         ->expectsOutputToContain('php artisan app:down')
         ->assertFailed();
@@ -142,9 +142,9 @@ test('an unexpected exception fails cleanly with an app:down hint', function ():
 
 test('a known mid-boot failure also shows the app:down hint', function (): void {
     ProcessFaker::fake();
-    config()->set('boot-up.serve_steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\FailingStep::class]);
+    config()->set('boot-up.serve.steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\FailingStep::class]);
 
-    $this->artisan('app:serve', ['server' => 'laravel'])
+    $this->artisan('app:serve', ['server' => 'artisan'])
         ->expectsOutputToContain('php artisan app:down')
         ->assertFailed();
 });
@@ -154,7 +154,7 @@ test('prints the execution plan before booting', function (): void {
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
 
-    $this->artisan('app:serve', ['server' => 'laravel'])
+    $this->artisan('app:serve', ['server' => 'artisan'])
         ->expectsOutputToContain('What app:serve will do')
         ->assertSuccessful();
 });
@@ -164,16 +164,16 @@ test('the plan names the selected server', function (): void {
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
 
-    $this->artisan('app:serve', ['server' => 'laravel'])
+    $this->artisan('app:serve', ['server' => 'artisan'])
         ->expectsOutputToContain('development server')
         ->assertSuccessful();
 });
 
 test('asks to continue and aborts without changing anything when declined', function (): void {
-    config()->set('boot-up.auto_accept', false);
+    config()->set('boot-up.serve.auto_accept', false);
     ProcessFaker::fake();
 
-    $this->artisan('app:serve', ['server' => 'laravel'])
+    $this->artisan('app:serve', ['server' => 'artisan'])
         ->expectsConfirmation('Continue?', 'no')
         ->expectsOutputToContain('Aborted — nothing was changed.')
         ->assertSuccessful();
@@ -184,14 +184,14 @@ test('asks to continue and aborts without changing anything when declined', func
 });
 
 test('the --yes flag skips the confirmation prompt', function (): void {
-    config()->set('boot-up.auto_accept', false);
+    config()->set('boot-up.serve.auto_accept', false);
     ProcessFaker::fake([
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
 
     // No expectsConfirmation: the run would fail on an unhandled prompt if
     // --yes did not skip it.
-    $this->artisan('app:serve', ['server' => 'laravel', '--yes' => true])->assertSuccessful();
+    $this->artisan('app:serve', ['server' => 'artisan', '--yes' => true])->assertSuccessful();
 
     ProcessFaker::assertRan('sh -c nohup php artisan serve*');
 });
@@ -201,7 +201,7 @@ test('renders a stage divider when the pipeline enters a stage', function (): vo
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
 
-    $this->artisan('app:serve', ['server' => 'laravel'])
+    $this->artisan('app:serve', ['server' => 'artisan'])
         ->expectsOutputToContain('Start server')
         ->assertSuccessful();
 });
@@ -211,7 +211,7 @@ test('a later stage gets its own divider', function (): void {
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
 
-    $this->artisan('app:serve', ['server' => 'laravel'])
+    $this->artisan('app:serve', ['server' => 'artisan'])
         ->expectsOutputToContain('Announce the application')
         ->assertSuccessful();
 });
@@ -221,7 +221,7 @@ test('the progress bar runs and the boot ends with an outro', function (): void 
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
 
-    $this->artisan('app:serve', ['server' => 'laravel'])
+    $this->artisan('app:serve', ['server' => 'artisan'])
         ->expectsOutputToContain('Boot progress')
         ->expectsOutputToContain('Application ready.')
         ->assertSuccessful();
@@ -229,33 +229,33 @@ test('the progress bar runs and the boot ends with an outro', function (): void 
 
 test('a custom step class gets the custom steps divider', function (): void {
     ProcessFaker::fake();
-    config()->set('boot-up.serve_steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
+    config()->set('boot-up.serve.steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
 
-    $this->artisan('app:serve', ['server' => 'laravel'])
+    $this->artisan('app:serve', ['server' => 'artisan'])
         ->expectsOutputToContain('Custom steps')
         ->assertFailed();
 });
 
 test('a Class:variant entry still resolves with its variant argument', function (): void {
     ProcessFaker::fake();
-    config()->set('boot-up.serve_steps', [
-        Igne\LaravelBootUp\Deploy\Steps\RunProjectCommands::class.':before',
+    config()->set('boot-up.serve.steps', [
+        Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks::class.':before',
     ]);
 
-    $this->artisan('app:serve', ['server' => 'laravel'])->assertSuccessful();
+    $this->artisan('app:serve', ['server' => 'artisan'])->assertSuccessful();
 });
 
 test('--no-migrate hides the migrations plan line', function (): void {
     ProcessFaker::fake([
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
-    config()->set('boot-up.serve_steps', [
+    config()->set('boot-up.serve.steps', [
         StartServer::class,
         Igne\LaravelBootUp\Database\Steps\RunPendingMigrations::class,
         AnnounceApplication::class,
     ]);
 
-    $this->artisan('app:serve', ['server' => 'laravel', '--no-migrate' => true])
+    $this->artisan('app:serve', ['server' => 'artisan', '--no-migrate' => true])
         ->doesntExpectOutputToContain('Run pending migrations')
         ->assertSuccessful();
 });
@@ -264,15 +264,56 @@ test('the migrations plan line shows without --no-migrate', function (): void {
     ProcessFaker::fake([
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
-    config()->set('boot-up.serve_steps', [
+    config()->set('boot-up.serve.steps', [
         StartServer::class,
         Igne\LaravelBootUp\Database\Steps\RunPendingMigrations::class,
         AnnounceApplication::class,
     ]);
 
-    $this->artisan('app:serve', ['server' => 'laravel'])
+    $this->artisan('app:serve', ['server' => 'artisan'])
         ->expectsOutputToContain('Run pending migrations')
         ->assertSuccessful();
+});
+
+test('a combined worker degrades to the background when stdout is not interactive', function (): void {
+    // The test runner's stdout is a pipe, so follow resolves to false —
+    // exactly the CI/scripted case the fallback exists for.
+    ProcessFaker::fake([
+        'sh -c nohup php artisan serve*' => Process::result('12345'),
+        'sh -c nohup php artisan queue:work*' => Process::result('12346'),
+    ]);
+    config()->set('boot-up.serve.steps', [
+        StartServer::class,
+        Igne\LaravelBootUp\Queue\Steps\QueueWorker::class,
+        AnnounceApplication::class,
+    ]);
+    config()->set('queue.default', 'database');
+
+    $this->artisan('app:serve', ['server' => 'artisan'])
+        ->expectsOutputToContain('no interactive terminal to stream into — running in the background instead.')
+        ->assertSuccessful();
+
+    ProcessFaker::assertRan('sh -c nohup php artisan queue:work*');
+    expect($this->ledger->withLabel('queue-worker'))->toHaveCount(1);
+});
+
+test('--detach is accepted and keeps the boot fully detached', function (): void {
+    ProcessFaker::fake([
+        'sh -c nohup php artisan serve*' => Process::result('12345'),
+        'sh -c nohup php artisan queue:work*' => Process::result('12346'),
+    ]);
+    config()->set('boot-up.serve.steps', [
+        StartServer::class,
+        Igne\LaravelBootUp\Queue\Steps\QueueWorker::class,
+        AnnounceApplication::class,
+    ]);
+    config()->set('queue.default', 'database');
+
+    $this->artisan('app:serve', ['server' => 'artisan', '--detach' => true])
+        ->expectsOutputToContain('Application ready.')
+        ->assertSuccessful();
+
+    ProcessFaker::assertRan('sh -c nohup php artisan queue:work*');
 });
 
 test('dead ledger entries are pruned when a new serve boots', function (): void {
@@ -281,9 +322,9 @@ test('dead ledger entries are pruned when a new serve boots', function (): void 
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
 
-    $this->ledger->record(new Igne\LaravelBootUp\Process\ProcessRecord(4444, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM)));
+    $this->ledger->record(new Igne\LaravelBootUp\Data\ProcessRecord(4444, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM)));
 
-    $this->artisan('app:serve', ['server' => 'laravel'])->assertSuccessful();
+    $this->artisan('app:serve', ['server' => 'artisan'])->assertSuccessful();
 
     expect($this->ledger->withLabel('queue-worker'))->toBeEmpty();
 });

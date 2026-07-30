@@ -4,89 +4,59 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootUp\Process\ProcessReaper;
-use Igne\LaravelBootUp\Serve\ServeConfig;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
-use Igne\LaravelBootUp\Serve\ServeProcessProbe;
-use Igne\LaravelBootUp\Serve\ShutdownRunner;
-use Igne\LaravelBootUp\Serve\StageReporter;
-use Igne\LaravelBootUp\Serve\StepSequence;
-use Igne\LaravelBootUp\Servers\ActiveServerStore;
-use Igne\LaravelBootUp\Servers\ServerSelector;
+use Closure;
+use Igne\LaravelBootUp\Config\ServeConfig;
+use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Serve\ServeRunner;
 use Illuminate\Contracts\Console\Isolatable;
-use Illuminate\Pipeline\Pipeline;
 
 final class ServeCommand extends BootUpCommand implements Isolatable
 {
-    protected bool $requiresUnix = true;
+    private ?ServeRunner $runner = null;
 
-    private ?StageReporter $reporter = null;
-
-    protected $signature = 'app:serve {server? : The development server to use (herd, sail, laravel, or any driver registered in boot-up.server.drivers)}
+    protected $signature = 'app:serve {server? : The development server to use (herd, sail, artisan, or any driver registered in boot-up.server.drivers)}
         {--s|seed : Seed the database after migrating}
         {--no-migrate : Skip running pending migrations}
         {--fresh : Drop all tables and re-run every migration (asks first)}
         {--u|update : Update dependencies instead of installing}
         {--without-queue : Do not start a queue worker}
         {--without-assets : Skip frontend dependencies and assets}
+        {--d|detach : Do not stream combined worker output; run everything detached}
         {--y|yes : Run without the confirmation prompt}';
 
     protected $description = 'Boot everything the application needs and serve it locally';
 
-    public function perform(
-        ServerSelector $selector,
-        ServeConfig $config,
-        ShutdownRunner $shutdown,
-        ActiveServerStore $store,
-        ServeProcessProbe $probe,
-        ProcessReaper $reaper,
-        Pipeline $pipeline,
-        StageReporter $reporter,
-    ): int {
-        if ($this->anotherServeIsRunning($store, $probe)) {
-            terminal()->warning('Another app:serve is already running for this project. Aborting.');
+    protected function requiresUnix(): bool
+    {
+        return true;
+    }
 
+    public function handle(ServeRunner $runner, ServeConfig $config): int
+    {
+        // Stored before anything can fail: onFailure() fires from
+        // GuardsAgainstFailures OUTSIDE handle(), where re-resolving
+        // would produce a fresh runner with a fresh, unbound reporter.
+        $this->runner = $runner;
+
+        $plan = $runner->prepare($this->serveOptions(), $this->argument('server'));
+
+        if ($plan === null) {
             return self::FAILURE;
         }
 
-        $reaper->prune();
-
-        terminal()->intro('Booting the application...');
-
-        $context = new ServeContext($this->serveOptions(), $selector->select($this->argument('server')));
-
-        $plan = StepSequence::for($config->serveSteps, $context->options, $context->server?->label());
-
         if (! $this->confirmPlan($plan, 'app:serve', $config->autoAccept)) {
-            terminal()->note('Aborted — nothing was changed.');
-
-            return self::SUCCESS;
+            return $this->skip('Aborted — nothing was changed.');
         }
 
-        $this->reporter = $reporter;
-        $pipes = $reporter->begin($plan);
-
-        // The trap must be registered AFTER begin(): Progress::start()
-        // installs its own SIGINT handler, which would otherwise replace
-        // this one and skip the shutdown entirely.
-        $this->trap([SIGINT, SIGTERM], function () use ($shutdown, $reporter): void {
-            $reporter->interrupt();
-            $shutdown->run();
-            exit(self::SUCCESS);
-        });
-
-        $pipeline->send($context)->through($pipes)->thenReturn();
-
-        $reporter->finish();
-        terminal()->outro('Application ready.');
-
-        return self::SUCCESS;
+        // The runner owns its endings ("Application ready." on both paths);
+        // the trap is handed over as a REGISTRAR because the handler must
+        // close over runner-owned state.
+        return $runner->run(fn (array $signals, Closure $handler) => $this->trap($signals, $handler));
     }
 
     protected function onFailure(): void
     {
-        $this->reporter?->fail();
+        $this->runner?->fail();
     }
 
     protected function failureHint(): void
@@ -103,17 +73,16 @@ final class ServeCommand extends BootUpCommand implements Isolatable
             withQueue: ! $this->option('without-queue'),
             withAssets: ! $this->option('without-assets'),
             fresh: (bool) $this->option('fresh'),
+            follow: ! $this->option('detach') && $this->stdoutIsInteractive(),
         );
     }
 
-    private function anotherServeIsRunning(ActiveServerStore $store, ServeProcessProbe $probe): bool
+    /**
+     * Piped or redirected stdout (CI, scripts) cannot host the combined
+     * stream — workers silently fall back to background mode there.
+     */
+    private function stdoutIsInteractive(): bool
     {
-        $active = $store->current();
-
-        if ($active === null || $active->servePid === getmypid()) {
-            return false;
-        }
-
-        return $probe->isServing($active->servePid);
+        return \defined('STDOUT') && \function_exists('stream_isatty') && @stream_isatty(STDOUT);
     }
 }

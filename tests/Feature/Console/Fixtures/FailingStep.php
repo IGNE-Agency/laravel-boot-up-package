@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Tests\Feature\Console\Fixtures;
 
 use Closure;
-use Igne\LaravelBootUp\Process\ProcessException;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Exceptions\ProcessException;
 
 /**
  * Throws a known failure (a BootUpException) — the kind a real step raises

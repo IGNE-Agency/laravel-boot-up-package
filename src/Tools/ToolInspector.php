@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Tools;
 
+use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
 
 /**
  * Answers "is this tool on the machine, and which version?" for the
@@ -24,7 +25,7 @@ final class ToolInspector
 
     public function installedVersion(Tool $tool): ?string
     {
-        $result = $this->processes->runSilently(ShellCommand::make($tool->versionCommand()));
+        $result = $this->processes->runSilently(CommandLine::make($tool->versionCommand()));
 
         return $result->successful() ? $tool->parseVersion($result->output()) : null;
     }

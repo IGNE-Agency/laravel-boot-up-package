@@ -4,22 +4,25 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Herd;
 
+use Igne\LaravelBootUp\Config\HerdConfig;
+use Igne\LaravelBootUp\Contracts\RequiresTools;
+use Igne\LaravelBootUp\Contracts\RewritesCommands;
+use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
+use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Data\CommandRewrites;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Enums\Tool;
+use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Servers\CommandRewrites;
-use Igne\LaravelBootUp\Servers\Server;
-use Igne\LaravelBootUp\Servers\ServerException;
-use Igne\LaravelBootUp\Servers\ServersConfig;
-use Igne\LaravelBootUp\Tools\Tool;
 
-final class HerdServer implements Server
+final class HerdServer implements RequiresTools, RewritesCommands, Server, WarnsBeforeStop
 {
     public function __construct(
         private readonly ProcessRunner $runner,
         private readonly HerdServices $services,
         private readonly HerdSites $sites,
-        private readonly ServersConfig $config,
+        private readonly HerdConfig $config,
         private readonly ?string $projectPath = null,
     ) {}
 
@@ -33,6 +36,9 @@ final class HerdServer implements Server
         return 'Laravel Herd';
     }
 
+    /**
+     * @return list<Tool>
+     */
     public function requiredTools(): array
     {
         return [Tool::HERD];
@@ -46,17 +52,7 @@ final class HerdServer implements Server
         );
     }
 
-    public function providesDatabase(): bool
-    {
-        return false;
-    }
-
-    public function databaseReachableFromHost(): bool
-    {
-        return true;
-    }
-
-    public function stopImpact(): ?string
+    public function stopImpact(): string
     {
         return '`herd stop` halts ALL Herd sites on this machine, not just this project.';
     }
@@ -110,7 +106,7 @@ final class HerdServer implements Server
 
     public function stop(): void
     {
-        $this->runner->run(ShellCommand::make('herd stop'));
+        $this->runner->run(CommandLine::make('herd stop'));
     }
 
     /**
@@ -122,8 +118,9 @@ final class HerdServer implements Server
     public function url(): string
     {
         $project = $this->project();
+        $name = $this->sites->nameFor($project) ?? basename($project);
 
-        return 'https://'.($this->sites->nameFor($project) ?? basename($project)).'.test';
+        return "https://{$name}.test";
     }
 
     private function project(): string
@@ -140,7 +137,7 @@ final class HerdServer implements Server
      */
     private function claimSiteName(string $project): string
     {
-        $name = $this->config->herdSite ?? $this->promptForName($project);
+        $name = $this->config->site ?? $this->promptForName($project);
 
         while (! $this->claim($name)) {
             $name = $this->promptForName($project);
@@ -196,13 +193,13 @@ final class HerdServer implements Server
      */
     private function runOrFail(array $command): void
     {
-        $result = $this->runner->runSilently(ShellCommand::make($command));
+        $result = $this->runner->runSilently(CommandLine::make($command));
 
         if (! $result->successful()) {
-            throw ServerException::startFailed(
-                $this->label(),
-                '`'.implode(' ', $command).'` failed: '.trim($result->errorOutput() !== '' ? $result->errorOutput() : $result->output()),
-            );
+            $line = implode(' ', $command);
+            $output = trim($result->errorOutput() !== '' ? $result->errorOutput() : $result->output());
+
+            throw ServerException::startFailed($this->label(), "`{$line}` failed: {$output}");
         }
     }
 }

@@ -4,20 +4,17 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Artisan;
 
-use Igne\LaravelBootUp\Process\ProcessLedger;
-use Igne\LaravelBootUp\Process\ProcessReaper;
-use Igne\LaravelBootUp\Process\ProcessRecord;
+use Igne\LaravelBootUp\Config\ArtisanServeConfig;
+use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\CombinedService;
+use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Servers\CommandRewrites;
-use Igne\LaravelBootUp\Servers\Server;
-use Igne\LaravelBootUp\Servers\ServersConfig;
-use Igne\LaravelBootUp\Tools\Tool;
+use Igne\LaravelBootUp\Serve\CombinedRunPlan;
+use Igne\LaravelBootUp\Serve\WorkerLauncher;
 
 /**
- * Serves via a tracked, detached `php artisan serve` process. Key stays
- * 'laravel' for backwards compatibility with existing config and args.
+ * Serves via a tracked, detached `php artisan serve` process.
  */
 final class ArtisanServer implements Server
 {
@@ -25,14 +22,14 @@ final class ArtisanServer implements Server
 
     public function __construct(
         private readonly ProcessRunner $runner,
-        private readonly ProcessLedger $ledger,
-        private readonly ProcessReaper $reaper,
-        private readonly ServersConfig $config,
+        private readonly WorkerLauncher $launcher,
+        private readonly ArtisanServeConfig $config,
+        private readonly CombinedRunPlan $plan,
     ) {}
 
     public function key(): string
     {
-        return 'laravel';
+        return 'artisan';
     }
 
     public function label(): string
@@ -40,64 +37,48 @@ final class ArtisanServer implements Server
         return 'Laravel (php artisan serve)';
     }
 
-    /**
-     * @return list<Tool>
-     */
-    public function requiredTools(): array
-    {
-        return [];
-    }
-
-    public function commandRewrites(): CommandRewrites
-    {
-        return CommandRewrites::none();
-    }
-
-    public function providesDatabase(): bool
-    {
-        return false;
-    }
-
-    public function databaseReachableFromHost(): bool
-    {
-        return true;
-    }
-
-    public function stopImpact(): ?string
-    {
-        return null;
-    }
-
     public function start(ServeContext $context): void
     {
         if ($this->isRunning()) {
             terminal()->note('php artisan serve is already running.');
+            $this->queueServerStream();
 
             return;
         }
 
         $record = $this->runner->start(
-            ShellCommand::make([
+            CommandLine::make([
                 'php', 'artisan', 'serve',
-                "--host={$this->config->artisanHost}",
-                "--port={$this->config->artisanPort}",
+                "--host={$this->config->host}",
+                "--port={$this->config->port}",
             ])->withTimeout(null),
             self::LABEL,
         );
 
         terminal()->success("php artisan serve started (PID {$record->pid}).");
+        $this->queueServerStream();
+    }
+
+    /**
+     * The serve process must be up before migrations run, so it starts
+     * detached as always — its log is tailed into the combined stream as
+     * [server] instead. Queued unconditionally: ServeCommand only streams
+     * when actual combined processes exist, and a tail alone never holds
+     * the stream open.
+     */
+    private function queueServerStream(): void
+    {
+        $this->plan->add(CombinedService::tail(self::LABEL, 'server', $this->runner->logFile(self::LABEL)));
     }
 
     public function isRunning(): bool
     {
-        return $this->ledger->withLabel(self::LABEL)
-            ->contains(fn (ProcessRecord $record): bool => $this->reaper->isAlive($record));
+        return $this->launcher->isRunning(self::LABEL);
     }
 
     public function stop(): void
     {
-        $this->ledger->withLabel(self::LABEL)
-            ->each(fn (ProcessRecord $record) => $this->reaper->reap($record));
+        $this->launcher->stop(self::LABEL);
     }
 
     /**
@@ -107,6 +88,6 @@ final class ArtisanServer implements Server
      */
     public function url(): string
     {
-        return "http://{$this->config->artisanHost}:{$this->config->artisanPort}";
+        return "http://{$this->config->host}:{$this->config->port}";
     }
 }

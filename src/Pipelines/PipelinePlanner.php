@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
-use Igne\LaravelBootUp\Deploy\Scripts\DeploymentEnvironment;
+use Igne\LaravelBootUp\Config\PipelineConfig;
+use Igne\LaravelBootUp\Data\PipelinePlan;
 use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlanner;
+use Igne\LaravelBootUp\Enums\DeployHookHost;
+use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 
 /**
  * Distils the package config and the host project's composer.json into a

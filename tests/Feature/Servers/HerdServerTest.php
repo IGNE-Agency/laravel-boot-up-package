@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Config\HerdConfig;
+use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Enums\Tool;
+use Igne\LaravelBootUp\Exceptions\ServerException;
+use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
 use Igne\LaravelBootUp\Servers\Herd\HerdServer;
 use Igne\LaravelBootUp\Servers\Herd\HerdServices;
 use Igne\LaravelBootUp\Servers\Herd\HerdSites;
-use Igne\LaravelBootUp\Servers\ServerException;
-use Igne\LaravelBootUp\Servers\ServersConfig;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
-use Igne\LaravelBootUp\Tools\Tool;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Key;
@@ -38,7 +38,7 @@ function herdServer(string $workDir, ?string $projectPath = null, ?string $site 
     $runner = new ProcessRunner(
         processes: app(Factory::class),
         ledger: new ProcessLedger($workDir.'/processes.json'),
-        terminal: new NullTerminal,
+        terminal: new NullTerminalLauncher,
         poller: new Poller,
         logDirectory: $workDir.'/logs',
         runtimeDirectory: $workDir.'/runtime',
@@ -47,9 +47,9 @@ function herdServer(string $workDir, ?string $projectPath = null, ?string $site 
     return new HerdServer(
         $runner,
         // delay 0 keeps the retry loop instant under test; attempts stay at 10.
-        new HerdServices($runner, healthDelayMs: 0),
+        new HerdServices($runner, new HerdConfig(healthDelayMs: 0)),
         new HerdSites($workDir.'/Sites'),
-        new ServersConfig(herdSite: $site),
+        new HerdConfig(site: $site),
         $projectPath,
     );
 }
