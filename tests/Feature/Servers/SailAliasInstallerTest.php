@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Config\EnvironmentConfig;
+use Igne\LaravelBootUp\Config\SailConfig;
 use Igne\LaravelBootUp\Environment\ShellProfile;
 use Igne\LaravelBootUp\Servers\Sail\SailAliasInstaller;
 use Laravel\Prompts\Key;
@@ -23,7 +23,7 @@ function sailAliasInstaller(string $home, bool $manage = true): SailAliasInstall
 {
     return new SailAliasInstaller(
         new ShellProfile($home, '/bin/zsh'),
-        new EnvironmentConfig(manageSailAlias: $manage),
+        new SailConfig(manageAlias: $manage),
     );
 }
 

@@ -6,19 +6,19 @@ namespace Igne\LaravelBootUp\Config;
 
 use Illuminate\Contracts\Config\Repository;
 
-final readonly class EnvironmentConfig
+final readonly class ProcessConfig
 {
     /**
-     * @param  list<string>  $allowed  APP_ENV values app:serve may run under
+     * @param  int  $terminalPidTimeout  seconds to wait for a terminal-window process to report its PID
      */
     public function __construct(
-        public array $allowed = ['local', 'development'],
+        public int $terminalPidTimeout = 20,
     ) {}
 
     public static function fromRepository(Repository $config): self
     {
         return new self(
-            allowed: (array) $config->get('boot-up.environment.allowed', ['local', 'development']),
+            terminalPidTimeout: (int) $config->get('boot-up.process.terminal_pid_timeout', 20),
         );
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers;
 
-use Igne\LaravelBootUp\Config\ServersConfig;
+use Igne\LaravelBootUp\Config\DevServerConfig;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Exceptions\ServerException;
 use Illuminate\Contracts\Container\Container;
@@ -17,7 +17,7 @@ final class ServerSelector
 {
     public function __construct(
         private readonly Container $container,
-        private readonly ServersConfig $config,
+        private readonly DevServerConfig $config,
     ) {}
 
     public function select(?string $argument): Server

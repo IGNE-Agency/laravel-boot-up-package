@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Config\EnvironmentConfig;
+use Igne\LaravelBootUp\Config\SailConfig;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Enums\Tool;
@@ -53,18 +53,20 @@ function sailServer(
         runtimeDirectory: $workDir.'/runtime',
     );
 
+    $config = new SailConfig(readyTimeoutSeconds: $readyTimeout, dockerStartTimeoutSeconds: $dockerTimeout);
+
     return new SailServer(
-        docker: new Docker($runner, new Poller, new Platform('Darwin'), $dockerTimeout),
+        docker: new Docker($runner, new Poller, new Platform('Darwin'), $config),
         sail: new Sail($runner),
         aliasInstaller: $alias ?? new SailAliasInstaller(
             new ShellProfile($workDir.'/no-home', '/bin/zsh'),
-            new EnvironmentConfig(manageSailAlias: false),
+            new SailConfig(manageAlias: false),
         ),
         poller: new Poller,
-        config: app('config'),
+        laravelConfig: app('config'),
         envFile: new EnvFile($workDir.'/app/.env', $workDir.'/app/.env.example'),
         detector: new SailUpFailureDetector,
-        readyTimeoutSeconds: $readyTimeout,
+        config: $config,
     );
 }
 
@@ -204,7 +206,7 @@ test('start offers the sail alias once the containers are up', function (): void
 
     $alias = new SailAliasInstaller(
         new ShellProfile($home, '/bin/zsh'),
-        new EnvironmentConfig(manageSailAlias: true),
+        new SailConfig(manageAlias: true),
     );
 
     sailServer($this->workDir, alias: $alias)->start(new ServeContext(new ServeOptions));

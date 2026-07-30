@@ -31,8 +31,8 @@ final class EnsureLocalEnvironment implements Step
         $environment = $this->envFile->get('APP_ENV');
         $environment = ($environment === null || $environment === '') ? 'local' : $environment;
 
-        if (! \in_array($environment, $this->config->allowedEnvironments, true)) {
-            throw EnvironmentException::unsupportedEnvironment($environment, $this->config->allowedEnvironments);
+        if (! \in_array($environment, $this->config->allowed, true)) {
+            throw EnvironmentException::unsupportedEnvironment($environment, $this->config->allowed);
         }
 
         if ($this->isRemoteHost()) {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Config\ServersConfig;
+use Igne\LaravelBootUp\Config\HerdConfig;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Enums\Tool;
@@ -47,9 +47,9 @@ function herdServer(string $workDir, ?string $projectPath = null, ?string $site 
     return new HerdServer(
         $runner,
         // delay 0 keeps the retry loop instant under test; attempts stay at 10.
-        new HerdServices($runner, healthDelayMs: 0),
+        new HerdServices($runner, new HerdConfig(healthDelayMs: 0)),
         new HerdSites($workDir.'/Sites'),
-        new ServersConfig(herdSite: $site),
+        new HerdConfig(site: $site),
         $projectPath,
     );
 }

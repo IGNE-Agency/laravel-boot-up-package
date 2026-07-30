@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Queue\Steps;
 
 use Closure;
+use Igne\LaravelBootUp\Config\HorizonConfig;
 use Igne\LaravelBootUp\Config\QueueConfig;
-use Igne\LaravelBootUp\Config\WorkersConfig;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\WorkerDefinition;
@@ -23,7 +23,7 @@ final class StartQueueWorker implements Step
         private readonly QueueConfig $config,
         private readonly EnvFile $envFile,
         private readonly Repository $laravelConfig,
-        private readonly WorkersConfig $workers,
+        private readonly HorizonConfig $horizon,
         private readonly ComposerJson $composerJson,
         private readonly WorkerLauncher $launcher,
     ) {}
@@ -53,7 +53,7 @@ final class StartQueueWorker implements Step
         return match (true) {
             ! $context->options->withQueue => 'Queue worker skipped (--without-queue).',
             ! $this->config->enabled => 'Queue worker disabled in configuration — skipping.',
-            $this->workers->horizonEnabled && $this->composerJson->requires('laravel/horizon') => 'laravel/horizon manages the queue — skipping queue:work.',
+            $this->horizon->enabled && $this->composerJson->requires('laravel/horizon') => 'laravel/horizon manages the queue — skipping queue:work.',
             $connection === 'sync' => 'Queue connection is sync — no worker needed.',
             default => null,
         };

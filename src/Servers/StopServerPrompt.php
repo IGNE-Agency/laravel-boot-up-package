@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers;
 
-use Igne\LaravelBootUp\Config\ServersConfig;
+use Igne\LaravelBootUp\Config\ShutdownConfig;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
 
@@ -15,7 +15,7 @@ use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
  */
 final class StopServerPrompt
 {
-    public function __construct(private readonly ServersConfig $config) {}
+    public function __construct(private readonly ShutdownConfig $config) {}
 
     public function shouldStop(Server $server, bool $startedByUs = true): bool
     {

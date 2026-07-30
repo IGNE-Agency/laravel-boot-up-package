@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Sail;
 
+use Igne\LaravelBootUp\Config\SailConfig;
 use Igne\LaravelBootUp\Contracts\HasResidualState;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\RequiresTools;
@@ -25,10 +26,10 @@ final class SailServer implements HasResidualState, ProvidesDatabase, RequiresTo
         private readonly Sail $sail,
         private readonly SailAliasInstaller $aliasInstaller,
         private readonly Poller $poller,
-        private readonly Repository $config,
+        private readonly Repository $laravelConfig,
         private readonly EnvFile $envFile,
         private readonly SailUpFailureDetector $detector,
-        private readonly int $readyTimeoutSeconds = 120,
+        private readonly SailConfig $config,
     ) {}
 
     public function key(): string
@@ -80,14 +81,14 @@ final class SailServer implements HasResidualState, ProvidesDatabase, RequiresTo
 
         $ready = $this->poller->until(
             fn (): bool => $this->sail->hasRunningContainers(),
-            timeoutSeconds: $this->readyTimeoutSeconds,
+            timeoutSeconds: $this->config->readyTimeoutSeconds,
             intervalMs: 1000,
         );
 
         if (! $ready) {
             throw ServerException::startFailed(
                 $this->label(),
-                "containers did not come up within {$this->readyTimeoutSeconds} seconds",
+                "containers did not come up within {$this->config->readyTimeoutSeconds} seconds",
             );
         }
 
@@ -165,7 +166,7 @@ final class SailServer implements HasResidualState, ProvidesDatabase, RequiresTo
      */
     public function url(): string
     {
-        $url = $this->envFile->valueOr('APP_URL', (string) $this->config->get('app.url'));
+        $url = $this->envFile->valueOr('APP_URL', (string) $this->laravelConfig->get('app.url'));
 
         return $url !== '' ? $url : 'http://localhost';
     }

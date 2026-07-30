@@ -68,7 +68,7 @@ final class ServeCommand extends BootUpCommand implements Isolatable
 
         $context = new ServeContext($this->serveOptions(), $selector->select($this->argument('server')));
 
-        $plan = StepSequence::for($config->serveSteps, $context->options, $context->server?->label());
+        $plan = StepSequence::for($config->steps, $context->options, $context->server?->label());
 
         if (! $this->confirmPlan($plan, 'app:serve', $config->autoAccept)) {
             return $this->skip('Aborted — nothing was changed.');

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Workers\Steps;
 
 use Closure;
-use Igne\LaravelBootUp\Config\WorkersConfig;
+use Igne\LaravelBootUp\Config\HorizonConfig;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\WorkerDefinition;
@@ -22,14 +22,14 @@ final class StartHorizon implements Step
     private const LABEL = 'horizon';
 
     public function __construct(
-        private readonly WorkersConfig $config,
+        private readonly HorizonConfig $config,
         private readonly ComposerJson $composerJson,
         private readonly WorkerLauncher $launcher,
     ) {}
 
     public function handle(ServeContext $context, Closure $next): mixed
     {
-        if ($this->config->horizonEnabled && $this->composerJson->requires('laravel/horizon')) {
+        if ($this->config->enabled && $this->composerJson->requires('laravel/horizon')) {
             $this->launcher->launch($this->worker(), $context);
         }
 
@@ -42,7 +42,7 @@ final class StartHorizon implements Step
             label: self::LABEL,
             name: 'Horizon',
             tokens: ['php', 'artisan', 'horizon'],
-            runIn: $this->config->horizonRunIn,
+            runIn: $this->config->runIn,
         );
     }
 }

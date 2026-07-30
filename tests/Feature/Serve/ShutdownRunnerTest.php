@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Config\ServersConfig;
+use Igne\LaravelBootUp\Config\DevServerConfig;
+use Igne\LaravelBootUp\Config\ShutdownConfig;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Process\NullTerminalLauncher;
@@ -40,18 +41,15 @@ afterEach(function (): void {
  */
 function shutdownRunner(ProcessLedger $ledger, ActiveServerStore $store, bool $promptStop, bool $stopDefault): ShutdownRunner
 {
-    $config = new ServersConfig(
-        drivers: ['double' => RecordingServer::class, 'residual' => ResidualServer::class],
-        promptStopServer: $promptStop,
-        stopServerByDefault: $stopDefault,
-    );
+    $drivers = new DevServerConfig(drivers: ['double' => RecordingServer::class, 'residual' => ResidualServer::class]);
+    $shutdown = new ShutdownConfig(promptStopServer: $promptStop, stopServerByDefault: $stopDefault);
 
     return new ShutdownRunner(
         $ledger,
         new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminalLauncher),
         $store,
-        new ServerSelector(app(), $config),
-        new StopServerPrompt($config),
+        new ServerSelector(app(), $drivers),
+        new StopServerPrompt($shutdown),
     );
 }
 
@@ -153,18 +151,12 @@ test('keeps the ledger entry when a process cannot be stopped', function (): voi
         'kill -KILL 4242' => Process::result(),
     ]);
 
-    $config = new ServersConfig(
-        drivers: ['double' => RecordingServer::class],
-        promptStopServer: false,
-        stopServerByDefault: true,
-    );
-
     (new ShutdownRunner(
         $this->ledger,
         new ProcessReaper(app(Factory::class), $this->ledger, new Poller, new NullTerminalLauncher, termGraceSeconds: 0, killGraceSeconds: 0),
         $this->store,
-        new ServerSelector(app(), $config),
-        new StopServerPrompt($config),
+        new ServerSelector(app(), new DevServerConfig(drivers: ['double' => RecordingServer::class])),
+        new StopServerPrompt(new ShutdownConfig(promptStopServer: false, stopServerByDefault: true)),
     ))->run();
 
     expect($this->ledger->all())->toHaveCount(1);

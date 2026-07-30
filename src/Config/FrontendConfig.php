@@ -11,9 +11,9 @@ use Illuminate\Contracts\Config\Repository;
 final readonly class FrontendConfig
 {
     public function __construct(
-        public PackageManager $packageManager,
-        public string $assets,
-        public RunMode $watchIn,
+        public PackageManager $packageManager = PackageManager::BUN,
+        public string $assets = 'watch',
+        public RunMode $watchIn = RunMode::Combined,
     ) {}
 
     public static function fromRepository(Repository $config): self

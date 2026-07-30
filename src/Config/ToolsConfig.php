@@ -9,15 +9,17 @@ use Illuminate\Contracts\Config\Repository;
 
 final readonly class ToolsConfig
 {
+    private const array DEFAULT_REQUIRED = ['php' => '*', 'node' => '*', 'composer' => '*'];
+
     /**
      * @param  array<string, string>  $required  tool id => semver constraint ('*' = presence only)
      * @param  array<string, class-string<InstallsTool>>  $installers  project overrides; win over built-ins
      */
     public function __construct(
-        public bool $autoInstall,
-        public bool $autoUpdate,
-        public array $required,
-        public array $installers,
+        public bool $autoInstall = true,
+        public bool $autoUpdate = true,
+        public array $required = self::DEFAULT_REQUIRED,
+        public array $installers = [],
     ) {}
 
     public static function fromRepository(Repository $config): self
@@ -25,7 +27,7 @@ final readonly class ToolsConfig
         return new self(
             autoInstall: (bool) $config->get('boot-up.tools.auto_install', true),
             autoUpdate: (bool) $config->get('boot-up.tools.auto_update', true),
-            required: (array) $config->get('boot-up.tools.required', ['php' => '*', 'node' => '*', 'composer' => '*']),
+            required: (array) $config->get('boot-up.tools.required', self::DEFAULT_REQUIRED),
             installers: (array) $config->get('boot-up.tools.installers', []),
         );
     }

@@ -5,21 +5,12 @@ declare(strict_types=1);
 use Igne\LaravelBootUp\Config\EnvironmentConfig;
 use Illuminate\Config\Repository;
 
-test('defaults allow local and development and manage the sail alias', function (): void {
-    $config = EnvironmentConfig::fromRepository(new Repository([]));
-
-    expect($config->allowedEnvironments)->toBe(['local', 'development'])
-        ->and($config->manageSailAlias)->toBeTrue();
-});
-
-test('fromRepository reads the boot-up environment keys', function (): void {
+test('fromRepository reads the boot-up.environment schema', function (): void {
     $config = EnvironmentConfig::fromRepository(new Repository([
         'boot-up' => [
-            'environments' => ['local', 'staging'],
-            'environment' => ['manage_sail_alias' => false],
+            'environment' => ['allowed' => ['local', 'staging']],
         ],
     ]));
 
-    expect($config->allowedEnvironments)->toBe(['local', 'staging'])
-        ->and($config->manageSailAlias)->toBeFalse();
+    expect($config->allowed)->toBe(['local', 'staging']);
 });

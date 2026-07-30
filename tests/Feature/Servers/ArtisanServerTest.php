@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Config\ServersConfig;
+use Igne\LaravelBootUp\Config\ArtisanServeConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\RequiresTools;
 use Igne\LaravelBootUp\Contracts\RewritesCommands;
@@ -35,7 +35,7 @@ afterEach(function (): void {
     exec('rm -rf '.escapeshellarg($this->workDir));
 });
 
-function artisanServer(ProcessLedger $ledger, string $workDir, ?ServersConfig $config = null, ?CombinedRunPlan $plan = null): ArtisanServer
+function artisanServer(ProcessLedger $ledger, string $workDir, ?ArtisanServeConfig $config = null, ?CombinedRunPlan $plan = null): ArtisanServer
 {
     $runner = new ProcessRunner(
         processes: app(Factory::class),
@@ -52,7 +52,7 @@ function artisanServer(ProcessLedger $ledger, string $workDir, ?ServersConfig $c
     return new ArtisanServer(
         $runner,
         new WorkerLauncher($runner, new CommandRewriter, $ledger, $reaper, $plan),
-        $config ?? new ServersConfig,
+        $config ?? new ArtisanServeConfig,
         $plan,
     );
 }
@@ -166,14 +166,14 @@ test('url derives from the configured bind address, never app.url', function ():
     config()->set('app.url', 'http://example.test');
     expect(artisanServer($this->ledger, $this->workDir)->url())->toBe('http://127.0.0.1:8000');
 
-    $custom = artisanServer($this->ledger, $this->workDir, new ServersConfig(artisanHost: '0.0.0.0', artisanPort: 8080));
+    $custom = artisanServer($this->ledger, $this->workDir, new ArtisanServeConfig(host: '0.0.0.0', port: 8080));
     expect($custom->url())->toBe('http://0.0.0.0:8080');
 });
 
 test('start passes the configured host and port to artisan serve', function (): void {
     ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
 
-    artisanServer($this->ledger, $this->workDir, new ServersConfig(artisanHost: '0.0.0.0', artisanPort: 8080))
+    artisanServer($this->ledger, $this->workDir, new ArtisanServeConfig(host: '0.0.0.0', port: 8080))
         ->start(new ServeContext(new ServeOptions));
 
     ProcessFaker::assertRan('*php artisan serve --host=0.0.0.0 --port=8080*');

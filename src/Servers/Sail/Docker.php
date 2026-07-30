@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Sail;
 
+use Igne\LaravelBootUp\Config\SailConfig;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -16,7 +17,7 @@ final class Docker
         private readonly ProcessRunner $runner,
         private readonly Poller $poller,
         private readonly Platform $platform,
-        private readonly int $startTimeoutSeconds = 60,
+        private readonly SailConfig $config,
     ) {}
 
     public function isRunning(): bool
@@ -38,7 +39,7 @@ final class Docker
 
         $started = $this->poller->until(
             fn (): bool => $this->isRunning(),
-            timeoutSeconds: $this->startTimeoutSeconds,
+            timeoutSeconds: $this->config->dockerStartTimeoutSeconds,
         );
 
         if (! $started) {

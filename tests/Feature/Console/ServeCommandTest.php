@@ -32,12 +32,12 @@ beforeEach(function (): void {
         runtimeDirectory: $this->workDir.'/runtime',
     ));
 
-    config()->set('boot-up.serve_steps', [
+    config()->set('boot-up.serve.steps', [
         StartServer::class,
         AnnounceApplication::class,
     ]);
-    config()->set('boot-up.browser.open', false);
-    config()->set('boot-up.auto_accept', true);
+    config()->set('boot-up.serve.open_browser', false);
+    config()->set('boot-up.serve.auto_accept', true);
 });
 
 afterEach(function (): void {
@@ -132,7 +132,7 @@ test('fails fast on native Windows', function (): void {
 
 test('an unexpected exception fails cleanly with an app:down hint', function (): void {
     ProcessFaker::fake();
-    config()->set('boot-up.serve_steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
+    config()->set('boot-up.serve.steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
 
     $this->artisan('app:serve', ['server' => 'laravel'])
         ->expectsOutputToContain('Unexpected error: something exploded')
@@ -142,7 +142,7 @@ test('an unexpected exception fails cleanly with an app:down hint', function ():
 
 test('a known mid-boot failure also shows the app:down hint', function (): void {
     ProcessFaker::fake();
-    config()->set('boot-up.serve_steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\FailingStep::class]);
+    config()->set('boot-up.serve.steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\FailingStep::class]);
 
     $this->artisan('app:serve', ['server' => 'laravel'])
         ->expectsOutputToContain('php artisan app:down')
@@ -170,7 +170,7 @@ test('the plan names the selected server', function (): void {
 });
 
 test('asks to continue and aborts without changing anything when declined', function (): void {
-    config()->set('boot-up.auto_accept', false);
+    config()->set('boot-up.serve.auto_accept', false);
     ProcessFaker::fake();
 
     $this->artisan('app:serve', ['server' => 'laravel'])
@@ -184,7 +184,7 @@ test('asks to continue and aborts without changing anything when declined', func
 });
 
 test('the --yes flag skips the confirmation prompt', function (): void {
-    config()->set('boot-up.auto_accept', false);
+    config()->set('boot-up.serve.auto_accept', false);
     ProcessFaker::fake([
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
@@ -229,7 +229,7 @@ test('the progress bar runs and the boot ends with an outro', function (): void 
 
 test('a custom step class gets the custom steps divider', function (): void {
     ProcessFaker::fake();
-    config()->set('boot-up.serve_steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
+    config()->set('boot-up.serve.steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
 
     $this->artisan('app:serve', ['server' => 'laravel'])
         ->expectsOutputToContain('Custom steps')
@@ -238,7 +238,7 @@ test('a custom step class gets the custom steps divider', function (): void {
 
 test('a Class:variant entry still resolves with its variant argument', function (): void {
     ProcessFaker::fake();
-    config()->set('boot-up.serve_steps', [
+    config()->set('boot-up.serve.steps', [
         Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks::class.':before',
     ]);
 
@@ -249,7 +249,7 @@ test('--no-migrate hides the migrations plan line', function (): void {
     ProcessFaker::fake([
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
-    config()->set('boot-up.serve_steps', [
+    config()->set('boot-up.serve.steps', [
         StartServer::class,
         Igne\LaravelBootUp\Database\Steps\RunPendingMigrations::class,
         AnnounceApplication::class,
@@ -264,7 +264,7 @@ test('the migrations plan line shows without --no-migrate', function (): void {
     ProcessFaker::fake([
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
-    config()->set('boot-up.serve_steps', [
+    config()->set('boot-up.serve.steps', [
         StartServer::class,
         Igne\LaravelBootUp\Database\Steps\RunPendingMigrations::class,
         AnnounceApplication::class,
@@ -282,7 +282,7 @@ test('a combined worker degrades to the background when stdout is not interactiv
         'sh -c nohup php artisan serve*' => Process::result('12345'),
         'sh -c nohup php artisan queue:work*' => Process::result('12346'),
     ]);
-    config()->set('boot-up.serve_steps', [
+    config()->set('boot-up.serve.steps', [
         StartServer::class,
         Igne\LaravelBootUp\Queue\Steps\StartQueueWorker::class,
         AnnounceApplication::class,
@@ -302,7 +302,7 @@ test('--detach is accepted and keeps the boot fully detached', function (): void
         'sh -c nohup php artisan serve*' => Process::result('12345'),
         'sh -c nohup php artisan queue:work*' => Process::result('12346'),
     ]);
-    config()->set('boot-up.serve_steps', [
+    config()->set('boot-up.serve.steps', [
         StartServer::class,
         Igne\LaravelBootUp\Queue\Steps\StartQueueWorker::class,
         AnnounceApplication::class,
