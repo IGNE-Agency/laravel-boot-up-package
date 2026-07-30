@@ -20,12 +20,6 @@ final class LockfileConflictDetector
 
     public function isLockfileConflict(string $errorMessage): bool
     {
-        foreach (self::PATTERNS as $pattern) {
-            if (stripos($errorMessage, $pattern) !== false) {
-                return true;
-            }
-        }
-
-        return false;
+        return PatternDetector::matchesAny($errorMessage, self::PATTERNS);
     }
 }

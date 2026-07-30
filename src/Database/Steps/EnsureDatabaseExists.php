@@ -7,6 +7,7 @@ namespace Igne\LaravelBootUp\Database\Steps;
 use Closure;
 use Igne\LaravelBootUp\Attributes\Group;
 use Igne\LaravelBootUp\Attributes\Stage;
+use Igne\LaravelBootUp\Concerns\SkipsWithNote;
 use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\Step;
@@ -24,6 +25,8 @@ use Illuminate\Contracts\Config\Repository;
 #[Group('database')]
 final class EnsureDatabaseExists implements Step
 {
+    use SkipsWithNote;
+
     public function __construct(
         private readonly DatabaseConfig $config,
         private readonly DatabaseCreator $creator,
@@ -33,15 +36,11 @@ final class EnsureDatabaseExists implements Step
     public function handle(ServeContext $context, Closure $next): mixed
     {
         if (! $this->config->create) {
-            terminal()->note('Database creation is disabled in configuration — skipping.');
-
-            return $next($context);
+            return $this->skipStep('Database creation is disabled in configuration — skipping.', $context, $next);
         }
 
         if ($context->server instanceof ProvidesDatabase) {
-            terminal()->note("{$context->server->label()} provisions the database itself — skipping creation.");
-
-            return $next($context);
+            return $this->skipStep("{$context->server->label()} provisions the database itself — skipping creation.", $context, $next);
         }
 
         $default = (string) $this->laravelConfig->get('database.default');

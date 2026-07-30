@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Deploy;
 
+use Igne\LaravelBootUp\Concerns\RunsThroughServer;
 use Igne\LaravelBootUp\Contracts\ProvidesDeployTasks;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\DeployTask;
@@ -23,9 +24,11 @@ use Illuminate\Process\Exceptions\ProcessFailedException;
  */
 final class DeployTaskRunner
 {
+    use RunsThroughServer;
+
     public function __construct(
         private readonly Container $container,
-        private readonly ProcessRunner $processes,
+        private readonly ProcessRunner $runner,
         private readonly CommandRewriter $rewriter,
         private readonly PackageManagerSelector $packageManagers,
     ) {}
@@ -56,13 +59,8 @@ final class DeployTaskRunner
             terminal()->info($command->description);
         }
 
-        $shell = $this->rewriter->rewriteFor(
-            $context,
-            CommandLine::make($this->tokensFor($command)),
-        );
-
         try {
-            $this->processes->run($shell);
+            $this->runThroughServer($context, CommandLine::make($this->tokensFor($command)));
         } catch (ProcessFailedException $exception) {
             throw DeployException::commandFailed($command, $exception->getMessage());
         }

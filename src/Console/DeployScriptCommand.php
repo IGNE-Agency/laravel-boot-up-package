@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
+use Igne\LaravelBootUp\Concerns\ResolvesGenerators;
 use Igne\LaravelBootUp\Config\DeployConfig;
 use Igne\LaravelBootUp\Contracts\ScriptGenerator;
 use Igne\LaravelBootUp\Data\Lines;
@@ -14,6 +15,8 @@ use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 
 final class DeployScriptCommand extends BootUpCommand
 {
+    use ResolvesGenerators;
+
     private const array BUILT_IN_GENERATORS = [
         'fortrabbit' => FortrabbitScriptGenerator::class,
         'forge' => ForgeScriptGenerator::class,
@@ -62,7 +65,7 @@ final class DeployScriptCommand extends BootUpCommand
      */
     private function generators(): array
     {
-        return array_merge(self::BUILT_IN_GENERATORS, $this->laravel->make(DeployConfig::class)->scriptGenerators);
+        return $this->mergeGenerators(self::BUILT_IN_GENERATORS, $this->laravel->make(DeployConfig::class)->scriptGenerators);
     }
 
     /**
@@ -70,9 +73,7 @@ final class DeployScriptCommand extends BootUpCommand
      */
     protected function platformOptions(): array
     {
-        return collect($this->generators())
-            ->map(fn (string $class): string => $this->laravel->make($class)->label())
-            ->all();
+        return $this->generatorLabels($this->generators());
     }
 
     /**

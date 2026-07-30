@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Sail;
 
+use Igne\LaravelBootUp\Concerns\ReadsProcessFailureOutput;
 use Igne\LaravelBootUp\Config\SailConfig;
 use Igne\LaravelBootUp\Contracts\HasResidualState;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
@@ -21,6 +22,8 @@ use Illuminate\Process\Exceptions\ProcessFailedException;
 
 final class SailServer implements HasResidualState, ProvidesDatabase, RequiresTools, RewritesCommands, Server
 {
+    use ReadsProcessFailureOutput;
+
     public function __construct(
         private readonly Docker $docker,
         private readonly Sail $sail,
@@ -123,11 +126,6 @@ final class SailServer implements HasResidualState, ProvidesDatabase, RequiresTo
                 ? ServerException::dockerRegistryUnreachable()
                 : $retry;
         }
-    }
-
-    private function outputOf(ProcessFailedException $exception): string
-    {
-        return $exception->result->output()."\n".$exception->result->errorOutput();
     }
 
     public function isRunning(): bool

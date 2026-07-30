@@ -7,6 +7,7 @@ namespace Igne\LaravelBootUp\Database\Steps;
 use Closure;
 use Igne\LaravelBootUp\Attributes\Group;
 use Igne\LaravelBootUp\Attributes\Stage;
+use Igne\LaravelBootUp\Concerns\RunsThroughServer;
 use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\Step;
@@ -28,6 +29,8 @@ use Illuminate\Support\Str;
 #[Group('migrations')]
 final class RunPendingMigrations implements Step
 {
+    use RunsThroughServer;
+
     public function __construct(
         private readonly DatabaseConfig $config,
         private readonly PendingMigrations $pendingMigrations,
@@ -89,10 +92,7 @@ final class RunPendingMigrations implements Step
             $command[] = '--seed';
         }
 
-        $this->runner->run($this->rewriter->rewriteFor(
-            $context,
-            CommandLine::make($command),
-        ));
+        $this->runThroughServer($context, CommandLine::make($command));
     }
 
     private function seedIfRequested(ServeContext $context): void
@@ -103,18 +103,12 @@ final class RunPendingMigrations implements Step
 
         terminal()->info('Seeding database...');
 
-        $this->runner->run($this->rewriter->rewriteFor(
-            $context,
-            CommandLine::make('php artisan db:seed'),
-        ));
+        $this->runThroughServer($context, CommandLine::make('php artisan db:seed'));
     }
 
     private function migrateThroughServer(ServeContext $context): bool
     {
-        $status = $this->runner->runSilently($this->rewriter->rewriteFor(
-            $context,
-            CommandLine::make('php artisan migrate:status --pending'),
-        ));
+        $status = $this->runSilentlyThroughServer($context, CommandLine::make('php artisan migrate:status --pending'));
 
         $output = trim($status->output());
 
@@ -126,10 +120,7 @@ final class RunPendingMigrations implements Step
 
         terminal()->info('Running pending migrations...');
 
-        $this->runner->run($this->rewriter->rewriteFor(
-            $context,
-            CommandLine::make('php artisan migrate --force'),
-        ));
+        $this->runThroughServer($context, CommandLine::make('php artisan migrate --force'));
 
         return true;
     }

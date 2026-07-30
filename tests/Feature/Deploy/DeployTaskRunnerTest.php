@@ -42,7 +42,7 @@ function projectCommandRunner(string $dir): DeployTaskRunner
 {
     return new DeployTaskRunner(
         container: app(),
-        processes: new ProcessRunner(
+        runner: new ProcessRunner(
             processes: app(Factory::class),
             ledger: new ProcessLedger($dir.'/processes.json'),
             terminal: new NullTerminalLauncher,

@@ -7,6 +7,8 @@ namespace Igne\LaravelBootUp\Frontend\Steps;
 use Closure;
 use Igne\LaravelBootUp\Attributes\Group;
 use Igne\LaravelBootUp\Attributes\Stage;
+use Igne\LaravelBootUp\Concerns\ReadsProcessFailureOutput;
+use Igne\LaravelBootUp\Concerns\SkipsWithNote;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ServeContext;
@@ -23,6 +25,10 @@ use Illuminate\Process\Exceptions\ProcessFailedException;
 #[Group('dependencies')]
 final class InstallFrontendDependencies implements Step
 {
+    use ReadsProcessFailureOutput;
+
+    use SkipsWithNote;
+
     /**
      * Installing node modules can take minutes on a slow network or a large
      * project; the default per-command timeout is meant for quick commands and
@@ -41,15 +47,11 @@ final class InstallFrontendDependencies implements Step
     public function handle(ServeContext $context, Closure $next): mixed
     {
         if (! $context->options->withAssets) {
-            terminal()->note('Frontend dependencies skipped (--without-assets).');
-
-            return $next($context);
+            return $this->skipStep('Frontend dependencies skipped (--without-assets).', $context, $next);
         }
 
         if (! $this->packageJson->exists()) {
-            terminal()->note('No package.json found — skipping frontend dependencies.');
-
-            return $next($context);
+            return $this->skipStep('No package.json found — skipping frontend dependencies.', $context, $next);
         }
 
         $manager = $this->selector->selected();
@@ -95,7 +97,7 @@ final class InstallFrontendDependencies implements Step
 
     private function failureReason(ProcessFailedException $exception): string
     {
-        $output = trim($exception->result->output()."\n".$exception->result->errorOutput());
+        $output = trim($this->outputOf($exception));
 
         return $output !== '' ? $output : $exception->getMessage();
     }

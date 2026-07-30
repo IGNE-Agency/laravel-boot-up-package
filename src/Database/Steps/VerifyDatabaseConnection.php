@@ -7,6 +7,7 @@ namespace Igne\LaravelBootUp\Database\Steps;
 use Closure;
 use Igne\LaravelBootUp\Attributes\Group;
 use Igne\LaravelBootUp\Attributes\Stage;
+use Igne\LaravelBootUp\Concerns\RunsThroughServer;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\CommandLine;
@@ -29,6 +30,8 @@ use Throwable;
 #[Group('database')]
 final class VerifyDatabaseConnection implements Step
 {
+    use RunsThroughServer;
+
     public function __construct(
         private readonly ProcessRunner $runner,
         private readonly CommandRewriter $rewriter,
@@ -50,10 +53,7 @@ final class VerifyDatabaseConnection implements Step
 
     private function verifyThroughServer(ServeContext $context): void
     {
-        $result = $this->runner->runSilently($this->rewriter->rewriteFor(
-            $context,
-            CommandLine::make('php artisan migrate:status'),
-        ));
+        $result = $this->runSilentlyThroughServer($context, CommandLine::make('php artisan migrate:status'));
 
         if (! $result->successful()) {
             throw DatabaseException::connectionFailed($context->server?->key() ?? 'server', trim($result->errorOutput()));
