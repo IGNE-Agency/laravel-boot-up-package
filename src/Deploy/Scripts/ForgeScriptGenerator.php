@@ -16,7 +16,7 @@ use Igne\LaravelBootUp\Data\Lines;
  */
 final class ForgeScriptGenerator implements ScriptGenerator
 {
-    private const COMPOSER_FLAGS = '--no-interaction --prefer-dist --optimize-autoloader';
+    private const string COMPOSER_FLAGS = '--no-interaction --prefer-dist --optimize-autoloader';
 
     public function key(): string
     {

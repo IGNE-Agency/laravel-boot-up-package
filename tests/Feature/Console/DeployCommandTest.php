@@ -91,7 +91,7 @@ test('a failing finalize command fails the deploy cleanly', function (): void {
 
 test('fails fast on native Windows', function (): void {
     ProcessFaker::fake();
-    app()->instance(Igne\LaravelBootUp\Services\Platform::class, new Igne\LaravelBootUp\Services\Platform('Windows'));
+    app()->instance(Igne\LaravelBootUp\Services\Platform::class, new Igne\LaravelBootUp\Services\Platform(Igne\LaravelBootUp\Enums\OperatingSystem::Windows));
 
     $this->artisan('app:deploy')
         ->expectsOutputToContain('not supported on native Windows')

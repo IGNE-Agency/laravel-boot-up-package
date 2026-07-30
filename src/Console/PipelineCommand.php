@@ -7,6 +7,7 @@ namespace Igne\LaravelBootUp\Console;
 use Igne\LaravelBootUp\Config\PipelineConfig;
 use Igne\LaravelBootUp\Contracts\PipelineGenerator;
 use Igne\LaravelBootUp\Data\GeneratedFile;
+use Igne\LaravelBootUp\Data\PipelineContext;
 use Igne\LaravelBootUp\Data\PipelineFile;
 use Igne\LaravelBootUp\Data\PipelinePlan;
 use Igne\LaravelBootUp\Data\PipelineSecret;
@@ -20,7 +21,7 @@ use Igne\LaravelBootUp\Services\GeneratedFilePublisher;
 
 final class PipelineCommand extends BootUpCommand
 {
-    private const BUILT_IN_GENERATORS = [
+    private const array BUILT_IN_GENERATORS = [
         'github' => GitHubActionsGenerator::class,
         'bitbucket' => BitbucketPipelinesGenerator::class,
     ];
@@ -69,7 +70,7 @@ final class PipelineCommand extends BootUpCommand
     private function validatedPlan(PipelinePlan $plan, PipelineConfig $config, PipelineGenerator $generator): PipelinePlan
     {
         $extensions = (new PipelineExtensionValidator($this->laravel->basePath()))
-            ->validate($config->steps, $config->files, $generator, $plan, array_keys($this->generators()));
+            ->validate($config->steps, $config->files, new PipelineContext($generator, $plan, array_keys($this->generators())));
 
         return $plan->withExtensions($extensions);
     }

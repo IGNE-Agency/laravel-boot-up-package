@@ -22,7 +22,7 @@ use Igne\LaravelBootUp\Enums\PackageManager;
  */
 final class CiScripts
 {
-    public const DIRECTORY = 'scripts/ci';
+    public const string DIRECTORY = 'scripts/ci';
 
     /**
      * @return list<GeneratedFile>

@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Pipelines;
 
 use Igne\LaravelBootUp\Concerns\SharesStandardPipelineShape;
 use Igne\LaravelBootUp\Contracts\PipelineGenerator;
+use Igne\LaravelBootUp\Data\CiJob;
 use Igne\LaravelBootUp\Data\GeneratedFile;
 use Igne\LaravelBootUp\Data\Lines;
 use Igne\LaravelBootUp\Data\PipelinePlan;
@@ -168,33 +169,33 @@ final class GitHubActionsGenerator implements PipelineGenerator
     private function checkJobs(Lines $yaml, PipelinePlan $plan): void
     {
         if ($plan->pint) {
-            $this->checkJob($yaml, $plan, 'lint', 'Lint', 'Check the code style', 10);
+            $this->checkJob($yaml, $plan, new CiJob('lint', 'Lint', 'Check the code style', timeoutMinutes: 10, usesNode: false));
         }
 
-        $this->checkJob($yaml, $plan, 'build', 'Build', 'Build the frontend and framework caches', 15);
-        $this->checkJob($yaml, $plan, 'test', 'Test', 'Run the test suite', 20);
+        $this->checkJob($yaml, $plan, new CiJob('build', 'Build', 'Build the frontend and framework caches', timeoutMinutes: 15, usesNode: true));
+        $this->checkJob($yaml, $plan, new CiJob('test', 'Test', 'Run the test suite', timeoutMinutes: 20, usesNode: true));
     }
 
-    private function checkJob(Lines $yaml, PipelinePlan $plan, string $job, string $name, string $step, int $timeout): void
+    private function checkJob(Lines $yaml, PipelinePlan $plan, CiJob $job): void
     {
-        $yaml->line("{$job}:")
-            ->indent(2, function (Lines $yaml) use ($plan, $job, $name, $step, $timeout): void {
-                $yaml->line("name: {$name}")
+        $yaml->line("{$job->key}:")
+            ->indent(2, function (Lines $yaml) use ($plan, $job): void {
+                $yaml->line("name: {$job->name}")
                     ->line('runs-on: ubuntu-latest')
-                    ->line("timeout-minutes: {$timeout}")
+                    ->line("timeout-minutes: {$job->timeoutMinutes}")
                     ->line('steps:')
-                    ->indent(2, function (Lines $yaml) use ($plan, $job, $step): void {
+                    ->indent(2, function (Lines $yaml) use ($plan, $job): void {
                         $this->setupSteps($yaml, $plan);
 
-                        $this->extraSteps($yaml, $plan, $job, 'before');
+                        $this->extraSteps($yaml, $plan, $job->key, 'before');
 
-                        $yaml->lineWithBreak("- name: {$step}")
+                        $yaml->lineWithBreak("- name: {$job->description}")
                             ->indent(2, function (Lines $yaml) use ($plan, $job): void {
                                 $this->composerAuth($yaml, $plan);
-                                $yaml->line("run: bash scripts/ci/{$job}.sh");
+                                $yaml->line("run: bash scripts/ci/{$job->key}.sh");
                             });
 
-                        $this->extraSteps($yaml, $plan, $job, 'after');
+                        $this->extraSteps($yaml, $plan, $job->key, 'after');
                     });
             })
             ->blank();

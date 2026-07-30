@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Frontend\Steps;
 
 use Closure;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Exceptions\FrontendException;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
@@ -16,6 +19,8 @@ use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Services\LockfileConflictDetector;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 
+#[Stage(ServeStage::Install)]
+#[Group('dependencies')]
 final class InstallFrontendDependencies implements Step
 {
     /**
@@ -23,7 +28,7 @@ final class InstallFrontendDependencies implements Step
      * project; the default per-command timeout is meant for quick commands and
      * would abort a real install mid-way, so it is lifted well clear here.
      */
-    private const INSTALL_TIMEOUT_SECONDS = 1800;
+    private const int INSTALL_TIMEOUT_SECONDS = 1800;
 
     public function __construct(
         private readonly PackageManagerSelector $selector,

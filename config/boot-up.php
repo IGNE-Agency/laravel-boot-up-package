@@ -53,7 +53,7 @@ return [
         'drivers' => [
             'herd' => HerdServer::class,
             'sail' => SailServer::class,
-            'laravel' => ArtisanServer::class,
+            'artisan' => ArtisanServer::class,
         ],
     ],
 

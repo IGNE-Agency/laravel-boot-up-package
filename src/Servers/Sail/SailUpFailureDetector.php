@@ -16,7 +16,7 @@ namespace Igne\LaravelBootUp\Servers\Sail;
  */
 final class SailUpFailureDetector
 {
-    private const REGISTRY_PATTERNS = [
+    private const array REGISTRY_PATTERNS = [
         'registry-1.docker.io',
         'auth.docker.io',
         'temporary failure in name resolution',
@@ -25,7 +25,7 @@ final class SailUpFailureDetector
         'proxyconnect tcp',
     ];
 
-    private const MISSING_IMAGE_PATTERNS = [
+    private const array MISSING_IMAGE_PATTERNS = [
         'failed to resolve reference "sail-',
         'pull access denied',
         'repository does not exist',

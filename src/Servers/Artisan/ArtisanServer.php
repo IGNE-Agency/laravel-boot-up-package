@@ -14,8 +14,7 @@ use Igne\LaravelBootUp\Serve\CombinedRunPlan;
 use Igne\LaravelBootUp\Serve\WorkerLauncher;
 
 /**
- * Serves via a tracked, detached `php artisan serve` process. Key stays
- * 'laravel' for backwards compatibility with existing config and args.
+ * Serves via a tracked, detached `php artisan serve` process.
  */
 final class ArtisanServer implements Server
 {
@@ -30,7 +29,7 @@ final class ArtisanServer implements Server
 
     public function key(): string
     {
-        return 'laravel';
+        return 'artisan';
     }
 
     public function label(): string

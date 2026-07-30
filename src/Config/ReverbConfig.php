@@ -18,7 +18,7 @@ final readonly class ReverbConfig
     {
         return new self(
             enabled: (bool) $config->get('boot-up.reverb.enabled', true),
-            runIn: RunMode::fromConfig((string) $config->get('boot-up.reverb.run_in', 'combined')),
+            runIn: RunMode::fromConfig($config->get('boot-up.reverb.run_in'), 'boot-up.reverb.run_in', RunMode::Combined),
         );
     }
 }

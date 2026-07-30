@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Data\CombinedService;
 use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Enums\RunMode;
 use Igne\LaravelBootUp\Process\OutputMultiplexer;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Serve\CombinedRunPlan;
@@ -87,7 +88,7 @@ test('records a live combined child in the ledger with the combined mode', funct
 
     expect($record)->not->toBeNull()
         ->and($record->pid)->toBe(4242)
-        ->and($record->mode)->toBe('combined')
+        ->and($record->mode)->toBe(RunMode::Combined)
         ->and($record->outputLocation())->toBe('output streams in the app:serve terminal');
 });
 

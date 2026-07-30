@@ -9,6 +9,7 @@ use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Deploy\DeployTaskRunner;
 use Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks;
+use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Enums\RunMode;
 use Igne\LaravelBootUp\Frontend\PackageJson;
@@ -53,7 +54,7 @@ function bindRunProjectCommandsFixtures(string $dir): void
         ),
         rewriter: new CommandRewriter,
         packageManagers: new PackageManagerSelector(
-            new FrontendConfig(PackageManager::BUN, 'watch', RunMode::Background),
+            new FrontendConfig(PackageManager::BUN, AssetMode::Watch, RunMode::Background),
             new PackageJson($dir.'/package.json'),
         ),
     ));
@@ -122,4 +123,15 @@ test('the phase defaults to before-migrations without a pipeline parameter', fun
 
     Process::assertRan(fn ($process): bool => runProjectCommandsCommandOf($process) === 'php artisan config:clear');
     Process::assertDidntRun(fn ($process): bool => runProjectCommandsCommandOf($process) === 'composer dump-autoload');
+});
+
+test('an unknown phase suffix is rejected with the legal phases named', function (): void {
+    Process::fake();
+    bindRunProjectCommandsFixtures($this->dir);
+
+    expect(fn () => app(Pipeline::class)
+        ->send(new ServeContext(new ServeOptions))
+        ->through([RunDeployTasks::class.':during'])
+        ->then(fn (ServeContext $passed): ServeContext => $passed))
+        ->toThrow(InvalidArgumentException::class, 'during');
 });

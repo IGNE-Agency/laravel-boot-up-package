@@ -14,7 +14,7 @@ use InvalidArgumentException;
  */
 final readonly class DeployTask
 {
-    private const DANGEROUS_WORDS = [
+    private const array DANGEROUS_WORDS = [
         'rm', 'del', 'sudo', 'kill', 'pkill', 'shutdown', 'reboot',
         'dd', 'mkfs', 'format', 'eval', 'exec', 'system', 'shell_exec', 'passthru',
     ];

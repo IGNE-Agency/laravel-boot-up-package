@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\QueueConfig;
 use Igne\LaravelBootUp\Enums\RunMode;
+use Igne\LaravelBootUp\Exceptions\ConfigException;
 use Illuminate\Config\Repository;
 
 test('fromRepository reads the boot-up.queue schema', function (): void {
@@ -32,10 +33,11 @@ test('fromRepository falls back to the documented defaults', function (): void {
         ->and($queue->flags)->toBe([]);
 });
 
-test('an unknown run_in string preserves the loose background fall-through', function (): void {
+test('an unknown run_in string throws a ConfigException naming the key', function (): void {
     $config = new Repository([
         'boot-up' => ['queue' => ['run_in' => 'sideways']],
     ]);
 
-    expect(QueueConfig::fromRepository($config)->runIn)->toBe(RunMode::Background);
+    expect(fn () => QueueConfig::fromRepository($config))
+        ->toThrow(ConfigException::class, 'boot-up.queue.run_in');
 });

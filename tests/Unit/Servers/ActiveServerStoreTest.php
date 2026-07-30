@@ -64,7 +64,7 @@ test('current is null when the payload misses keys, which counts as corrupt', fu
 });
 
 test('clear removes the record and is a no-op when already gone', function (): void {
-    $this->store->remember(new ActiveServerRecord('laravel', true, 99, '2026-07-10T10:00:00+00:00'));
+    $this->store->remember(new ActiveServerRecord('artisan', true, 99, '2026-07-10T10:00:00+00:00'));
 
     $this->store->clear();
 

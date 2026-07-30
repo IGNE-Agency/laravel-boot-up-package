@@ -27,7 +27,7 @@ final class ServeCommand extends BootUpCommand implements Isolatable
 
     private bool $tearingDown = false;
 
-    protected $signature = 'app:serve {server? : The development server to use (herd, sail, laravel, or any driver registered in boot-up.server.drivers)}
+    protected $signature = 'app:serve {server? : The development server to use (herd, sail, artisan, or any driver registered in boot-up.server.drivers)}
         {--s|seed : Seed the database after migrating}
         {--no-migrate : Skip running pending migrations}
         {--fresh : Drop all tables and re-run every migration (asks first)}

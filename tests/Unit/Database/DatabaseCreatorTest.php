@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Data\DatabaseConnection;
 use Igne\LaravelBootUp\Database\DatabaseCreator;
 use Igne\LaravelBootUp\Exceptions\DatabaseException;
 
@@ -11,10 +12,10 @@ beforeEach(function (): void {
 
     $this->creator = new DatabaseCreator;
 
-    $this->sqlite = fn (string $path): array => [
-        'driver' => 'sqlite',
-        'database' => $path,
-    ];
+    $this->sqlite = fn (string $path): DatabaseConnection => new DatabaseConnection(
+        driver: 'sqlite',
+        database: $path,
+    );
 });
 
 afterEach(function (): void {
@@ -64,16 +65,15 @@ test('createDatabaseIfMissing reports whether it created the sqlite database', f
 
 test('an unreachable mysql server throws instead of being swallowed', function (): void {
     // Port 1 refuses instantly; a missing pdo_mysql extension throws just as fast.
-    $this->creator->databaseExists([
-        'driver' => 'mysql',
-        'host' => '127.0.0.1',
-        'port' => '1',
-        'database' => 'igne',
-        'username' => 'root',
-        'password' => '',
-    ]);
+    $this->creator->databaseExists(new DatabaseConnection(
+        driver: 'mysql',
+        database: 'igne',
+        host: '127.0.0.1',
+        port: '1',
+        username: 'root',
+    ));
 })->throws(DatabaseException::class, 'mysql');
 
 test('an unsupported driver throws', function (): void {
-    $this->creator->databaseExists(['driver' => 'mongodb', 'database' => 'igne']);
+    $this->creator->databaseExists(new DatabaseConnection(driver: 'mongodb', database: 'igne'));
 })->throws(DatabaseException::class, 'mongodb');

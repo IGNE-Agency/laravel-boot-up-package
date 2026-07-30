@@ -6,6 +6,7 @@ use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Enums\RunMode;
 use Igne\LaravelBootUp\Frontend\PackageJson;
@@ -22,7 +23,7 @@ use Laravel\Prompts\Prompt;
 /**
  * Call AFTER Process::fake() so the runner and reaper receive the faked factory.
  */
-function bindAssetServices(string $dir, string $assets = 'watch', RunMode $watchIn = RunMode::Background): ProcessLedger
+function bindAssetServices(string $dir, AssetMode $assets = AssetMode::Watch, RunMode $watchIn = RunMode::Background): ProcessLedger
 {
     $ledger = new ProcessLedger($dir.'/processes.json');
 
@@ -71,7 +72,7 @@ test('skips with a note when assets are disabled by flag', function (): void {
 
 test('skips with a note when the configured mode is skip', function (): void {
     Process::fake();
-    bindAssetServices($this->dir, assets: 'skip');
+    bindAssetServices($this->dir, assets: AssetMode::Skip);
     file_put_contents($this->dir.'/package.json', '{"scripts":{"dev":"vite"}}');
 
     app(BuildOrWatchAssets::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
@@ -92,7 +93,7 @@ test('skips with a note when no package.json exists', function (): void {
 
 test('build mode runs the build script synchronously', function (): void {
     Process::fake(['*' => Process::result()]);
-    bindAssetServices($this->dir, assets: 'build');
+    bindAssetServices($this->dir, assets: AssetMode::Build);
     file_put_contents($this->dir.'/package.json', '{"scripts":{"build":"vite build"}}');
 
     app(BuildOrWatchAssets::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
@@ -102,7 +103,7 @@ test('build mode runs the build script synchronously', function (): void {
 
 test('build mode skips with a note when package.json has no build script', function (): void {
     Process::fake();
-    bindAssetServices($this->dir, assets: 'build');
+    bindAssetServices($this->dir, assets: AssetMode::Build);
     file_put_contents($this->dir.'/package.json', '{"scripts":{"dev":"vite"}}');
 
     app(BuildOrWatchAssets::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);

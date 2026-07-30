@@ -34,5 +34,5 @@ test('project drivers merge over the built-ins', function (): void {
     expect($config->drivers['valet'])->toBe(ValetServer::class)
         ->and($config->drivers['herd'])->toBe(ValetServer::class)
         ->and($config->drivers['sail'])->toBe(SailServer::class)
-        ->and($config->drivers['laravel'])->toBe(ArtisanServer::class);
+        ->and($config->drivers['artisan'])->toBe(ArtisanServer::class);
 });

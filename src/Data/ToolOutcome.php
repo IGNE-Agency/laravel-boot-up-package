@@ -21,13 +21,8 @@ final readonly class ToolOutcome
     public function describe(): string
     {
         $name = $this->version === null ? $this->label : "{$this->label} {$this->version}";
+        $status = $this->status->label();
 
-        return match ($this->status) {
-            ToolStatus::Satisfied => $name,
-            ToolStatus::Installed => "{$name} — installed",
-            ToolStatus::Updated => "{$name} — updated",
-            ToolStatus::SkippedSelfUpdating => "{$name} — manages its own updates",
-            ToolStatus::Unverified => "{$name} — could not be verified (see warning above)",
-        };
+        return $status === '' ? $name : "{$name} — {$status}";
     }
 }

@@ -67,7 +67,7 @@ test('prompting disabled without a default falls back to the laravel driver', fu
     $server = serverSelector(prompt: false)->select(null);
 
     expect($server)->toBeInstanceOf(ArtisanServer::class)
-        ->and($server->key())->toBe('laravel');
+        ->and($server->key())->toBe('artisan');
 });
 
 test('prompts a select over the driver labels when nothing is preconfigured', function (): void {

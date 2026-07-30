@@ -23,7 +23,7 @@ final class Composer
      * quick commands and would abort a real install mid-way, so it is lifted
      * well clear here while still bounding a genuinely hung process.
      */
-    private const INSTALL_TIMEOUT_SECONDS = 1800;
+    private const int INSTALL_TIMEOUT_SECONDS = 1800;
 
     public function __construct(
         private readonly ProcessRunner $processes,

@@ -19,7 +19,7 @@ final readonly class DevServerConfig
     private const array BUILT_IN_DRIVERS = [
         'herd' => HerdServer::class,
         'sail' => SailServer::class,
-        'laravel' => ArtisanServer::class,
+        'artisan' => ArtisanServer::class,
     ];
 
     /**

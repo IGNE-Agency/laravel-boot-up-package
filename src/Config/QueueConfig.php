@@ -22,7 +22,7 @@ final readonly class QueueConfig
     {
         return new self(
             enabled: (bool) $config->get('boot-up.queue.enabled', true),
-            runIn: RunMode::fromConfig((string) $config->get('boot-up.queue.run_in', 'combined')),
+            runIn: RunMode::fromConfig($config->get('boot-up.queue.run_in'), 'boot-up.queue.run_in', RunMode::Combined),
             flags: (array) $config->get('boot-up.queue.flags', []),
         );
     }

@@ -10,15 +10,35 @@ namespace Igne\LaravelBootUp\Enums;
  */
 enum ServeStage: string
 {
-    case Prepare = 'Prepare project';
-    case Tools = 'Check required tools';
-    case Server = 'Start server';
-    case Install = 'Install dependencies';
-    case Database = 'Prepare database';
-    case Cache = 'Cache framework files';
-    case Finalize = 'Finalize the application';
-    case Services = 'Start services';
-    case Assets = 'Build or watch assets';
-    case Announce = 'Announce the application';
-    case Custom = 'Custom steps';
+    case Prepare = 'prepare';
+    case Tools = 'tools';
+    case Server = 'server';
+    case Install = 'install';
+    case Database = 'database';
+    case Cache = 'cache';
+    case Finalize = 'finalize';
+    case Services = 'services';
+    case Assets = 'assets';
+    case Announce = 'announce';
+    case Custom = 'custom';
+
+    /**
+     * The section-divider wording for this stage.
+     */
+    public function label(): string
+    {
+        return match ($this) {
+            self::Prepare => 'Prepare project',
+            self::Tools => 'Check required tools',
+            self::Server => 'Start server',
+            self::Install => 'Install dependencies',
+            self::Database => 'Prepare database',
+            self::Cache => 'Cache framework files',
+            self::Finalize => 'Finalize the application',
+            self::Services => 'Start services',
+            self::Assets => 'Build or watch assets',
+            self::Announce => 'Announce the application',
+            self::Custom => 'Custom steps',
+        };
+    }
 }

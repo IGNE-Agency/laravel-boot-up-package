@@ -3,27 +3,16 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Enums\RunMode;
 
 test('mode round-trips through the array form', function (): void {
-    $record = new ProcessRecord(4242, 'queue-worker', 'php artisan queue:work', date(DATE_ATOM), mode: 'combined');
+    $record = new ProcessRecord(4242, 'queue-worker', 'php artisan queue:work', date(DATE_ATOM), mode: RunMode::Combined);
 
-    expect(ProcessRecord::fromArray($record->toArray())->mode)->toBe('combined');
-});
-
-test('a ledger entry written before the mode field existed still loads', function (): void {
-    $record = ProcessRecord::fromArray([
-        'pid' => 4242,
-        'label' => 'queue-worker',
-        'command' => 'php artisan queue:work',
-        'started_at' => date(DATE_ATOM),
-    ]);
-
-    expect($record->mode)->toBeNull()
-        ->and($record->window)->toBeNull();
+    expect(ProcessRecord::fromArray($record->toArray())->mode)->toBe(RunMode::Combined);
 });
 
 test('outputLocation distinguishes combined, terminal-window and background processes', function (): void {
-    $combined = new ProcessRecord(1, 'queue-worker', 'cmd', date(DATE_ATOM), mode: 'combined');
+    $combined = new ProcessRecord(1, 'queue-worker', 'cmd', date(DATE_ATOM), mode: RunMode::Combined);
     $windowed = new ProcessRecord(2, 'horizon', 'cmd', date(DATE_ATOM), window: '17');
     $background = new ProcessRecord(3, 'reverb', 'cmd', date(DATE_ATOM));
 

@@ -14,7 +14,7 @@ use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 
 final class DeployScriptCommand extends BootUpCommand
 {
-    private const BUILT_IN_GENERATORS = [
+    private const array BUILT_IN_GENERATORS = [
         'fortrabbit' => FortrabbitScriptGenerator::class,
         'forge' => ForgeScriptGenerator::class,
     ];

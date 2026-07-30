@@ -56,7 +56,7 @@ use Illuminate\Support\ServiceProvider;
 
 final class BootUpServiceProvider extends ServiceProvider
 {
-    private const CONFIG_CLASSES = [
+    private const array CONFIG_CLASSES = [
         ArtisanServeConfig::class,
         DatabaseConfig::class,
         DeployConfig::class,

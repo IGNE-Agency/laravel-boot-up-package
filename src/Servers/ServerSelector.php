@@ -31,7 +31,7 @@ final class ServerSelector
         }
 
         if (! $this->config->prompt) {
-            return $this->driver('laravel');
+            return $this->driver('artisan');
         }
 
         return $this->driver((string) terminal()->select(

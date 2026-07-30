@@ -183,7 +183,7 @@ test('identity, with no optional capabilities', function (): void {
     ProcessFaker::fake();
     $server = artisanServer($this->ledger, $this->workDir);
 
-    expect($server->key())->toBe('laravel')
+    expect($server->key())->toBe('artisan')
         ->and($server->label())->toBe('Laravel (php artisan serve)')
         ->and($server)->not->toBeInstanceOf(RequiresTools::class)
         ->and($server)->not->toBeInstanceOf(RewritesCommands::class)

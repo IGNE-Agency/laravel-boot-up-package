@@ -18,7 +18,7 @@ final readonly class HorizonConfig
     {
         return new self(
             enabled: (bool) $config->get('boot-up.horizon.enabled', true),
-            runIn: RunMode::fromConfig((string) $config->get('boot-up.horizon.run_in', 'combined')),
+            runIn: RunMode::fromConfig($config->get('boot-up.horizon.run_in'), 'boot-up.horizon.run_in', RunMode::Combined),
         );
     }
 }

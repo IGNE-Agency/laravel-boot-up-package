@@ -37,7 +37,7 @@ function validatorPlan(bool $pint = true, DeployHookHost $host = DeployHookHost:
 function validate(array $steps = [], array $files = [], ?string $basePath = null, array $providers = ['github', 'bitbucket']): Igne\LaravelBootUp\Pipelines\PipelineExtensions
 {
     return (new PipelineExtensionValidator($basePath ?? sys_get_temp_dir()))
-        ->validate($steps, $files, new GitHubActionsGenerator(new CiScripts), validatorPlan(), $providers);
+        ->validate($steps, $files, new Igne\LaravelBootUp\Data\PipelineContext(new GitHubActionsGenerator(new CiScripts), validatorPlan(), $providers));
 }
 
 test('a valid step and inline file pass through to the extensions', function (): void {

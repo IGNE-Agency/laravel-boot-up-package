@@ -18,4 +18,19 @@ enum ToolStatus: string
     case Updated = 'updated';
     case SkippedSelfUpdating = 'self-updating';
     case Unverified = 'unverified';
+
+    /**
+     * The summary-line suffix for this status; Satisfied is the quiet path
+     * and adds nothing.
+     */
+    public function label(): string
+    {
+        return match ($this) {
+            self::Satisfied => '',
+            self::Installed => 'installed',
+            self::Updated => 'updated',
+            self::SkippedSelfUpdating => 'manages its own updates',
+            self::Unverified => 'could not be verified (see warning above)',
+        };
+    }
 }

@@ -9,7 +9,7 @@ use Illuminate\Contracts\Config\Repository;
 
 final readonly class PipelineConfig
 {
-    public const DEFAULT_BRANCH_ENVIRONMENTS = [
+    public const array DEFAULT_BRANCH_ENVIRONMENTS = [
         'develop' => 'development',
         'staging' => 'staging',
         'main' => 'production',

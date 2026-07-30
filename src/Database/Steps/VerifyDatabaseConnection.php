@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Database\Steps;
 
 use Closure;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Exceptions\DatabaseException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
@@ -22,6 +25,8 @@ use Throwable;
  * check runs through the server's command rewrites; otherwise a host-side
  * PDO connection is enough.
  */
+#[Stage(ServeStage::Database)]
+#[Group('database')]
 final class VerifyDatabaseConnection implements Step
 {
     public function __construct(

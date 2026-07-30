@@ -55,7 +55,7 @@ test('shows the active server, its serve pid state, and every tracked process', 
         'kill -0 5555' => Process::result(exitCode: 1),
     ]);
 
-    $this->store->remember(new ActiveServerRecord('laravel', true, 99999, date(DATE_ATOM)));
+    $this->store->remember(new ActiveServerRecord('artisan', true, 99999, date(DATE_ATOM)));
     $this->ledger->record(new ProcessRecord(4242, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM)));
     $this->ledger->record(new ProcessRecord(5555, 'assets-watch', 'bun run dev', date(DATE_ATOM)));
 
@@ -74,7 +74,7 @@ test('a dead serve pid is reported, not hidden', function (): void {
         'ps -p 99999*' => Process::result(''),
     ]);
 
-    $this->store->remember(new ActiveServerRecord('laravel', false, 99999, date(DATE_ATOM)));
+    $this->store->remember(new ActiveServerRecord('artisan', false, 99999, date(DATE_ATOM)));
 
     $this->artisan('app:status')
         ->expectsOutputToContain('The server was already running before app:serve started.')

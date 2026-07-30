@@ -14,7 +14,7 @@ use Igne\LaravelBootUp\Data\Lines;
  */
 final class GitHooks
 {
-    public const DIRECTORY = '.githooks';
+    public const string DIRECTORY = '.githooks';
 
     /**
      * The pre-commit hook: lint the staged PHP files with Pint, the same check

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Igne\LaravelBootUp\Config\SailConfig;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Enums\OperatingSystem;
 use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Environment\ShellProfile;
@@ -56,7 +57,7 @@ function sailServer(
     $config = new SailConfig(readyTimeoutSeconds: $readyTimeout, dockerStartTimeoutSeconds: $dockerTimeout);
 
     return new SailServer(
-        docker: new Docker($runner, new Poller, new Platform('Darwin'), $config),
+        docker: new Docker($runner, new Poller, new Platform(OperatingSystem::Darwin), $config),
         sail: new Sail($runner),
         aliasInstaller: $alias ?? new SailAliasInstaller(
             new ShellProfile($workDir.'/no-home', '/bin/zsh'),

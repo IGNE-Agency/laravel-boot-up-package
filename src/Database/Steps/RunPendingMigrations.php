@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Database\Steps;
 
 use Closure;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Database\PendingMigrations;
+use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Illuminate\Support\Str;
@@ -21,6 +24,8 @@ use Illuminate\Support\Str;
  * check and the migrate run through the server's command rewrites;
  * host-side otherwise via the Migrator.
  */
+#[Stage(ServeStage::Database)]
+#[Group('migrations')]
 final class RunPendingMigrations implements Step
 {
     public function __construct(

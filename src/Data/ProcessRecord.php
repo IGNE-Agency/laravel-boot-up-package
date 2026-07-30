@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Data;
 
+use Igne\LaravelBootUp\Enums\RunMode;
+
 final readonly class ProcessRecord
 {
     public function __construct(
@@ -12,7 +14,7 @@ final readonly class ProcessRecord
         public string $command,
         public string $startedAt,
         public ?string $window = null,
-        public ?string $mode = null,
+        public ?RunMode $mode = null,
     ) {}
 
     /**
@@ -26,7 +28,7 @@ final readonly class ProcessRecord
             command: (string) $data['command'],
             startedAt: (string) $data['started_at'],
             window: isset($data['window']) && $data['window'] !== null ? (string) $data['window'] : null,
-            mode: isset($data['mode']) && $data['mode'] !== null ? (string) $data['mode'] : null,
+            mode: isset($data['mode']) && $data['mode'] !== null ? RunMode::tryFrom((string) $data['mode']) : null,
         );
     }
 
@@ -39,7 +41,7 @@ final readonly class ProcessRecord
     public function outputLocation(): string
     {
         return match (true) {
-            $this->mode === 'combined' => 'output streams in the app:serve terminal',
+            $this->mode === RunMode::Combined => 'output streams in the app:serve terminal',
             $this->window !== null => 'output is in its terminal window',
             default => "logs: storage/logs/boot-up/{$this->label}.log",
         };
@@ -56,7 +58,7 @@ final readonly class ProcessRecord
             'command' => $this->command,
             'started_at' => $this->startedAt,
             'window' => $this->window,
-            'mode' => $this->mode,
+            'mode' => $this->mode?->value,
         ];
     }
 }

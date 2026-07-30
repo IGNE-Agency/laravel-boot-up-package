@@ -5,21 +5,27 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Frontend\Steps;
 
 use Closure;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\WorkerDefinition;
+use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Enums\PackageManager;
+use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Serve\WorkerLauncher;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 
+#[Stage(ServeStage::Assets)]
+#[Group('assets')]
 final class BuildOrWatchAssets implements Step
 {
-    private const LABEL = 'assets-watch';
+    private const string LABEL = 'assets-watch';
 
     public function __construct(
         private readonly FrontendConfig $config,
@@ -38,7 +44,7 @@ final class BuildOrWatchAssets implements Step
             return $next($context);
         }
 
-        if ($this->config->assets === 'skip') {
+        if ($this->config->assets === AssetMode::Skip) {
             terminal()->note('Assets disabled in configuration — skipping.');
 
             return $next($context);
@@ -52,7 +58,7 @@ final class BuildOrWatchAssets implements Step
 
         $manager = $this->selector->selected();
 
-        $this->config->assets === 'build'
+        $this->config->assets === AssetMode::Build
             ? $this->build($context, $manager)
             : $this->watch($context, $manager);
 

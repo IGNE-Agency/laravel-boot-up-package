@@ -5,19 +5,24 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Queue\Steps;
 
 use Closure;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Config\HorizonConfig;
 use Igne\LaravelBootUp\Config\QueueConfig;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\WorkerDefinition;
+use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
 use Igne\LaravelBootUp\Serve\WorkerLauncher;
 use Illuminate\Contracts\Config\Repository;
 
+#[Stage(ServeStage::Services)]
+#[Group('workers')]
 final class StartQueueWorker implements Step
 {
-    private const LABEL = 'queue-worker';
+    private const string LABEL = 'queue-worker';
 
     public function __construct(
         private readonly QueueConfig $config,

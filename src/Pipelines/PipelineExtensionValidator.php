@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
-use Igne\LaravelBootUp\Contracts\PipelineGenerator;
+use Igne\LaravelBootUp\Data\PipelineContext;
 use Igne\LaravelBootUp\Data\PipelineFile;
 use Igne\LaravelBootUp\Data\PipelineJobStep;
-use Igne\LaravelBootUp\Data\PipelinePlan;
 use Igne\LaravelBootUp\Exceptions\PipelineException;
 
 /**
@@ -27,22 +26,20 @@ final class PipelineExtensionValidator
     /**
      * @param  array<mixed>  $steps  raw step definitions from PipelineConfig
      * @param  array<mixed>  $files  raw file definitions from PipelineConfig
-     * @param  list<string>  $providers  known provider keys, for the optional provider filter
      */
-    public function validate(array $steps, array $files, PipelineGenerator $generator, PipelinePlan $plan, array $providers): PipelineExtensions
+    public function validate(array $steps, array $files, PipelineContext $context): PipelineExtensions
     {
         return new PipelineExtensions(
-            $this->steps($steps, $generator, $plan, $providers),
-            $this->files($files, $providers),
+            $this->steps($steps, $context),
+            $this->files($files, $context->providers),
         );
     }
 
     /**
      * @param  array<mixed>  $steps
-     * @param  list<string>  $providers
      * @return list<PipelineJobStep>
      */
-    private function steps(array $steps, PipelineGenerator $generator, PipelinePlan $plan, array $providers): array
+    private function steps(array $steps, PipelineContext $context): array
     {
         $seen = [];
         $result = [];
@@ -59,7 +56,7 @@ final class PipelineExtensionValidator
             }
 
             $seen[$id] = true;
-            $result[] = $this->parseStep($id, $raw, $generator, $plan, $providers);
+            $result[] = $this->parseStep($id, $raw, $context);
         }
 
         return $result;
@@ -67,11 +64,10 @@ final class PipelineExtensionValidator
 
     /**
      * @param  array<mixed>  $raw
-     * @param  list<string>  $providers
      */
-    private function parseStep(string $id, array $raw, PipelineGenerator $generator, PipelinePlan $plan, array $providers): PipelineJobStep
+    private function parseStep(string $id, array $raw, PipelineContext $context): PipelineJobStep
     {
-        $provider = $this->provider($raw, $providers, fn (string $problem) => PipelineException::step($id, $problem));
+        $provider = $this->provider($raw, $context->providers, fn (string $problem) => PipelineException::step($id, $problem));
 
         $job = $this->string($raw, 'job') ?? throw PipelineException::step($id, 'is missing a non-empty "job".');
         $position = $this->string($raw, 'position') ?? throw PipelineException::step($id, 'is missing a "position" (before or after).');
@@ -82,13 +78,13 @@ final class PipelineExtensionValidator
 
         $run = $this->string($raw, 'run') ?? throw PipelineException::step($id, 'is missing a non-empty "run" command.');
 
-        $anchors = $generator->anchors($plan);
+        $anchors = $context->generator->anchors($context->plan);
 
         // Only steps that will render for this provider are anchor-checked.
-        if (($provider === null || $provider === $generator->key()) && ! \in_array($job, $anchors, true)) {
+        if (($provider === null || $provider === $context->generator->key()) && ! \in_array($job, $anchors, true)) {
             $available = implode(', ', $anchors);
 
-            throw PipelineException::step($id, "targets unknown job [{$job}] for {$generator->key()}; available: {$available}.");
+            throw PipelineException::step($id, "targets unknown job [{$job}] for {$context->generator->key()}; available: {$available}.");
         }
 
         return new PipelineJobStep(

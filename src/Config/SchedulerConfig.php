@@ -22,7 +22,7 @@ final readonly class SchedulerConfig
     {
         return new self(
             enabled: (bool) $config->get('boot-up.scheduler.enabled', false),
-            runIn: RunMode::fromConfig((string) $config->get('boot-up.scheduler.run_in', 'combined')),
+            runIn: RunMode::fromConfig($config->get('boot-up.scheduler.run_in'), 'boot-up.scheduler.run_in', RunMode::Combined),
         );
     }
 }

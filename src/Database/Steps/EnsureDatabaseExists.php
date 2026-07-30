@@ -5,17 +5,23 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Database\Steps;
 
 use Closure;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\DatabaseConnection;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Database\DatabaseCreator;
+use Igne\LaravelBootUp\Enums\ServeStage;
 use Illuminate\Contracts\Config\Repository;
 
 /**
  * Creates the configured database when it does not exist yet. Skipped for
  * servers that provision the database themselves (e.g. Sail's containers).
  */
+#[Stage(ServeStage::Database)]
+#[Group('database')]
 final class EnsureDatabaseExists implements Step
 {
     public function __construct(
@@ -39,13 +45,14 @@ final class EnsureDatabaseExists implements Step
         }
 
         $default = (string) $this->laravelConfig->get('database.default');
-        $connection = (array) $this->laravelConfig->get("database.connections.{$default}", []);
-        $database = (string) ($connection['database'] ?? '');
+        $connection = DatabaseConnection::fromArray(
+            (array) $this->laravelConfig->get("database.connections.{$default}", []),
+        );
 
         if ($this->creator->createDatabaseIfMissing($connection)) {
-            terminal()->success("Database [{$database}] created.");
+            terminal()->success("Database [{$connection->database}] created.");
         } else {
-            terminal()->note("Database [{$database}] already exists.");
+            terminal()->note("Database [{$connection->database}] already exists.");
         }
 
         return $next($context);

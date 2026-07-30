@@ -22,7 +22,7 @@ use Igne\LaravelBootUp\Servers\StopServerPrompt;
 final class ShutdownRunner
 {
     /** Mirrors BuildOrWatchAssets::LABEL — the ledger label for the Vite watcher. */
-    private const ASSET_WATCHER_LABEL = 'assets-watch';
+    private const string ASSET_WATCHER_LABEL = 'assets-watch';
 
     private bool $hasRun = false;
 
@@ -109,7 +109,16 @@ final class ShutdownRunner
 
     private function stopServer(string $key, bool $startedByUs): void
     {
-        $server = $this->selector->driver($key);
+        // A persisted key may belong to a custom driver that no longer
+        // exists in config — the rest of the teardown already ran, so
+        // reporting beats crashing.
+        try {
+            $server = $this->selector->driver($key);
+        } catch (\Throwable) {
+            terminal()->warning("The recorded server [{$key}] is not a known driver — stop it manually if it is still running.");
+
+            return;
+        }
 
         if (! $server->isRunning()) {
             $this->offerResidualCleanup($server, $startedByUs);
