@@ -125,6 +125,19 @@ final class TrackedProgress extends Progress
     }
 
     /**
+     * Progress::resetSignals() forces SIGINT back to SIG_DFL, which would
+     * disarm the serve command's teardown trap the moment the bar settles —
+     * exactly when "press Ctrl+C to stop everything" is on screen. The
+     * command's trap owns SIGINT; leave it alone.
+     *
+     * Consequence: the cancel closure Progress::start() registered stays in
+     * the SIGINT chain for the rest of the process. Harmless while the trap
+     * handler exits before it can render — revisit if the trap ever returns
+     * instead of exiting.
+     */
+    protected function resetSignals(): void {}
+
+    /**
      * Themes register renderers by exact prompt class; render as the
      * Progress this is.
      */

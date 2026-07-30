@@ -61,8 +61,11 @@ final class ShutdownRunner
 
     /**
      * The active-server record is always cleared, even if reaping a process
-     * or stopping the server throws — a stale record would otherwise make
-     * the next app:serve think a server it does not own is still active.
+     * throws — a stale record would otherwise make the next app:serve think
+     * a server it does not own is still active. Clearing happens BEFORE the
+     * stop-server prompt: Ctrl+C at a prompt calls exit(), which skips
+     * finally blocks, so state cleared after the prompt would leak.
+     * stopServer() receives everything it needs as arguments.
      */
     private function tearDown(?ActiveServerRecord $active): void
     {
@@ -76,13 +79,13 @@ final class ShutdownRunner
             if ($this->reaper->reapAll()) {
                 $this->ledger->clear();
             }
-
-            if ($active !== null) {
-                $this->stopServer($active->key, $active->startedByUs);
-            }
         } finally {
             $this->store->clear();
             $this->cleanUpStaleHotFile($hadAssetWatcher);
+        }
+
+        if ($active !== null) {
+            $this->stopServer($active->key, $active->startedByUs);
         }
     }
 

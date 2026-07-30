@@ -25,6 +25,8 @@ final class ServeCommand extends BootUpCommand implements Isolatable
 
     private ?OutputMultiplexer $streaming = null;
 
+    private bool $tearingDown = false;
+
     protected $signature = 'app:serve {server? : The development server to use (herd, sail, laravel, or any driver registered in boot-up.server.drivers)}
         {--s|seed : Seed the database after migrating}
         {--no-migrate : Skip running pending migrations}
@@ -121,6 +123,14 @@ final class ServeCommand extends BootUpCommand implements Isolatable
     private function registerShutdownTrap(ShutdownRunner $shutdown, StageReporter $reporter): void
     {
         $this->trap([SIGINT, SIGTERM], function () use ($shutdown, $reporter): void {
+            // A second signal while teardown is in flight would re-enter
+            // here and exit(0) before the first pass finishes its cleanup.
+            if ($this->tearingDown) {
+                return;
+            }
+
+            $this->tearingDown = true;
+
             // Mid-stream Ctrl+C: end the multiplexer loop first so the
             // teardown prompts render on a quiet terminal. The children
             // already received the process group's SIGINT.

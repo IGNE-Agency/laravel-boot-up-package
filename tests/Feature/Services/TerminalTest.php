@@ -217,3 +217,27 @@ test('fail settles the bar in its error state and detaches it', function (): voi
     expect($progress->isRendered())->toBeFalse()
         ->and($afterError)->not->toContain('Boot progress');
 });
+
+test('settling the bar leaves the SIGINT handler armed', function (string $method): void {
+    Prompt::fake();
+
+    $originalAsync = pcntl_async_signals();
+    $originalHandler = pcntl_signal_get_handler(SIGINT);
+
+    try {
+        $progress = (new Terminal)->progress('Boot progress', 2);
+        $progress->start();
+        $progress->advance();
+        $progress->{$method}();
+
+        // Progress's own resetSignals() would force SIGINT back to SIG_DFL
+        // here, disarming app:serve's teardown trap right as the combined
+        // stream (whose banner says "press Ctrl+C to stop everything")
+        // begins. TrackedProgress overrides it away.
+        expect(pcntl_signal_get_handler(SIGINT))->not->toBe(SIG_DFL);
+    } finally {
+        pcntl_async_signals($originalAsync);
+        pcntl_signal(SIGINT, $originalHandler);
+    }
+})->with(['finish', 'fail', 'interrupt'])
+    ->skip(! \function_exists('pcntl_signal'), 'requires ext-pcntl');
