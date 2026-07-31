@@ -22,6 +22,10 @@ test('every package manager knows its binary, lockfile, commands and tool', func
     'pnpm' => [PackageManager::PNPM, 'pnpm-lock.yaml', Tool::PNPM],
 ]);
 
+test('the default is bun', function (): void {
+    expect(PackageManager::default())->toBe(PackageManager::BUN);
+});
+
 test('the please-use engines sentinel resolves pnpm', function (): void {
     $file = sys_get_temp_dir().'/boot-up-pkg-'.bin2hex(random_bytes(4)).'.json';
     file_put_contents($file, json_encode(['engines' => ['node' => 'please-use-pnpm']]));

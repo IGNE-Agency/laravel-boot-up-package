@@ -13,16 +13,20 @@ use Illuminate\Contracts\Config\Repository;
  */
 final readonly class SchedulerConfig
 {
+    public RunMode $runIn;
+
     public function __construct(
         public bool $enabled = false,
-        public RunMode $runIn = RunMode::Combined,
-    ) {}
+        ?RunMode $runIn = null,
+    ) {
+        $this->runIn = $runIn ?? RunMode::default();
+    }
 
     public static function fromRepository(Repository $config): self
     {
         return new self(
             enabled: (bool) $config->get('boot-up.scheduler.enabled', false),
-            runIn: RunMode::fromConfig($config->get('boot-up.scheduler.run_in'), 'boot-up.scheduler.run_in', RunMode::Combined),
+            runIn: RunMode::fromConfig($config->get('boot-up.scheduler.run_in'), 'boot-up.scheduler.run_in'),
         );
     }
 }

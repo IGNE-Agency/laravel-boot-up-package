@@ -9,16 +9,20 @@ use Illuminate\Contracts\Config\Repository;
 
 final readonly class ReverbConfig
 {
+    public RunMode $runIn;
+
     public function __construct(
         public bool $enabled = true,
-        public RunMode $runIn = RunMode::Combined,
-    ) {}
+        ?RunMode $runIn = null,
+    ) {
+        $this->runIn = $runIn ?? RunMode::default();
+    }
 
     public static function fromRepository(Repository $config): self
     {
         return new self(
             enabled: (bool) $config->get('boot-up.reverb.enabled', true),
-            runIn: RunMode::fromConfig($config->get('boot-up.reverb.run_in'), 'boot-up.reverb.run_in', RunMode::Combined),
+            runIn: RunMode::fromConfig($config->get('boot-up.reverb.run_in'), 'boot-up.reverb.run_in'),
         );
     }
 }

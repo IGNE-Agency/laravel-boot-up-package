@@ -9,20 +9,24 @@ use Illuminate\Contracts\Config\Repository;
 
 final readonly class QueueConfig
 {
+    public RunMode $runIn;
+
     /**
      * @param  array<int|string, int|string|bool|null>  $flags  extra queue:work options, e.g. ['--tries' => 3]
      */
     public function __construct(
         public bool $enabled = true,
-        public RunMode $runIn = RunMode::Combined,
+        ?RunMode $runIn = null,
         public array $flags = [],
-    ) {}
+    ) {
+        $this->runIn = $runIn ?? RunMode::default();
+    }
 
     public static function fromRepository(Repository $config): self
     {
         return new self(
             enabled: (bool) $config->get('boot-up.queue.enabled', true),
-            runIn: RunMode::fromConfig($config->get('boot-up.queue.run_in'), 'boot-up.queue.run_in', RunMode::Combined),
+            runIn: RunMode::fromConfig($config->get('boot-up.queue.run_in'), 'boot-up.queue.run_in'),
             flags: (array) $config->get('boot-up.queue.flags', []),
         );
     }

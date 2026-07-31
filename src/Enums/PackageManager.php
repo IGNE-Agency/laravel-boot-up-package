@@ -4,26 +4,21 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Enums;
 
+use Igne\LaravelBootUp\Concerns\ResolvesFromConfig;
 use Igne\LaravelBootUp\Data\Lines;
-use Igne\LaravelBootUp\Exceptions\ConfigException;
 
 enum PackageManager: string
 {
+    use ResolvesFromConfig;
+
     case BUN = 'bun';
     case YARN = 'yarn';
     case NPM = 'npm';
     case PNPM = 'pnpm';
 
-    /**
-     * Null and '' mean "use the default"; anything else must be a case.
-     */
-    public static function fromConfig(mixed $value, string $key, self $default): self
+    public static function default(): self
     {
-        if ($value === null || $value === '') {
-            return $default;
-        }
-
-        return self::tryFrom((string) $value) ?? throw ConfigException::invalidEnumValue($key, (string) $value, self::class);
+        return self::BUN;
     }
 
     public function binary(): string
