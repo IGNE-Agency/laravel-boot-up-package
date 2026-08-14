@@ -37,6 +37,22 @@ final class PackageJson
     }
 
     /**
+     * The package manager whose lockfile sits next to package.json, or null
+     * when none does. With several lockfiles present the enum's case order
+     * decides — a project in that state needs cleaning up either way.
+     */
+    public function lockedPackageManager(): ?PackageManager
+    {
+        foreach (PackageManager::cases() as $manager) {
+            if (is_file(\dirname($this->path).'/'.$manager->lockfile())) {
+                return $manager;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * The package manager demanded by an engines sentinel such as
      * "please-use-bun", or null when the project does not pin one.
      */

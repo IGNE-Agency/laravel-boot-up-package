@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Services;
 
 use Closure;
 use Igne\LaravelBootUp\Data\Lines;
+use Igne\LaravelBootUp\Enums\StreamColor;
 use Laravel\Prompts\Concerns\Colors;
 
 use function Laravel\Prompts\confirm;
@@ -19,6 +20,8 @@ use function Laravel\Prompts\select;
 use function Laravel\Prompts\table;
 use function Laravel\Prompts\text;
 use function Laravel\Prompts\warning;
+
+use Symfony\Component\Console\Color;
 
 /**
  * The single terminal seam: every message and prompt the package emits goes
@@ -99,13 +102,23 @@ final class Terminal
     }
 
     /**
-     * Wrap text in an orange 256-colour foreground — for loud warnings that
-     * need to stand out from ordinary (dim) output. The Prompts Colors trait
-     * has no orange, so this is the one raw escape the seam owns.
+     * Wrap text in a hex foreground colour, degrading to 256/16 colours on
+     * terminals without truecolor support — the raw-escape seam the stream
+     * palette and loud warnings share. The Prompts Colors trait only knows
+     * the sixteen ANSI names, so hex rendering is the seam's own.
+     */
+    public function hex(string $hex, string $text): string
+    {
+        return (new Color($hex))->apply($text);
+    }
+
+    /**
+     * Orange text — for loud warnings that need to stand out from ordinary
+     * (dim) output.
      */
     public function orange(string $text): string
     {
-        return "\e[38;5;208m{$text}\e[39m";
+        return $this->hex(StreamColor::Orange->value, $text);
     }
 
     /**

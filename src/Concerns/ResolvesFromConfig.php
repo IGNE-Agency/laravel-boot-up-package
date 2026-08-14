@@ -17,8 +17,17 @@ trait ResolvesFromConfig
 
     public static function fromConfig(mixed $value, string $key): self
     {
+        return self::fromConfigOrNull($value, $key) ?? self::default();
+    }
+
+    /**
+     * For keys where "unset" means something richer than the enum default
+     * (detection, prompting) and the caller handles null itself.
+     */
+    public static function fromConfigOrNull(mixed $value, string $key): ?self
+    {
         if ($value === null || $value === '') {
-            return self::default();
+            return null;
         }
 
         return self::tryFrom((string) $value) ?? throw ConfigException::invalidEnumValue($key, (string) $value, self::class);

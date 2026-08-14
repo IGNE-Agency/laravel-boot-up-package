@@ -43,6 +43,8 @@ final class ServeRunner
         private readonly StageReporter $reporter,
         private readonly CombinedRunPlan $combined,
         private readonly OutputMultiplexer $multiplexer,
+        private readonly StreamOrder $order,
+        private readonly BootCommandRegistry $registry,
     ) {}
 
     /**
@@ -64,7 +66,12 @@ final class ServeRunner
 
         $this->context = new ServeContext($options, $this->selector->select($server));
 
-        return $this->plan = StepSequence::for($this->config->steps, $options, $this->context->server?->label());
+        return $this->plan = StepSequence::for(
+            $this->config->steps,
+            $options,
+            $this->context->server?->label(),
+            $this->registry->summaryLabels(),
+        );
     }
 
     /**
@@ -147,7 +154,7 @@ final class ServeRunner
         terminal()->info('Streaming service output below — press Ctrl+C to stop everything.');
 
         $this->streaming = $this->multiplexer;
-        $this->multiplexer->stream($this->combined);
+        $this->multiplexer->stream($this->order->apply($this->combined));
         $this->streaming = null;
 
         $this->shutdown->run();

@@ -29,7 +29,33 @@ final class WorkerLauncher
         private readonly ProcessLedger $ledger,
         private readonly ProcessReaper $reaper,
         private readonly CombinedRunPlan $plan,
+        private readonly BootCommandRegistry $registry,
     ) {}
+
+    /**
+     * Whether the BootCommands slate lets this worker run: a launchable
+     * registration under its stream name replaces it, and only()/except()
+     * can exclude it outright. Steps ask this before their own gate, so
+     * the replacement note wins over quieter skip reasons.
+     */
+    public function allows(Worker $worker): bool
+    {
+        $stream = $worker->streamName();
+
+        if ($this->registry->replaces($stream)) {
+            terminal()->note("{$worker->name()} replaced by the registered [{$stream}] command — skipping.");
+
+            return false;
+        }
+
+        if (! $this->registry->allows($stream)) {
+            terminal()->note("{$worker->name()} skipped (BootCommands only/except).");
+
+            return false;
+        }
+
+        return true;
+    }
 
     /**
      * Whether a live tracked process already holds this label.
@@ -66,7 +92,7 @@ final class WorkerLauncher
         );
 
         $record = match ($this->effectiveMode($worker->runIn(), $name, $context)) {
-            RunMode::Combined => $this->queueForCombined($label, $name, $worker->streamName(), $command),
+            RunMode::Combined => $this->queueForCombined($label, $name, $worker, $command),
             RunMode::Terminal => $this->runner->startInTerminal($command, $label),
             RunMode::Background => $this->runner->start($command, $label),
         };
@@ -94,14 +120,17 @@ final class WorkerLauncher
         return $mode;
     }
 
-    private function queueForCombined(string $label, string $name, string $streamName, CommandLine $command): null
+    private function queueForCombined(string $label, string $name, Worker $worker, CommandLine $command): null
     {
+        $streamName = $worker->streamName();
+
         // FORCE_COLOR keeps npm tooling (vite) colorful without a TTY;
         // artisan workers honor it through Symfony Console as well.
         $this->plan->add(CombinedService::process(
             $label,
             $streamName,
             $command->withEnv(['FORCE_COLOR' => '1']),
+            $worker->streamColor(),
         ));
 
         terminal()->success("{$name} will stream here as [{$streamName}] once the boot completes.");

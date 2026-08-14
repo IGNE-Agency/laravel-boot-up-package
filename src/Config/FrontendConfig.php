@@ -11,18 +11,20 @@ use Illuminate\Contracts\Config\Repository;
 
 final readonly class FrontendConfig
 {
-    public PackageManager $packageManager;
-
     public AssetMode $assets;
 
     public RunMode $watchIn;
 
+    /**
+     * A null package manager means "not explicitly configured" — the
+     * selector then detects one from the project's lockfile before falling
+     * back to the default.
+     */
     public function __construct(
-        ?PackageManager $packageManager = null,
+        public ?PackageManager $packageManager = null,
         ?AssetMode $assets = null,
         ?RunMode $watchIn = null,
     ) {
-        $this->packageManager = $packageManager ?? PackageManager::default();
         $this->assets = $assets ?? AssetMode::default();
         $this->watchIn = $watchIn ?? RunMode::default();
     }
@@ -30,7 +32,7 @@ final readonly class FrontendConfig
     public static function fromRepository(Repository $config): self
     {
         return new self(
-            packageManager: PackageManager::fromConfig($config->get('boot-up.frontend.package_manager'), 'boot-up.frontend.package_manager'),
+            packageManager: PackageManager::fromConfigOrNull($config->get('boot-up.frontend.package_manager'), 'boot-up.frontend.package_manager'),
             assets: AssetMode::fromConfig($config->get('boot-up.frontend.assets'), 'boot-up.frontend.assets'),
             watchIn: RunMode::fromConfig($config->get('boot-up.frontend.watch_in'), 'boot-up.frontend.watch_in'),
         );

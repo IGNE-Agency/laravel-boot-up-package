@@ -41,6 +41,7 @@ use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\OutputMultiplexer;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Serve\BootCommandRegistry;
 use Igne\LaravelBootUp\Serve\CombinedRunPlan;
 use Igne\LaravelBootUp\Serve\ShutdownRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
@@ -89,6 +90,13 @@ final class BootUpServiceProvider extends ServiceProvider
         $this->app->singleton(PackageManagerSelector::class);
         $this->app->singleton(ShutdownRunner::class);
         $this->app->singleton(CombinedRunPlan::class);
+
+        // Bound in register() so providers can call BootCommands::…
+        // from their boot() regardless of boot order.
+        $this->app->singleton(BootCommandRegistry::class, fn (Application $app): BootCommandRegistry => new BootCommandRegistry(
+            runningInConsole: $app->runningInConsole(),
+            vendorPath: $app->basePath('vendor'),
+        ));
     }
 
     private function registerConfigObjects(): void

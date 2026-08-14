@@ -9,12 +9,14 @@ use Igne\LaravelBootUp\Contracts\TerminalLauncher;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Enums\RegistrationSource;
 use Igne\LaravelBootUp\Enums\RunMode;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
 use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Serve\BootCommandRegistry;
 use Igne\LaravelBootUp\Serve\CombinedRunPlan;
 use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
@@ -132,6 +134,39 @@ test('a scheduler that is already running is not started twice', function (): vo
 
     ProcessFaker::assertDidntRun('*nohup*');
     Prompt::assertStrippedOutputContains('Scheduler already running');
+});
+
+test('a registration under a built-in stream name stands the built-in down', function (): void {
+    Process::fake();
+    bindWorkerDeps($this->dir, new ReverbConfig, ['require' => ['laravel/reverb' => '^1.0']]);
+    app(BootCommandRegistry::class)->artisan('reverb:start --host=0.0.0.0', 'reverb', RegistrationSource::Application);
+
+    app(ReverbWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+
+    Process::assertNothingRan();
+    Prompt::assertStrippedOutputContains('Reverb replaced by the registered [reverb] command — skipping.');
+});
+
+test('except() stops an otherwise-enabled built-in in any run mode', function (): void {
+    Process::fake();
+    bindWorkerDeps($this->dir, new SchedulerConfig(enabled: true, runIn: RunMode::Background));
+    app(BootCommandRegistry::class)->except('scheduler');
+
+    app(SchedulerWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+
+    Process::assertNothingRan();
+    Prompt::assertStrippedOutputContains('Scheduler skipped (BootCommands only/except).');
+});
+
+test('only() suppresses every built-in outside the list', function (): void {
+    Process::fake();
+    bindWorkerDeps($this->dir, new ReverbConfig, ['require' => ['laravel/reverb' => '^1.0']]);
+    app(BootCommandRegistry::class)->only('queue');
+
+    app(ReverbWorker::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+
+    Process::assertNothingRan();
+    Prompt::assertStrippedOutputContains('Reverb skipped (BootCommands only/except).');
 });
 
 test('horizon is skipped when the project does not require it', function (): void {

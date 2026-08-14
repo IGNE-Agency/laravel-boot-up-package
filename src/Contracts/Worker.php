@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Contracts;
 
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Enums\RunMode;
+use Igne\LaravelBootUp\Enums\StreamColor;
 
 /**
  * A tracked long-running process a pipeline step starts through the
@@ -39,4 +40,9 @@ interface Worker
      * The short [prefix] this worker streams under in combined mode.
      */
     public function streamName(): string;
+
+    /**
+     * The requested prefix color, or null to draw one from the palette.
+     */
+    public function streamColor(): ?StreamColor;
 }

@@ -19,3 +19,8 @@ test('fromRepository reads the boot-up.frontend schema', function (): void {
         ->and($config->assets)->toBe(AssetMode::Build)
         ->and($config->watchIn)->toBe(RunMode::Terminal);
 });
+
+test('an unset package manager stays null so the selector can detect one', function (): void {
+    expect(FrontendConfig::fromRepository(new Repository([]))->packageManager)->toBeNull()
+        ->and((new FrontendConfig)->packageManager)->toBeNull();
+});

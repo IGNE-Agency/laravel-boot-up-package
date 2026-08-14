@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Concerns;
 
 use Closure;
 use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Enums\StreamColor;
 use Igne\LaravelBootUp\Serve\WorkerLauncher;
 
 /**
@@ -17,7 +18,7 @@ trait LaunchesAsWorker
 {
     public function handle(ServeContext $context, Closure $next): mixed
     {
-        if ($this->shouldRun($context)) {
+        if ($this->launcher()->allows($this) && $this->shouldRun($context)) {
             $this->launcher()->launch($this, $context);
         }
 
@@ -40,6 +41,14 @@ trait LaunchesAsWorker
     public function streamName(): string
     {
         return $this->label();
+    }
+
+    /**
+     * Built-in workers take whatever palette color the stream assigns.
+     */
+    public function streamColor(): ?StreamColor
+    {
+        return null;
     }
 
     /**

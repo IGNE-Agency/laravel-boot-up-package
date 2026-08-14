@@ -29,6 +29,15 @@ starts the workers your project needs, and serves the app via **Herd**,
 Ctrl+C stops everything. `app:down` stops everything it started — and nothing
 it didn't.
 
+Your own dev processes join the same stream — register them from a service
+provider, `php artisan dev`-style:
+
+```php
+BootCommands::register('stripe listen --forward-to '.config('app.url'))->orange();
+```
+
+See [Registered dev processes](docs/EXTENDING.md#registered-dev-processes).
+
 ## Commands
 
 | Command                  | What it does                                                          |
@@ -51,8 +60,8 @@ Every flag is documented in [docs/COMMANDS.md](docs/COMMANDS.md) — and
   [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
 - Deployment scripts: [docs/DEPLOYMENTS.md](docs/DEPLOYMENTS.md)
 - CI/CD pipelines: [docs/PIPELINES.md](docs/PIPELINES.md)
-- Extending the package (servers, steps, tools, platforms, providers):
-  [docs/EXTENDING.md](docs/EXTENDING.md)
+- Extending the package (dev processes, servers, steps, tools, platforms,
+  providers): [docs/EXTENDING.md](docs/EXTENDING.md)
 - Project commands around deploys: [docs/CUSTOM_COMMANDS.md](docs/CUSTOM_COMMANDS.md)
 
 ## Testing

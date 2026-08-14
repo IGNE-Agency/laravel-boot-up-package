@@ -18,6 +18,7 @@ use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
 use Igne\LaravelBootUp\Frontend\Steps\WatchAssets;
 use Igne\LaravelBootUp\Queue\Steps\QueueWorker;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
+use Igne\LaravelBootUp\Serve\Steps\StartRegisteredProcesses;
 use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
 use Igne\LaravelBootUp\Servers\Herd\HerdServer;
 use Igne\LaravelBootUp\Servers\Sail\SailServer;
@@ -130,7 +131,9 @@ return [
     ],
 
     'frontend' => [
-        'package_manager' => env('BOOT_UP_PACKAGE_MANAGER', 'bun'), // bun | yarn | npm | pnpm
+        // bun | yarn | npm | pnpm — leave unset to detect from the lockfile
+        // (package.json's please-use-* engines sentinel always wins).
+        'package_manager' => env('BOOT_UP_PACKAGE_MANAGER'),
         'assets' => env('BOOT_UP_ASSETS', 'watch'), // watch | build | skip
         'watch_in' => env('BOOT_UP_ASSETS_WATCH_IN', 'combined'), // combined | terminal | background
     ],
@@ -236,6 +239,7 @@ return [
             HorizonWorker::class,
             ReverbWorker::class,
             SchedulerWorker::class,
+            StartRegisteredProcesses::class,
             BuildAssets::class,
             WatchAssets::class,
             AnnounceApplication::class,

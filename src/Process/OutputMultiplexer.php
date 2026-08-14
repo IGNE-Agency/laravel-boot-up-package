@@ -8,6 +8,7 @@ use Closure;
 use Igne\LaravelBootUp\Data\CombinedService;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Enums\RunMode;
+use Igne\LaravelBootUp\Enums\StreamColor;
 use Igne\LaravelBootUp\Serve\CombinedRunPlan;
 use Illuminate\Process\Factory;
 
@@ -22,8 +23,6 @@ use Illuminate\Process\Factory;
  */
 final class OutputMultiplexer
 {
-    private const array PALETTE = ['cyan', 'magenta', 'yellow', 'green', 'blue', 'red'];
-
     private bool $stopped = false;
 
     /** @var Closure(string): void */
@@ -77,10 +76,11 @@ final class OutputMultiplexer
     private function open(array $services): array
     {
         $width = collect($services)->map(fn (CombinedService $service): int => strlen($service->name))->max() ?? 0;
+        $colors = $this->assignColors($services);
 
         return collect($services)
-            ->map(function (CombinedService $service, int $index) use ($width): MultiplexedStream {
-                $stream = new MultiplexedStream($service, $this->prefix($service->name, $index, $width));
+            ->map(function (CombinedService $service, int $index) use ($width, $colors): MultiplexedStream {
+                $stream = new MultiplexedStream($service, $this->prefix($service->name, $colors[$index], $width));
 
                 $service->isProcess()
                     ? $this->startProcess($stream)
@@ -93,15 +93,39 @@ final class OutputMultiplexer
     }
 
     /**
-     * `[name]` padded so every line's output starts in the same column,
-     * colored from the palette by insertion order.
+     * Requested colors are honored and reserved; the rest of the services
+     * draw the unused palette colors in stream order, then round-robin over
+     * the whole palette once every color has appeared.
+     *
+     * @param  list<CombinedService>  $services
+     * @return list<StreamColor>
      */
-    private function prefix(string $name, int $index, int $width): string
+    private function assignColors(array $services): array
     {
-        $color = self::PALETTE[$index % count(self::PALETTE)];
+        $palette = StreamColor::cases();
+        $reserved = array_filter(array_map(fn (CombinedService $service): ?StreamColor => $service->color, $services));
+        $pool = array_values(array_filter($palette, fn (StreamColor $color): bool => ! \in_array($color, $reserved, true)));
+
+        $assigned = [];
+        $overflow = 0;
+
+        foreach ($services as $service) {
+            $assigned[] = $service->color
+                ?? array_shift($pool)
+                ?? $palette[$overflow++ % \count($palette)];
+        }
+
+        return $assigned;
+    }
+
+    /**
+     * `[name]` padded so every line's output starts in the same column.
+     */
+    private function prefix(string $name, StreamColor $color, int $width): string
+    {
         $padded = str_pad("[{$name}]", $width + 2);
 
-        return terminal()->{$color}($padded);
+        return terminal()->hex($color->value, $padded);
     }
 
     private function startProcess(MultiplexedStream $stream): void

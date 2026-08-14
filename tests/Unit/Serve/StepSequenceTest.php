@@ -20,6 +20,7 @@ use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
 use Igne\LaravelBootUp\Frontend\Steps\WatchAssets;
 use Igne\LaravelBootUp\Queue\Steps\QueueWorker;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
+use Igne\LaravelBootUp\Serve\Steps\StartRegisteredProcesses;
 use Igne\LaravelBootUp\Serve\StepSequence;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
@@ -49,6 +50,7 @@ function defaultServeSteps(): array
         HorizonWorker::class,
         ReverbWorker::class,
         SchedulerWorker::class,
+        StartRegisteredProcesses::class,
         BuildAssets::class,
         WatchAssets::class,
         AnnounceApplication::class,
@@ -60,7 +62,7 @@ test('assigns every default step to its stage, in order', function (): void {
 
     $stages = array_map(fn ($step) => $step->stage, $plan->steps);
 
-    expect($plan->count())->toBe(22)
+    expect($plan->count())->toBe(23)
         ->and($stages)->toBe([
             ServeStage::Prepare, ServeStage::Prepare, ServeStage::Prepare,
             ServeStage::Tools,
@@ -68,7 +70,7 @@ test('assigns every default step to its stage, in order', function (): void {
             ServeStage::Database, ServeStage::Database, ServeStage::Database,
             ServeStage::Database, ServeStage::Database, ServeStage::Database,
             ServeStage::Cache, ServeStage::Finalize,
-            ServeStage::Services, ServeStage::Services, ServeStage::Services, ServeStage::Services,
+            ServeStage::Services, ServeStage::Services, ServeStage::Services, ServeStage::Services, ServeStage::Services,
             ServeStage::Assets, ServeStage::Assets, ServeStage::Announce,
         ]);
 });
@@ -96,6 +98,24 @@ test('a detached run drops the combined-stream hint from the services line', fun
     $plan = StepSequence::for(defaultServeSteps(), new ServeOptions(follow: false));
 
     expect($plan->summary())->toContain('Start long-running services when enabled: queue worker, Horizon, Reverb, scheduler');
+});
+
+test('registered processes join the services line', function (): void {
+    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions(follow: false), null, ['stripe', 'reverb (replaces built-in)']);
+
+    expect($plan->summary())->toContain(
+        'Start long-running services when enabled: queue worker, Horizon, Reverb, scheduler — plus registered: stripe, reverb (replaces built-in)',
+    );
+});
+
+test('registered processes carry the services line alone when no built-in worker is configured', function (): void {
+    $plan = StepSequence::for([
+        StartServer::class,
+        StartRegisteredProcesses::class,
+        AnnounceApplication::class,
+    ], new ServeOptions(follow: false), null, ['stripe']);
+
+    expect($plan->summary())->toContain('Start registered processes: stripe');
 });
 
 test('a variant entry parses its class and parameters', function (): void {

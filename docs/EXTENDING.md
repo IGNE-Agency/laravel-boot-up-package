@@ -1,6 +1,65 @@
 # Extending the package
 
-Six extension points, none of which require touching package code.
+Seven extension points, none of which require touching package code.
+
+## Registered dev processes
+
+Extra long-running processes for `app:serve` — the package's take on
+Laravel's `php artisan dev` / `DevCommands`. Register from any service
+provider's `boot()`:
+
+```php
+use Igne\LaravelBootUp\Facades\BootCommands;
+
+BootCommands::artisan('reverb:start', 'reverb')->orange();
+BootCommands::register('stripe listen --forward-to '.config('app.url'));
+BootCommands::packageManager('run dev')->after('queue');
+BootCommands::packageManagerExec('vite --port 3000');
+```
+
+`register()` runs the command as written; `artisan()` prefixes `php artisan`;
+`packageManager()` prefixes the project's package manager binary
+(`packageManager('run dev')` becomes `bun run dev` — the same contract as
+`DeployTask::packageManager()`); `packageManagerExec()` prefixes the
+manager's exec runner (`bunx` / `npx` / `pnpm exec` / `yarn exec`).
+
+The optional second argument names the process; otherwise the command's
+first token is the name (`packageManager('run <script>')` names itself after
+the script). The name is the ledger label, the `[prefix]` in the combined
+stream, and the slot the replacement and filter semantics below act on.
+
+Each registration returns a fluent object:
+
+- `->blue()` `->purple()` `->pink()` `->orange()` `->green()` `->yellow()`,
+  or `->color($streamColor)` — pick the stream prefix color
+  (`Enums\StreamColor`); processes without one draw the unused palette
+  colors in stream order.
+- `->inTerminal()` / `->inBackground()` — run in an own terminal window /
+  detached with a log file, instead of the combined stream.
+- `->env([...])`, `->in($directory)` — extra environment variables / working
+  directory.
+- `->first()`, `->last()`, `->before('vite')`, `->after('queue')` — position
+  in the combined output stream. Built-in stream names: `server`, `queue`,
+  `horizon`, `reverb`, `scheduler`, `vite`. The last call wins; unknown or
+  absent targets are ignored.
+
+Semantics worth knowing:
+
+- **Replacing a built-in** — registering under a built-in worker's stream
+  name (`queue`, `horizon`, `reverb`, `scheduler`, `vite`) replaces it
+  entirely: the built-in's config keys no longer apply, the registration's
+  own run mode/color/placement govern, and it inherits the built-in's slot
+  in the stream. The name `server` is reserved for the development server.
+- **Filters** — `BootCommands::only('queue', 'stripe')` and
+  `BootCommands::except('scheduler')` filter built-ins and registrations
+  alike; calls merge.
+- **Priority** — registrations from application code always beat a vendor
+  package's registration under the same name; a vendor package can suggest a
+  process but never silently override yours.
+- Registered processes launch in the services stage of the boot, are
+  ledger-tracked (`app:status` sees them, `app:down` stops them), get server
+  command rewrites (Sail), and degrade to background processes under
+  `--detach` or a non-interactive stdout — exactly like the built-ins.
 
 ## Project commands
 

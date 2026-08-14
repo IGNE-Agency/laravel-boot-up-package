@@ -14,6 +14,7 @@ use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Serve\BootCommandRegistry;
 use Igne\LaravelBootUp\Serve\CombinedRunPlan;
 use Igne\LaravelBootUp\Serve\WorkerLauncher;
 use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
@@ -51,7 +52,7 @@ function artisanServer(ProcessLedger $ledger, string $workDir, ?ArtisanServeConf
 
     return new ArtisanServer(
         $runner,
-        new WorkerLauncher($runner, new CommandRewriter, $ledger, $reaper, $plan),
+        new WorkerLauncher($runner, new CommandRewriter, $ledger, $reaper, $plan, new BootCommandRegistry(runningInConsole: true, vendorPath: '/nonexistent/vendor')),
         $config ?? new ArtisanServeConfig,
         $plan,
     );

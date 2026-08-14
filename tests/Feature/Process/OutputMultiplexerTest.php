@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Igne\LaravelBootUp\Data\CombinedService;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Enums\RunMode;
+use Igne\LaravelBootUp\Enums\StreamColor;
 use Igne\LaravelBootUp\Process\OutputMultiplexer;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Serve\CombinedRunPlan;
@@ -66,6 +67,45 @@ test('interleaves prefixed lines from concurrent workers until they exit', funct
         ->and($output)->toContain('queue line 1')
         ->and($output)->toContain('queue line 2')
         ->and($output)->toContain('vite ready');
+});
+
+test('uncolored services draw the palette in stream order', function (): void {
+    Process::fake([
+        '*queue:work*' => Process::describe()->output(['q'])->runsFor(iterations: 1),
+        '*horizon*' => Process::describe()->output(['h'])->runsFor(iterations: 1),
+    ]);
+
+    multiplexer($this->ledger, $this->sink)->stream(combinedPlan(
+        CombinedService::process('queue-worker', 'queue', CommandLine::make('php artisan queue:work')->withTimeout(null)),
+        CombinedService::process('horizon', 'horizon', CommandLine::make('php artisan horizon')->withTimeout(null)),
+    ));
+
+    $output = implode('', $this->written);
+
+    expect($output)->toContain(terminal()->hex(StreamColor::Blue->value, str_pad('[queue]', 9)))
+        ->and($output)->toContain(terminal()->hex(StreamColor::Purple->value, str_pad('[horizon]', 9)));
+});
+
+test('a requested color is honored and reserved from the auto pool', function (): void {
+    Process::fake([
+        '*queue:work*' => Process::describe()->output(['q'])->runsFor(iterations: 1),
+        '*horizon*' => Process::describe()->output(['h'])->runsFor(iterations: 1),
+        '*stripe*' => Process::describe()->output(['s'])->runsFor(iterations: 1),
+    ]);
+
+    multiplexer($this->ledger, $this->sink)->stream(combinedPlan(
+        CombinedService::process('queue-worker', 'queue', CommandLine::make('php artisan queue:work')->withTimeout(null)),
+        CombinedService::process('stripe', 'stripe', CommandLine::make('stripe listen')->withTimeout(null), StreamColor::Blue),
+        CombinedService::process('horizon', 'horizon', CommandLine::make('php artisan horizon')->withTimeout(null)),
+    ));
+
+    $output = implode('', $this->written);
+
+    // stripe keeps its requested blue; the uncolored services skip it and
+    // draw purple and pink, the first unused palette colors.
+    expect($output)->toContain(terminal()->hex(StreamColor::Blue->value, str_pad('[stripe]', 9)))
+        ->and($output)->toContain(terminal()->hex(StreamColor::Purple->value, str_pad('[queue]', 9)))
+        ->and($output)->toContain(terminal()->hex(StreamColor::Pink->value, str_pad('[horizon]', 9)));
 });
 
 test('records a live combined child in the ledger with the combined mode', function (): void {

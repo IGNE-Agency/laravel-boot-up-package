@@ -64,6 +64,22 @@ enum PackageManager: string
     }
 
     /**
+     * The runner for executing a package's binary (npx and friends), as a
+     * command prefix.
+     *
+     * @return list<string>
+     */
+    public function execCommand(): array
+    {
+        return match ($this) {
+            self::BUN => ['bunx'],
+            self::NPM => ['npx'],
+            self::PNPM => ['pnpm', 'exec'],
+            self::YARN => ['yarn', 'exec'],
+        };
+    }
+
+    /**
      * The lockfile-strict install line for GENERATED deployment scripts,
      * falling back to a plain install (shell `||` syntax — never executed
      * locally by this package).

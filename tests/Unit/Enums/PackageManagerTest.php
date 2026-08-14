@@ -36,6 +36,13 @@ test('the please-use engines sentinel resolves pnpm', function (): void {
     @unlink($file);
 });
 
+test('exec commands', function (): void {
+    expect(PackageManager::BUN->execCommand())->toBe(['bunx'])
+        ->and(PackageManager::NPM->execCommand())->toBe(['npx'])
+        ->and(PackageManager::PNPM->execCommand())->toBe(['pnpm', 'exec'])
+        ->and(PackageManager::YARN->execCommand())->toBe(['yarn', 'exec']);
+});
+
 test('update commands', function (): void {
     expect(PackageManager::NPM->updateCommand())->toBe(['npm', 'update'])
         ->and(PackageManager::PNPM->updateCommand())->toBe(['pnpm', 'update'])

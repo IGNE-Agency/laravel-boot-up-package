@@ -80,9 +80,19 @@ Settings for the `php artisan serve` driver.
 
 | Key                        | Env var                   | Default    | Description                                                                      |
 | -------------------------- | ------------------------- | ---------- | -------------------------------------------------------------------------------- |
-| `frontend.package_manager` | `BOOT_UP_PACKAGE_MANAGER` | `bun`      | `bun`, `yarn`, `npm` or `pnpm`.                                                  |
+| `frontend.package_manager` | `BOOT_UP_PACKAGE_MANAGER` | unset      | `bun`, `yarn`, `npm` or `pnpm` — see the selection chain below.                  |
 | `frontend.assets`          | `BOOT_UP_ASSETS`          | `watch`    | `watch`, `build` or `skip`.                                                      |
 | `frontend.watch_in`        | `BOOT_UP_ASSETS_WATCH_IN` | `combined` | `combined`, `terminal` or `background` — see [Queue & workers](#queue--workers). |
+
+The package manager is selected by the strongest signal available, in order:
+
+1. A `please-use-{manager}` sentinel in `package.json`'s `engines` (always
+   wins — it's the project pinning itself; a warning names the conflict when
+   it overrides an explicit config value).
+2. The `frontend.package_manager` config value / `BOOT_UP_PACKAGE_MANAGER`.
+3. The lockfile on disk (`bun.lock`, `yarn.lock`, `package-lock.json`,
+   `pnpm-lock.yaml`), announced with a dim note.
+4. `bun`, the default.
 
 ## Queue & workers
 
@@ -96,6 +106,11 @@ Every `run_in` key (including `frontend.watch_in`) accepts the same three modes:
 
 Modes mix freely per worker (e.g. queue combined, Reverb in its own window).
 An unknown mode fails at boot with the key and the legal values named.
+
+Beyond the built-in workers, applications register their own dev processes
+with the `BootCommands` facade — including replacing a built-in or filtering
+the set with `only()`/`except()`. See
+[Registered dev processes](EXTENDING.md#registered-dev-processes).
 
 ### Queue
 
@@ -145,7 +160,7 @@ An unknown mode fails at boot with the key and the legal values named.
 | -------------------- | --------------------------- | -------- | ------------------------------------------------------------------------------------ |
 | `serve.open_browser` | `BOOT_UP_OPEN_BROWSER`      | `true`   | Open the app in your browser after boot.                                             |
 | `serve.auto_accept`  | `BOOT_UP_SERVE_AUTO_ACCEPT` | `false`  | Skip the "What app:serve will do — continue?" prompt. `--yes` does the same per run. |
-| `serve.steps`        | —                           | 22 steps | The full `app:serve` pipeline, in order — see [Step pipelines](#step-pipelines).     |
+| `serve.steps`        | —                           | 23 steps | The full `app:serve` pipeline, in order — see [Step pipelines](#step-pipelines).     |
 
 ## Deploy
 

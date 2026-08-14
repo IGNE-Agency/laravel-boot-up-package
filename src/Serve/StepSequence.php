@@ -26,6 +26,7 @@ use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
 use Igne\LaravelBootUp\Frontend\Steps\WatchAssets;
 use Igne\LaravelBootUp\Queue\Steps\QueueWorker;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
+use Igne\LaravelBootUp\Serve\Steps\StartRegisteredProcesses;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
 use Igne\LaravelBootUp\Workers\Steps\HorizonWorker;
@@ -44,17 +45,20 @@ final readonly class StepSequence
 {
     /**
      * @param  list<StepDescriptor>  $steps
+     * @param  list<string>  $registeredProcesses
      */
     private function __construct(
         public array $steps,
         private ServeOptions $options,
         private ?string $serverLabel,
+        private array $registeredProcesses,
     ) {}
 
     /**
      * @param  list<string>  $configuredSteps
+     * @param  list<string>  $registeredProcesses  summary labels of the BootCommands registrations that will launch
      */
-    public static function for(array $configuredSteps, ServeOptions $options, ?string $serverLabel = null): self
+    public static function for(array $configuredSteps, ServeOptions $options, ?string $serverLabel = null, array $registeredProcesses = []): self
     {
         $steps = [];
         $stage = null;
@@ -76,7 +80,7 @@ final readonly class StepSequence
             );
         }
 
-        return new self($steps, $options, $serverLabel);
+        return new self($steps, $options, $serverLabel, $registeredProcesses);
     }
 
     public function count(): int
@@ -252,12 +256,21 @@ final readonly class StepSequence
             isset($present[SchedulerWorker::class]) ? 'scheduler' : null,
         ])->filter();
 
-        if ($services->isEmpty()) {
+        $registered = isset($present[StartRegisteredProcesses::class])
+            ? implode(', ', $this->registeredProcesses)
+            : '';
+
+        if ($services->isEmpty() && $registered === '') {
             return null;
         }
 
-        $list = $services->implode(', ');
-        $line = "Start long-running services when enabled: {$list}";
+        $line = $services->isEmpty()
+            ? "Start registered processes: {$registered}"
+            : "Start long-running services when enabled: {$services->implode(', ')}";
+
+        if (! $services->isEmpty() && $registered !== '') {
+            $line .= " — plus registered: {$registered}";
+        }
 
         return $this->options->follow
             ? "{$line} — combined output streams in this terminal"
@@ -294,6 +307,7 @@ final readonly class StepSequence
             SchedulerWorker::class => 'Starting the scheduler',
             BuildAssets::class => 'Building assets',
             WatchAssets::class => 'Watching assets',
+            StartRegisteredProcesses::class => 'Starting registered processes',
             AnnounceApplication::class => 'Announcing the application',
             default => self::fallbackLabel($class, $parameters),
         };
