@@ -1,1 +1,4 @@
 npx lint-staged
+
+# Whole-project analysis: unlike Pint it cannot run per staged file.
+./vendor/bin/phpstan analyse --no-progress --memory-limit=1G

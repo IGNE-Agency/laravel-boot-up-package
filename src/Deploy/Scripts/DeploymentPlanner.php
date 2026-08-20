@@ -10,6 +10,7 @@ use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Config\QueueConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesDeployTasks;
 use Igne\LaravelBootUp\Data\DeploymentPlan;
+use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Illuminate\Contracts\Container\Container;
@@ -41,7 +42,7 @@ final class DeploymentPlanner
             finalize: $this->deploy->finalize,
             beforeMigrations: $projectCommands?->beforeMigrations() ?? [],
             afterMigrations: $projectCommands?->afterMigrations() ?? [],
-            frontend: $this->frontend->assets !== 'skip',
+            frontend: $this->frontend->assets !== AssetMode::Skip,
             packageManager: $this->packageManagers->selected(),
             restartQueues: $this->queue->enabled,
             zeroDowntime: $zeroDowntime,

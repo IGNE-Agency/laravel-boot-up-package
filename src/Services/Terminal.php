@@ -257,6 +257,9 @@ final class Terminal
      * Create and register the progress bar this terminal keeps out of the
      * way of other output. The caller drives start/advance/finish/fail.
      */
+    /**
+     * @param  iterable<mixed>|int  $steps
+     */
     public function progress(string $label, iterable|int $steps, string $hint = ''): TrackedProgress
     {
         return $this->activeProgress = new TrackedProgress(

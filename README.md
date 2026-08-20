@@ -75,8 +75,14 @@ Every flag is documented in [docs/COMMANDS.md](docs/COMMANDS.md) — and
 
 ```bash
 composer test          # Pest suite (unit + feature + architecture tests)
+composer analyse       # PHPStan, level 6, no baseline
 vendor/bin/pint        # code style
 ```
+
+The pre-commit hook runs Pint on staged files and PHPStan across the package.
+Analysis covers `src/` and `config/`; tests are left out because Pest binds
+`$this` inside test closures at runtime, which static analysis reads as Pest's
+own `TestCall` and reports by the thousand.
 
 ## License
 

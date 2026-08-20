@@ -115,7 +115,8 @@ class DevCommand extends FrameworkDevCommand implements Isolatable
         $this->warnWhenInvokedByItsOldName();
 
         $options = $this->devOptions();
-        $plan = $runner->prepare($options, $this->argument('server'));
+        $server = $this->argument('server');
+        $plan = $runner->prepare($options, \is_string($server) ? $server : null);
 
         if ($plan === null) {
             return self::FAILURE;

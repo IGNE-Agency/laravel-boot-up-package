@@ -73,6 +73,9 @@ final class DatabaseCreator
         return true;
     }
 
+    /**
+     * @return 'mysql'|'pgsql'|'sqlite'|'sqlsrv'
+     */
     private function driver(DatabaseConnection $connection): string
     {
         return match ($connection->driver) {
@@ -84,6 +87,8 @@ final class DatabaseCreator
     /**
      * Connect to the database server itself — no database selected, so the
      * connection works before the target database exists.
+     *
+     * @param  'mysql'|'pgsql'|'sqlsrv'  $driver  sqlite never reaches here: it is a file, handled by the callers
      */
     private function connect(DatabaseConnection $connection, string $driver): PDO
     {
@@ -105,6 +110,9 @@ final class DatabaseCreator
         }
     }
 
+    /**
+     * @param  'mysql'|'pgsql'|'sqlsrv'  $driver
+     */
     private function createStatement(string $driver, string $database): string
     {
         $escaped = match ($driver) {

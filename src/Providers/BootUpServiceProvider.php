@@ -112,7 +112,7 @@ final class BootUpServiceProvider extends ServiceProvider
     private function registerConfigObjects(): void
     {
         foreach (self::CONFIG_CLASSES as $configClass) {
-            $this->app->singleton($configClass, fn (Application $app) => $configClass::fromRepository($app['config']));
+            $this->app->singleton($configClass, fn (Application $app) => $configClass::fromRepository($app->make('config')));
         }
     }
 

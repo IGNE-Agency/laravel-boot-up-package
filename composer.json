@@ -32,6 +32,7 @@
     "laravel/prompts": "^0.3.21"
   },
   "require-dev": {
+    "larastan/larastan": "^3.10",
     "laravel/pint": "^1.27",
     "mockery/mockery": "^1.6",
     "orchestra/testbench": "^11.0",
@@ -59,6 +60,7 @@
     }
   },
   "scripts": {
+    "analyse": "phpstan analyse",
     "test": "pest",
     "test-coverage": "pest --coverage"
   },

@@ -170,8 +170,11 @@ final class Lines
     }
 
     /**
-     * @param  Closure(self): void  $then
-     * @param  Closure(self): void|null  $otherwise
+     * The callbacks append through $lines; whatever they return is discarded,
+     * so a fluent chain inside one is fine.
+     *
+     * @param  Closure(self): mixed  $then
+     * @param  Closure(self): mixed|null  $otherwise
      */
     public function when(bool $condition, Closure $then, ?Closure $otherwise = null): self
     {
@@ -186,7 +189,7 @@ final class Lines
 
     /**
      * @param  iterable<mixed, mixed>  $items
-     * @param  Closure(self, mixed, mixed): void  $callback  receives ($lines, $value, $key)
+     * @param  Closure(self, mixed, mixed): mixed  $callback  receives ($lines, $value, $key); the return value is discarded
      */
     public function each(iterable $items, Closure $callback): self
     {
@@ -201,7 +204,7 @@ final class Lines
      * Everything appended inside the callback is indented $spaces further.
      * Nesting accumulates; the previous level is restored afterwards.
      *
-     * @param  Closure(self): void  $callback
+     * @param  Closure(self): mixed  $callback
      */
     public function indent(int $spaces, Closure $callback): self
     {

@@ -182,3 +182,5 @@ Thumbs.db
 # --------------- Database Dumps --------------- #
 *.sql
 *.sqlite
+phpstan.neon
+.phpstan.cache/
