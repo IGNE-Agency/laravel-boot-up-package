@@ -7,8 +7,10 @@ namespace Igne\LaravelBootUp\Deploy\Steps;
 use Closure;
 use Igne\LaravelBootUp\Attributes\Group;
 use Igne\LaravelBootUp\Attributes\Stage;
+use Igne\LaravelBootUp\Contracts\DescribesProgress;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Deploy\DeployTaskRunner;
 use Igne\LaravelBootUp\Enums\DeployPhase;
 use Igne\LaravelBootUp\Enums\ServeStage;
@@ -23,7 +25,7 @@ use InvalidArgumentException;
  */
 #[Stage(ServeStage::Database)]
 #[Group('deploy-tasks')]
-final class RunDeployTasks implements Step
+final class RunDeployTasks implements DescribesProgress, Step
 {
     public function __construct(private readonly DeployTaskRunner $runner) {}
 
@@ -39,5 +41,12 @@ final class RunDeployTasks implements Step
         $this->runner->run($parsed, $context);
 
         return $next($context);
+    }
+
+    public static function progressLabel(ServeOptions $options, array $parameters): string
+    {
+        $phase = DeployPhase::tryFrom($parameters[0] ?? '') ?? DeployPhase::Before;
+
+        return "Running project commands ({$phase->label()})";
     }
 }

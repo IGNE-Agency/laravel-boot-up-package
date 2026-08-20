@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Database\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Concerns\RunsThroughServer;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
@@ -28,6 +29,7 @@ use Throwable;
  */
 #[Stage(ServeStage::Database)]
 #[Group('database')]
+#[Label('Verifying the database connection')]
 final class VerifyDatabaseConnection implements Step
 {
     use RunsThroughServer;

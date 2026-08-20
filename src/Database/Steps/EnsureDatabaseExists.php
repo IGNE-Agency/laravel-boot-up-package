@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Database\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Concerns\SkipsWithNote;
 use Igne\LaravelBootUp\Config\DatabaseConfig;
@@ -23,6 +24,7 @@ use Illuminate\Contracts\Config\Repository;
  */
 #[Stage(ServeStage::Database)]
 #[Group('database')]
+#[Label('Ensuring the database exists')]
 final class EnsureDatabaseExists implements Step
 {
     use SkipsWithNote;

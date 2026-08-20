@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Environment\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\CommandLine;
@@ -16,6 +17,7 @@ use Igne\LaravelBootUp\Process\ProcessRunner;
 
 #[Stage(ServeStage::Prepare)]
 #[Group('prepare')]
+#[Label('Checking the application key')]
 final class GenerateAppKey implements Step
 {
     public function __construct(

@@ -9,10 +9,12 @@ use Igne\LaravelBootUp\Attributes\Group;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Concerns\RunsThroughServer;
 use Igne\LaravelBootUp\Config\DatabaseConfig;
+use Igne\LaravelBootUp\Contracts\DescribesProgress;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Database\PendingMigrations;
 use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -27,7 +29,7 @@ use Illuminate\Support\Str;
  */
 #[Stage(ServeStage::Database)]
 #[Group('migrations')]
-final class RunPendingMigrations implements Step
+final class RunPendingMigrations implements DescribesProgress, Step
 {
     use RunsThroughServer;
 
@@ -140,5 +142,12 @@ final class RunPendingMigrations implements Step
         $this->runner->run(CommandLine::make('php artisan migrate --force'));
 
         return true;
+    }
+
+    public static function progressLabel(ServeOptions $options, array $parameters): string
+    {
+        return $options->fresh && $options->migrate
+            ? 'Rebuilding the database from scratch'
+            : 'Running pending migrations';
     }
 }

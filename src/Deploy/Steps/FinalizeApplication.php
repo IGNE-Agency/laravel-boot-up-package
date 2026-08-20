@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Deploy\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Config\DeployConfig;
 use Igne\LaravelBootUp\Contracts\Step;
@@ -20,6 +21,7 @@ use Igne\LaravelBootUp\Process\ProcessRunner;
  */
 #[Stage(ServeStage::Finalize)]
 #[Group('finalize')]
+#[Label('Finalizing the application')]
 final class FinalizeApplication implements Step
 {
     public function __construct(

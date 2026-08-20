@@ -15,4 +15,17 @@ enum DeployPhase: string
     case Before = 'before';
     case After = 'after';
     case AfterDeploy = 'after-deploy';
+
+    /**
+     * Where in the run this phase sits, for plan and progress lines.
+     */
+    public function label(): string
+    {
+        return match ($this) {
+            self::BeforeDeploy => 'before the deploy',
+            self::Before => 'before migrations',
+            self::After => 'after migrations',
+            self::AfterDeploy => 'after the deploy',
+        };
+    }
 }

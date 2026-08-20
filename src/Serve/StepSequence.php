@@ -5,27 +5,17 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Serve;
 
 use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
+use Igne\LaravelBootUp\Contracts\DescribesProgress;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Data\StepDescriptor;
-use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseCredentials;
-use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseExists;
-use Igne\LaravelBootUp\Database\Steps\RunPendingMigrations;
-use Igne\LaravelBootUp\Database\Steps\VerifyDatabaseConnection;
-use Igne\LaravelBootUp\Deploy\Steps\CacheFrameworkFiles;
-use Igne\LaravelBootUp\Deploy\Steps\FinalizeApplication;
 use Igne\LaravelBootUp\Deploy\Steps\InstallComposerDependencies;
-use Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks;
-use Igne\LaravelBootUp\Enums\DeployPhase;
 use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
 use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
 use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
-use Igne\LaravelBootUp\Frontend\Steps\BuildAssets;
 use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
-use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
-use Igne\LaravelBootUp\Servers\Steps\StartServer;
-use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
 use Illuminate\Support\Str;
 use ReflectionClass;
 
@@ -258,33 +248,28 @@ final readonly class StepSequence
     }
 
     /**
+     * What the progress bar calls a step, asked of the step itself: a
+     * DescribesProgress step works it out from the run's options, anything
+     * else carries a Label attribute, and a step with neither — a
+     * third-party one, usually — is named after its class.
+     *
      * @param  list<string>  $parameters
      */
     private static function label(string $class, array $parameters, ServeOptions $options): string
     {
-        return match ($class) {
-            EnsureEnvFile::class => 'Checking the .env file',
-            EnsureLocalEnvironment::class => 'Checking the local environment',
-            GenerateAppKey::class => 'Checking the application key',
-            EnsureToolsReady::class => 'Checking required tools',
-            StartServer::class => 'Starting the development server',
-            InstallComposerDependencies::class => $options->update ? 'Updating Composer dependencies' : 'Installing Composer dependencies',
-            InstallFrontendDependencies::class => $options->update ? 'Updating frontend dependencies' : 'Installing frontend dependencies',
-            EnsureDatabaseCredentials::class => 'Checking database credentials',
-            EnsureDatabaseExists::class => 'Ensuring the database exists',
-            VerifyDatabaseConnection::class => 'Verifying the database connection',
-            RunDeployTasks::class => DeployPhase::tryFrom($parameters[0] ?? 'before') === DeployPhase::After
-                ? 'Running project commands (after migrations)'
-                : 'Running project commands (before migrations)',
-            RunPendingMigrations::class => $options->fresh && $options->migrate
-                ? 'Rebuilding the database from scratch'
-                : 'Running pending migrations',
-            CacheFrameworkFiles::class => 'Caching framework files',
-            FinalizeApplication::class => 'Finalizing the application',
-            BuildAssets::class => 'Building assets',
-            AnnounceApplication::class => 'Announcing the application',
-            default => self::fallbackLabel($class, $parameters),
-        };
+        if (! class_exists($class)) {
+            return self::fallbackLabel($class, $parameters);
+        }
+
+        if (is_a($class, DescribesProgress::class, allow_string: true)) {
+            return $class::progressLabel($options, $parameters);
+        }
+
+        $attributes = (new ReflectionClass($class))->getAttributes(Label::class);
+
+        return $attributes === []
+            ? self::fallbackLabel($class, $parameters)
+            : $attributes[0]->newInstance()->text;
     }
 
     /**

@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Serve\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Config\ServeConfig;
 use Igne\LaravelBootUp\Contracts\Step;
@@ -15,6 +16,7 @@ use Igne\LaravelBootUp\Serve\Browser;
 
 #[Stage(ServeStage::Announce)]
 #[Group('announce')]
+#[Label('Announcing the application')]
 final class AnnounceApplication implements Step
 {
     public function __construct(

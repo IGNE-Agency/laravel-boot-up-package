@@ -141,3 +141,44 @@ test('a boot with no dev processes carries no line for them', function (): void 
 
     expect($plan->summary())->not->toContain('Run the dev processes in this terminal: ');
 });
+
+test('a step names itself through its Label attribute', function (): void {
+    $plan = StepSequence::for([Igne\LaravelBootUp\Tests\Unit\Serve\Fixtures\LabelledStep::class], new ServeOptions);
+
+    expect($plan->steps[0]->label)->toBe('Seeding the search index');
+});
+
+test('a step can work its label out from the options and its own arguments', function (): void {
+    $step = Igne\LaravelBootUp\Tests\Unit\Serve\Fixtures\OptionAwareStep::class;
+
+    $plain = StepSequence::for([$step.':the index'], new ServeOptions);
+    $fresh = StepSequence::for([$step.':the index'], new ServeOptions(fresh: true));
+
+    expect($plain->steps[0]->label)->toBe('Refreshing the index')
+        ->and($fresh->steps[0]->label)->toBe('Rebuilding the index');
+});
+
+test('the shipped steps carry their own labels', function (): void {
+    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions(update: true, fresh: true));
+
+    $labels = array_map(fn ($step) => $step->label, $plan->steps);
+
+    expect($labels)->toContain('Checking the .env file')
+        ->toContain('Updating Composer dependencies')
+        ->toContain('Rebuilding the database from scratch')
+        ->toContain('Running project commands (before migrations)')
+        ->toContain('Running project commands (after migrations)');
+});
+
+test('no shipped step falls back to being named after its class', function (): void {
+    $config = require dirname(__DIR__, 3).'/config/boot-up.php';
+    $steps = [...$config['serve']['steps'], ...$config['deploy']['steps']];
+
+    $plan = StepSequence::for($steps, new ServeOptions);
+
+    foreach ($plan->steps as $step) {
+        $fallback = Illuminate\Support\Str::headline(class_basename($step->class));
+
+        expect($step->label)->not->toBe($fallback);
+    }
+});

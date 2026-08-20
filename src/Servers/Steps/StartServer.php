@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Servers\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
@@ -20,6 +21,7 @@ use Igne\LaravelBootUp\Servers\ActiveServerStore;
  */
 #[Stage(ServeStage::Server)]
 #[Group('server')]
+#[Label('Starting the development server')]
 final class StartServer implements Step
 {
     public function __construct(private readonly ActiveServerStore $store) {}

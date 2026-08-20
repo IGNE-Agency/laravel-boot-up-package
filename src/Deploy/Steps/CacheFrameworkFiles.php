@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Deploy\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Concerns\SkipsWithNote;
 use Igne\LaravelBootUp\Config\DeployConfig;
@@ -21,6 +22,7 @@ use Igne\LaravelBootUp\Process\ProcessRunner;
  */
 #[Stage(ServeStage::Cache)]
 #[Group('cache')]
+#[Label('Caching framework files')]
 final class CacheFrameworkFiles implements Step
 {
     use SkipsWithNote;

@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Frontend\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Concerns\RunsThroughServer;
 use Igne\LaravelBootUp\Concerns\SkipsDisabledAssets;
@@ -28,6 +29,7 @@ use Igne\LaravelBootUp\Servers\CommandRewriter;
  */
 #[Stage(ServeStage::Assets)]
 #[Group('assets')]
+#[Label('Building assets')]
 final class BuildAssets implements Step
 {
     use RunsThroughServer;

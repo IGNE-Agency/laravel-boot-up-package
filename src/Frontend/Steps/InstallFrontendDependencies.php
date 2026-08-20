@@ -9,9 +9,11 @@ use Igne\LaravelBootUp\Attributes\Group;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Concerns\ReadsProcessFailureOutput;
 use Igne\LaravelBootUp\Concerns\SkipsWithNote;
+use Igne\LaravelBootUp\Contracts\DescribesProgress;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Exceptions\FrontendException;
 use Igne\LaravelBootUp\Frontend\PackageJson;
@@ -23,7 +25,7 @@ use Illuminate\Process\Exceptions\ProcessFailedException;
 
 #[Stage(ServeStage::Install)]
 #[Group('dependencies')]
-final class InstallFrontendDependencies implements Step
+final class InstallFrontendDependencies implements DescribesProgress, Step
 {
     use ReadsProcessFailureOutput;
 
@@ -100,5 +102,10 @@ final class InstallFrontendDependencies implements Step
         $output = trim($this->outputOf($exception));
 
         return $output !== '' ? $output : $exception->getMessage();
+    }
+
+    public static function progressLabel(ServeOptions $options, array $parameters): string
+    {
+        return $options->update ? 'Updating frontend dependencies' : 'Installing frontend dependencies';
     }
 }

@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Tools\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Config\ToolsConfig;
 use Igne\LaravelBootUp\Contracts\RequiresTools;
@@ -29,6 +30,7 @@ use Igne\LaravelBootUp\Tools\ToolRegistry;
  */
 #[Stage(ServeStage::Tools)]
 #[Group('tools')]
+#[Label('Checking required tools')]
 final class EnsureToolsReady implements Step
 {
     public function __construct(

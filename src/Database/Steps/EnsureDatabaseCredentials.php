@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Database\Steps;
 
 use Closure;
 use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Contracts\Step;
@@ -25,6 +26,7 @@ use Illuminate\Support\Str;
  */
 #[Stage(ServeStage::Database)]
 #[Group('database')]
+#[Label('Checking database credentials')]
 final class EnsureDatabaseCredentials implements Step
 {
     /** Hostnames that only resolve inside Sail's Docker network. */
