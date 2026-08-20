@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootUp\Serve;
+namespace Igne\LaravelBootUp\Boot;
 
 use Closure;
-use Igne\LaravelBootUp\Config\ServeConfig;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Config\DevConfig;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\ServerSelector;
@@ -24,9 +24,9 @@ use LogicException;
  * What runs AFTER the boot is not this class's business: the dev processes
  * belong to Laravel's dev command, and app:deploy has none.
  */
-final class ServeRunner
+final class BootRunner
 {
-    private ?ServeContext $context = null;
+    private ?BootContext $context = null;
 
     private ?StepSequence $plan = null;
 
@@ -41,10 +41,10 @@ final class ServeRunner
 
     public function __construct(
         private readonly ServerSelector $selector,
-        private readonly ServeConfig $config,
+        private readonly DevConfig $config,
         private readonly ShutdownRunner $shutdown,
         private readonly ActiveServerStore $store,
-        private readonly ServeProcessProbe $probe,
+        private readonly BootProcessProbe $probe,
         private readonly ProcessReaper $reaper,
         private readonly Pipeline $pipeline,
         private readonly StageReporter $reporter,
@@ -56,7 +56,7 @@ final class ServeRunner
      * server (may prompt) and produce the plan. Returns null — with the
      * warning already printed — when another boot owns this project.
      */
-    public function prepare(ServeOptions $options, ?string $server): ?StepSequence
+    public function prepare(BootOptions $options, ?string $server): ?StepSequence
     {
         if ($this->anotherServeIsRunning()) {
             terminal()->warning('The application is already being served for this project. Aborting.');
@@ -68,7 +68,7 @@ final class ServeRunner
 
         terminal()->intro('Booting the application...');
 
-        $this->context = new ServeContext($options, $this->selector->select($server));
+        $this->context = new BootContext($options, $this->selector->select($server));
 
         return $this->plan = StepSequence::for(
             $this->config->steps,
@@ -92,13 +92,13 @@ final class ServeRunner
      *
      * @param  Closure(list<int>, Closure): void  $trapUsing
      */
-    public function run(Closure $trapUsing): ServeContext
+    public function run(Closure $trapUsing): BootContext
     {
         $context = $this->context;
         $plan = $this->plan;
 
         if ($context === null || $plan === null) {
-            throw new LogicException('ServeRunner::run() requires a prepare() that produced a plan.');
+            throw new LogicException('BootRunner::run() requires a prepare() that produced a plan.');
         }
 
         $pipes = $this->reporter->begin($plan);

@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\SailConfig;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Enums\OperatingSystem;
 use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Environment\EnvFile;
@@ -76,7 +76,7 @@ test('start boots docker, brings containers up and waits until they report', fun
         './vendor/bin/sail ps -q' => Process::result(output: "abc123\n"),
     ]);
 
-    sailServer($this->workDir)->start(new ServeContext(new ServeOptions));
+    sailServer($this->workDir)->start(new BootContext(new BootOptions));
 
     ProcessFaker::assertRan('open -a Docker');
     ProcessFaker::assertRan('./vendor/bin/sail up -d');
@@ -90,7 +90,7 @@ test('start leaves docker alone when it is already running', function (): void {
         './vendor/bin/sail ps -q' => Process::result(output: "abc123\n"),
     ]);
 
-    sailServer($this->workDir)->start(new ServeContext(new ServeOptions));
+    sailServer($this->workDir)->start(new BootContext(new BootOptions));
 
     ProcessFaker::assertDidntRun('open -a Docker');
     ProcessFaker::assertDidntRun('systemctl start docker');
@@ -101,7 +101,7 @@ test('start scaffolds sail when no compose file exists', function (): void {
         './vendor/bin/sail ps -q' => Process::result(output: "abc123\n"),
     ]);
 
-    sailServer($this->workDir)->start(new ServeContext(new ServeOptions));
+    sailServer($this->workDir)->start(new BootContext(new BootOptions));
 
     ProcessFaker::assertRan('php artisan sail:install');
 });
@@ -112,7 +112,7 @@ test('start throws when docker never becomes available', function (): void {
         'docker info' => Process::result(exitCode: 1),
     ]);
 
-    expect(fn () => sailServer($this->workDir, dockerTimeout: 0)->start(new ServeContext(new ServeOptions)))
+    expect(fn () => sailServer($this->workDir, dockerTimeout: 0)->start(new BootContext(new BootOptions)))
         ->toThrow(ServerException::class, 'Docker did not become available');
 });
 
@@ -127,7 +127,7 @@ test('a never-built app image is retried with --build', function (): void {
         './vendor/bin/sail ps -q' => Process::result(output: "abc123\n"),
     ]);
 
-    sailServer($this->workDir)->start(new ServeContext(new ServeOptions));
+    sailServer($this->workDir)->start(new BootContext(new BootOptions));
 
     ProcessFaker::assertRan('./vendor/bin/sail up -d --build');
     Prompt::assertStrippedOutputContains("Sail's application image has not been built yet");
@@ -142,7 +142,7 @@ test('an unreachable registry throws guidance instead of retrying a build', func
         ),
     ]);
 
-    expect(fn () => sailServer($this->workDir)->start(new ServeContext(new ServeOptions)))
+    expect(fn () => sailServer($this->workDir)->start(new BootContext(new BootOptions)))
         ->toThrow(ServerException::class, 'Docker could not reach its image registry');
 
     ProcessFaker::assertDidntRun('*--build*');
@@ -157,7 +157,7 @@ test('an unknown up failure bubbles as a process failure', function (): void {
         ),
     ]);
 
-    expect(fn () => sailServer($this->workDir)->start(new ServeContext(new ServeOptions)))
+    expect(fn () => sailServer($this->workDir)->start(new BootContext(new BootOptions)))
         ->toThrow(ProcessFailedException::class);
 
     ProcessFaker::assertDidntRun('*--build*');
@@ -176,7 +176,7 @@ test('a build retry that hits an unreachable registry still throws guidance', fu
         ),
     ]);
 
-    expect(fn () => sailServer($this->workDir)->start(new ServeContext(new ServeOptions)))
+    expect(fn () => sailServer($this->workDir)->start(new BootContext(new BootOptions)))
         ->toThrow(ServerException::class, 'Docker could not reach its image registry');
 });
 
@@ -186,7 +186,7 @@ test('start throws when containers never come up', function (): void {
         './vendor/bin/sail ps -q' => Process::result(output: ''),
     ]);
 
-    expect(fn () => sailServer($this->workDir, readyTimeout: 0)->start(new ServeContext(new ServeOptions)))
+    expect(fn () => sailServer($this->workDir, readyTimeout: 0)->start(new BootContext(new BootOptions)))
         ->toThrow(ServerException::class, 'Laravel Sail failed to start');
 });
 
@@ -206,7 +206,7 @@ test('start offers the sail alias once the containers are up', function (): void
         new SailConfig(manageAlias: true),
     );
 
-    sailServer($this->workDir, alias: $alias)->start(new ServeContext(new ServeOptions));
+    sailServer($this->workDir, alias: $alias)->start(new BootContext(new BootOptions));
 
     expect((string) file_get_contents($home.'/.zshrc'))
         ->toContain("alias sail='[ -f sail ] && bash sail || bash vendor/bin/sail'");
@@ -286,7 +286,7 @@ test('identity, tools and rewrites', function (): void {
 test('devProcess follows the container logs as the server stream', function (): void {
     ProcessFaker::fake();
 
-    $command = sailServer($this->workDir)->devProcess(new ServeContext(new ServeOptions(follow: true)));
+    $command = sailServer($this->workDir)->devProcess(new BootContext(new BootOptions(follow: true)));
 
     expect($command?->toString())->toBe('./vendor/bin/sail logs --follow')
         ->and($command?->timeout)->toBeNull();
@@ -295,5 +295,5 @@ test('devProcess follows the container logs as the server stream', function (): 
 test('devProcess carries no server stream for a detached run', function (): void {
     ProcessFaker::fake();
 
-    expect(sailServer($this->workDir)->devProcess(new ServeContext(new ServeOptions(follow: false))))->toBeNull();
+    expect(sailServer($this->workDir)->devProcess(new BootContext(new BootOptions(follow: false))))->toBeNull();
 });

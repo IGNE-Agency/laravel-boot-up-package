@@ -10,7 +10,7 @@ use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
 
 /**
  * Asks (config-gated) whether shutdown should stop a server that
- * app:serve itself started. A server whose stop reaches beyond this
+ * the boot itself started. A server whose stop reaches beyond this
  * project (WarnsBeforeStop) is never stopped without an explicit yes.
  */
 final class StopServerPrompt

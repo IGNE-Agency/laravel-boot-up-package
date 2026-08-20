@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures;
 
 use Igne\LaravelBootUp\Contracts\Server;
-use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\BootContext;
 
 /**
  * A project-registered custom driver, as the extension API allows: the
@@ -28,7 +28,7 @@ final class ValetServer implements Server
         return false;
     }
 
-    public function start(ServeContext $context): void {}
+    public function start(BootContext $context): void {}
 
     public function stop(): void {}
 

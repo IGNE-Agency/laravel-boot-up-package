@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Data;
 
-final readonly class ServeOptions
+final readonly class BootOptions
 {
     /**
      * @param  bool  $follow  stream combined worker output in this terminal

@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootUp\Tests\Unit\Serve\Fixtures;
+namespace Igne\LaravelBootUp\Tests\Unit\Boot\Fixtures;
 
 use Closure;
 use Igne\LaravelBootUp\Contracts\DescribesProgress;
 use Igne\LaravelBootUp\Contracts\Step;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 
 /**
  * A third-party step whose wording depends on the run, and on its own
@@ -16,12 +16,12 @@ use Igne\LaravelBootUp\Data\ServeOptions;
  */
 final class OptionAwareStep implements DescribesProgress, Step
 {
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         return $next($context);
     }
 
-    public static function progressLabel(ServeOptions $options, array $parameters): string
+    public static function progressLabel(BootOptions $options, array $parameters): string
     {
         $target = $parameters[0] ?? 'everything';
 

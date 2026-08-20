@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Contracts;
 
 use Closure;
-use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\BootContext;
 
 /**
  * A single stage of the serve/deploy pipeline. Implementations are resolved
@@ -13,5 +13,5 @@ use Igne\LaravelBootUp\Data\ServeContext;
  */
 interface Step
 {
-    public function handle(ServeContext $context, Closure $next): mixed;
+    public function handle(BootContext $context, Closure $next): mixed;
 }

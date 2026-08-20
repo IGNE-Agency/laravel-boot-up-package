@@ -7,7 +7,7 @@ namespace Igne\LaravelBootUp\Enums;
 use Igne\LaravelBootUp\Concerns\ResolvesFromConfig;
 
 /**
- * What app:serve does about frontend assets: keep a watcher running,
+ * What the boot does about frontend assets: keep a watcher running,
  * build them once, or leave them alone entirely.
  */
 enum AssetMode: string

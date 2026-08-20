@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Laravel\Prompts\Prompt;
@@ -53,7 +53,7 @@ function startServerDouble(ActiveServerStore $store, bool $running): Server
             return $this->running;
         }
 
-        public function start(ServeContext $context): void
+        public function start(BootContext $context): void
         {
             $this->starts++;
             $this->observedAtStart = $this->store->current();
@@ -70,9 +70,9 @@ function startServerDouble(ActiveServerStore $store, bool $running): Server
 
 test('persists the active-server record before the driver starts', function (): void {
     $server = startServerDouble($this->store, running: false);
-    $context = new ServeContext(new ServeOptions, $server);
+    $context = new BootContext(new BootOptions, $server);
 
-    $result = (new StartServer($this->store))->handle($context, fn (ServeContext $passed): ServeContext => $passed);
+    $result = (new StartServer($this->store))->handle($context, fn (BootContext $passed): BootContext => $passed);
 
     expect($server->starts)->toBe(1)
         ->and($server->observedAtStart)->not->toBeNull()
@@ -86,9 +86,9 @@ test('persists the active-server record before the driver starts', function (): 
 
 test('records startedByUs=false when the server was already running', function (): void {
     $server = startServerDouble($this->store, running: true);
-    $context = new ServeContext(new ServeOptions, $server);
+    $context = new BootContext(new BootOptions, $server);
 
-    (new StartServer($this->store))->handle($context, fn (ServeContext $passed): ServeContext => $passed);
+    (new StartServer($this->store))->handle($context, fn (BootContext $passed): BootContext => $passed);
 
     expect($server->starts)->toBe(1)
         ->and($server->observedAtStart->startedByUs)->toBeFalse()
@@ -96,9 +96,9 @@ test('records startedByUs=false when the server was already running', function (
 });
 
 test('a null server (app:deploy) passes through without touching the store', function (): void {
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
-    $result = (new StartServer($this->store))->handle($context, fn (ServeContext $passed): ServeContext => $passed);
+    $result = (new StartServer($this->store))->handle($context, fn (BootContext $passed): BootContext => $passed);
 
     expect($result)->toBe($context)
         ->and($this->store->current())->toBeNull()

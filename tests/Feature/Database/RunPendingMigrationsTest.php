@@ -6,9 +6,9 @@ use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Data\CommandRewrites;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Database\PendingMigrations;
 use Igne\LaravelBootUp\Database\Steps\RunPendingMigrations;
 use Igne\LaravelBootUp\Process\ProcessLedger;
@@ -76,7 +76,7 @@ beforeEach(function (): void {
             return true;
         }
 
-        public function start(ServeContext $context): void {}
+        public function start(BootContext $context): void {}
 
         public function stop(): void {}
 
@@ -102,7 +102,7 @@ test('skips with a note when --no-migrate was passed', function (): void {
     Process::fake();
     ($this->addPendingMigration)();
 
-    $context = new ServeContext(new ServeOptions(migrate: false));
+    $context = new BootContext(new BootOptions(migrate: false));
 
     $result = ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -117,7 +117,7 @@ test('skips with a note when automatic migrations are disabled in configuration'
 
     $config = new DatabaseConfig(migrationsAuto: false);
 
-    ($this->step)($config)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    ($this->step)($config)->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 
     Process::assertNothingRan();
     Prompt::assertStrippedOutputContains('disabled');
@@ -126,7 +126,7 @@ test('skips with a note when automatic migrations are disabled in configuration'
 test('an up-to-date database migrates nothing host-side', function (): void {
     Process::fake();
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 
     Process::assertNothingRan();
     Prompt::assertStrippedOutputContains('up to date');
@@ -136,7 +136,7 @@ test('pending migrations run a host-side, un-rewritten migrate --force', functio
     Process::fake(['*' => Process::result()]);
     ($this->addPendingMigration)();
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 
     Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === 'php artisan migrate --force');
     Prompt::assertStrippedOutputContains('1 pending migration');
@@ -146,7 +146,7 @@ test('the seed option runs db:seed after migrating', function (): void {
     Process::fake(['*' => Process::result()]);
     ($this->addPendingMigration)();
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions(seed: true)), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions(seed: true)), fn ($passed) => $passed);
 
     Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === 'php artisan migrate --force');
     Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === 'php artisan db:seed');
@@ -155,7 +155,7 @@ test('the seed option runs db:seed after migrating', function (): void {
 test('an explicit seed runs even when the database is already up to date', function (): void {
     Process::fake(['*' => Process::result()]);
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions(seed: true)), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions(seed: true)), fn ($passed) => $passed);
 
     Process::assertDidntRun(fn ($process): bool => str_contains(runMigrationsCommandOf($process), 'migrate --force'));
     Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === 'php artisan db:seed');
@@ -165,7 +165,7 @@ test('--no-migrate combined with --seed seeds without migrating', function (): v
     Process::fake(['*' => Process::result()]);
     ($this->addPendingMigration)();
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions(seed: true, migrate: false)), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions(seed: true, migrate: false)), fn ($passed) => $passed);
 
     Process::assertDidntRun(fn ($process): bool => str_contains(runMigrationsCommandOf($process), 'migrate'));
     Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === 'php artisan db:seed');
@@ -175,7 +175,7 @@ test('a confirmed --fresh drops and re-runs everything in one command', function
     Prompt::fake(['y', Laravel\Prompts\Key::ENTER]);
     Process::fake(['*' => Process::result()]);
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions(fresh: true)), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions(fresh: true)), fn ($passed) => $passed);
 
     Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === 'php artisan migrate:fresh --force');
     Prompt::assertStrippedOutputContains('drops ALL tables');
@@ -185,7 +185,7 @@ test('--fresh with --seed folds the seed into migrate:fresh', function (): void 
     Prompt::fake(['y', Laravel\Prompts\Key::ENTER]);
     Process::fake(['*' => Process::result()]);
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions(seed: true, fresh: true)), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions(seed: true, fresh: true)), fn ($passed) => $passed);
 
     Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === 'php artisan migrate:fresh --force --seed');
     Process::assertDidntRun(fn ($process): bool => runMigrationsCommandOf($process) === 'php artisan db:seed');
@@ -196,7 +196,7 @@ test('a declined --fresh falls back to the normal pending-migrations flow', func
     Process::fake(['*' => Process::result()]);
     ($this->addPendingMigration)();
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions(fresh: true)), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions(fresh: true)), fn ($passed) => $passed);
 
     Process::assertDidntRun(fn ($process): bool => str_contains(runMigrationsCommandOf($process), 'migrate:fresh'));
     Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === 'php artisan migrate --force');
@@ -206,7 +206,7 @@ test('a declined --fresh falls back to the normal pending-migrations flow', func
 test('--no-migrate beats --fresh with a warning', function (): void {
     Process::fake();
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions(migrate: false, fresh: true)), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions(migrate: false, fresh: true)), fn ($passed) => $passed);
 
     Process::assertNothingRan();
     Prompt::assertStrippedOutputContains('--fresh ignored');
@@ -216,7 +216,7 @@ test('--fresh runs through the server rewrites when the host cannot reach the da
     Prompt::fake(['y', Laravel\Prompts\Key::ENTER]);
     Process::fake(['*' => Process::result()]);
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions(fresh: true), $this->sailServer), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions(fresh: true), $this->sailServer), fn ($passed) => $passed);
 
     Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === './vendor/bin/sail artisan migrate:fresh --force');
 });
@@ -227,7 +227,7 @@ test('sail checks pending migrations in the container and migrates through sail'
         '*' => Process::result(),
     ]);
 
-    $context = new ServeContext(new ServeOptions, $this->sailServer);
+    $context = new BootContext(new BootOptions, $this->sailServer);
 
     ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -241,7 +241,7 @@ test('sail with no pending migrations skips the migrate', function (): void {
         '*' => Process::result(),
     ]);
 
-    $context = new ServeContext(new ServeOptions, $this->sailServer);
+    $context = new BootContext(new BootOptions, $this->sailServer);
 
     ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -255,7 +255,7 @@ test('sail seeds through the container after migrating', function (): void {
         '*' => Process::result(),
     ]);
 
-    $context = new ServeContext(new ServeOptions(seed: true), $this->sailServer);
+    $context = new BootContext(new BootOptions(seed: true), $this->sailServer);
 
     ($this->step)()->handle($context, fn ($passed) => $passed);
 

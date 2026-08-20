@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootUp\Serve;
+namespace Igne\LaravelBootUp\Boot;
 
 use Closure;
 use Igne\LaravelBootUp\Contracts\Step;
-use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\StepDescriptor;
 use Illuminate\Contracts\Container\Container;
 
@@ -26,7 +26,7 @@ final class ReportedStep implements Step
         private readonly StepDescriptor $planned,
     ) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         $this->reporter->starting($this->planned);
 
@@ -35,7 +35,7 @@ final class ReportedStep implements Step
 
         return $inner->handle(
             $context,
-            function (ServeContext $context) use ($next): mixed {
+            function (BootContext $context) use ($next): mixed {
                 $this->reporter->completed($this->planned);
 
                 return $next($context);

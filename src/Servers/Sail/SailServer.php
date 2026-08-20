@@ -12,9 +12,9 @@ use Igne\LaravelBootUp\Contracts\ProvidesDevProcess;
 use Igne\LaravelBootUp\Contracts\RequiresTools;
 use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\CommandRewrites;
-use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Exceptions\ServerException;
@@ -69,7 +69,7 @@ final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDe
         return false;
     }
 
-    public function start(ServeContext $context): void
+    public function start(BootContext $context): void
     {
         $this->docker->ensureRunning();
 
@@ -134,7 +134,7 @@ final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDe
      * The containers are already up by the time the dev processes start, so
      * the [server] process follows their logs rather than starting anything.
      */
-    public function devProcess(ServeContext $context): ?CommandLine
+    public function devProcess(BootContext $context): ?CommandLine
     {
         return $context->options->follow
             ? CommandLine::make(['./vendor/bin/sail', 'logs', '--follow'])->withTimeout(null)

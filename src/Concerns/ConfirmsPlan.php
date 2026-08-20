@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Concerns;
 
-use Igne\LaravelBootUp\Serve\StepSequence;
+use Igne\LaravelBootUp\Boot\StepSequence;
 
 /**
  * The standard "show the plan, then ask" gate for commands that run a step

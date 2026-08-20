@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\DeployConfig;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Deploy\Steps\FinalizeApplication;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -45,7 +45,7 @@ test('runs each configured finalize command as php artisan host-side', function 
     // A link target that does not exist, so storage:link is not skipped.
     config()->set('filesystems.links', [$this->dir.'/public/storage' => $this->dir.'/storage/app/public']);
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     $result = finalizeApplicationStep($this->dir, ['storage:link', 'horizon:publish --force'])
         ->handle($context, fn ($passed) => $passed);
@@ -63,7 +63,7 @@ test('storage:link is skipped with a note when every configured link already exi
     config()->set('filesystems.links', [$link => $this->dir.'/target']);
 
     finalizeApplicationStep($this->dir, ['storage:link'])
-        ->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+        ->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 
     Process::assertDidntRun(fn ($process): bool => finalizeApplicationCommandOf($process) === 'php artisan storage:link');
     Prompt::assertStrippedOutputContains('Storage already linked.');
@@ -74,7 +74,7 @@ test('storage:link still runs when a configured link is missing', function (): v
     config()->set('filesystems.links', [$this->dir.'/missing' => $this->dir.'/target']);
 
     finalizeApplicationStep($this->dir, ['storage:link'])
-        ->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+        ->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 
     Process::assertRan(fn ($process): bool => finalizeApplicationCommandOf($process) === 'php artisan storage:link');
 });
@@ -86,7 +86,7 @@ test('a forced storage:link is never skipped', function (): void {
     config()->set('filesystems.links', [$link => $this->dir.'/target']);
 
     finalizeApplicationStep($this->dir, ['storage:link --force'])
-        ->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+        ->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 
     Process::assertRan(fn ($process): bool => finalizeApplicationCommandOf($process) === 'php artisan storage:link --force');
 });
@@ -94,7 +94,7 @@ test('a forced storage:link is never skipped', function (): void {
 test('an empty finalize list is a no-op', function (): void {
     Process::fake();
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     $result = finalizeApplicationStep($this->dir, [])->handle($context, fn ($passed) => $passed);
 

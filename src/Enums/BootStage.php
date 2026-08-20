@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Enums;
 
 /**
- * The logical stages app:serve groups its pipeline steps into — each gets
+ * The logical stages the boot groups its pipeline steps into — each gets
  * one section divider while the boot runs.
  */
-enum ServeStage: string
+enum BootStage: string
 {
     case Prepare = 'prepare';
     case Tools = 'tools';

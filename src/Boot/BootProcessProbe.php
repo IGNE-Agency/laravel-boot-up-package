@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootUp\Serve;
+namespace Igne\LaravelBootUp\Boot;
 
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -14,7 +14,7 @@ use Igne\LaravelBootUp\Process\ProcessRunner;
  * Both names are matched: `dev` is the command, `app:serve` its deprecated
  * alias, and a boot started under the old name still owns the project.
  */
-final class ServeProcessProbe
+final class BootProcessProbe
 {
     public function __construct(private readonly ProcessRunner $runner) {}
 

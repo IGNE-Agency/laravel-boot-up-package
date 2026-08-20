@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootUp\Tests\Feature\Serve\Fixtures;
+namespace Igne\LaravelBootUp\Tests\Feature\Boot\Fixtures;
 
 use Igne\LaravelBootUp\Contracts\Server;
-use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\BootContext;
 
 /**
  * A controllable driver double for shutdown/console tests. Register the
@@ -38,7 +38,7 @@ final class RecordingServer implements Server
         return $this->running;
     }
 
-    public function start(ServeContext $context): void
+    public function start(BootContext $context): void
     {
         $this->starts++;
         $this->running = true;

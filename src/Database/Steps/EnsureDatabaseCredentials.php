@@ -10,9 +10,9 @@ use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\DatabaseCredentials;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +24,7 @@ use Illuminate\Support\Str;
  * Also reconciles credentials another server left behind (Sail's `mysql`
  * host after `sail:install`) with the server that drives this run.
  */
-#[Stage(ServeStage::Database)]
+#[Stage(BootStage::Database)]
 #[Group('database')]
 #[Label('Checking database credentials')]
 final class EnsureDatabaseCredentials implements Step
@@ -41,7 +41,7 @@ final class EnsureDatabaseCredentials implements Step
         private readonly Repository $laravelConfig,
     ) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         $connection = $this->connection();
 
@@ -55,7 +55,7 @@ final class EnsureDatabaseCredentials implements Step
         return $next($context);
     }
 
-    private function promptForMissing(ServeContext $context, string $connection): void
+    private function promptForMissing(BootContext $context, string $connection): void
     {
         if (! $this->config->promptMissingCredentials) {
             return;
@@ -79,7 +79,7 @@ final class EnsureDatabaseCredentials implements Step
      * never reaches Sail's database from inside the containers. Detect the
      * mismatch and offer to fix it for the server that drives this run.
      */
-    private function reconcileWithServer(ServeContext $context, string $connection): void
+    private function reconcileWithServer(BootContext $context, string $connection): void
     {
         if (! $this->config->reconcileServerCredentials || $context->server === null) {
             return;

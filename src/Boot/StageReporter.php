@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootUp\Serve;
+namespace Igne\LaravelBootUp\Boot;
 
 use Igne\LaravelBootUp\Data\StepDescriptor;
-use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Services\TrackedProgress;
 use Illuminate\Contracts\Container\Container;
 
@@ -16,7 +16,7 @@ use Illuminate\Contracts\Container\Container;
  */
 final class StageReporter
 {
-    private ?ServeStage $currentStage = null;
+    private ?BootStage $currentStage = null;
 
     private ?TrackedProgress $progress = null;
 

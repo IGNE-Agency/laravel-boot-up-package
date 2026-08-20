@@ -5,9 +5,9 @@ declare(strict_types=1);
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Data\CommandRewrites;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Database\Steps\VerifyDatabaseConnection;
 use Igne\LaravelBootUp\Exceptions\DatabaseException;
 use Igne\LaravelBootUp\Process\ProcessLedger;
@@ -65,7 +65,7 @@ beforeEach(function (): void {
             return true;
         }
 
-        public function start(ServeContext $context): void {}
+        public function start(BootContext $context): void {}
 
         public function stop(): void {}
 
@@ -85,7 +85,7 @@ afterEach(function (): void {
 test('a working sqlite connection verifies host-side without spawning processes', function (): void {
     Process::fake();
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     $result = ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -105,13 +105,13 @@ test('an unreachable host connection throws with the driver in the message', fun
     ]);
     config()->set('database.default', 'mysql');
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 })->throws(DatabaseException::class, 'mysql');
 
 test('sail verifies through the container with a rewritten migrate:status', function (): void {
     Process::fake(['*' => Process::result(output: 'Migration name  Batch / Status')]);
 
-    $context = new ServeContext(new ServeOptions, $this->sailServer);
+    $context = new BootContext(new BootOptions, $this->sailServer);
 
     $result = ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -123,7 +123,7 @@ test('sail verifies through the container with a rewritten migrate:status', func
 test('a failing sail check throws with the trimmed error output', function (): void {
     Process::fake(['*' => Process::result(exitCode: 1, errorOutput: "  the mysql container is not running \n")]);
 
-    $context = new ServeContext(new ServeOptions, $this->sailServer);
+    $context = new BootContext(new BootOptions, $this->sailServer);
 
     ($this->step)()->handle($context, fn ($passed) => $passed);
 })->throws(DatabaseException::class, 'the mysql container is not running');

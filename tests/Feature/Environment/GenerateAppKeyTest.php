@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
 use Igne\LaravelBootUp\Process\ProcessLedger;
@@ -36,7 +36,7 @@ test('generates a key when APP_KEY is empty', function (): void {
     file_put_contents($this->dir.'/.env', "APP_ENV=local\nAPP_KEY=\n");
     Process::fake(['*' => Process::result()]);
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     expect(($this->step)()->handle($context, fn ($passed) => $passed))->toBe($context);
 
@@ -51,7 +51,7 @@ test('generates a key when APP_KEY is absent entirely', function (): void {
     file_put_contents($this->dir.'/.env', "APP_ENV=local\n");
     Process::fake(['*' => Process::result()]);
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 
     Process::assertRanTimes(fn ($process): bool => true, 1);
 });
@@ -60,7 +60,7 @@ test('skips generation when APP_KEY is already set', function (): void {
     file_put_contents($this->dir.'/.env', "APP_ENV=local\nAPP_KEY=base64:abcdef\n");
     Process::fake();
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     expect(($this->step)()->handle($context, fn ($passed) => $passed))->toBe($context);
 

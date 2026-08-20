@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Boot\Steps\AnnounceApplication;
 use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseCredentials;
 use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseExists;
 use Igne\LaravelBootUp\Database\Steps\RunPendingMigrations;
@@ -15,7 +16,6 @@ use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
 use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
 use Igne\LaravelBootUp\Frontend\Steps\BuildAssets;
 use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
-use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
 use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
 use Igne\LaravelBootUp\Servers\Herd\HerdServer;
 use Igne\LaravelBootUp\Servers\Sail\SailServer;
@@ -170,23 +170,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Dev processes
-    |--------------------------------------------------------------------------
-    | Laravel's `dev` command tails the application log with laravel/pail.
-    | boot-up leaves that process alone when Pail is installed; set this to
-    | false to keep the log out of the run.
-    |
-    | Register your own processes from any service provider with Laravel's
-    | DevCommands class — they join the same run:
-    |
-    |     DevCommands::register('stripe listen --forward-to '.config('app.url'));
-    */
-    'dev' => [
-        'logs' => env('BOOT_UP_DEV_LOGS', true),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | Shutdown behaviour
     |--------------------------------------------------------------------------
     | Whether teardown (Ctrl+C on php artisan dev, app:down) asks before stopping
@@ -201,14 +184,24 @@ return [
     |--------------------------------------------------------------------------
     | php artisan dev
     |--------------------------------------------------------------------------
-    | The full boot, in order. Insert your own Contracts\Step classes anywhere,
-    | remove steps you do not want, or reorder them. 'auto_accept' (or --yes)
-    | skips the confirmation prompt; 'open_browser' opens the served URL when
-    | the boot completes.
+    | 'steps' is the boot pipeline: the sequential work that has to finish
+    | before the application can run, in order. Insert your own Contracts\Step
+    | classes anywhere, remove steps you do not want, or reorder them. The
+    | long-running processes are not steps -- they start afterwards, through
+    | Laravel's own dev command.
+    |
+    | 'auto_accept' (or --yes) skips the confirmation prompt; 'open_browser'
+    | opens the served URL when the boot completes.
+    |
+    | 'logs' keeps Laravel's log-tailing process, which needs laravel/pail.
+    | Register your own processes from any service provider:
+    |
+    |     DevCommands::register('stripe listen --forward-to '.config('app.url'));
     */
-    'serve' => [
+    'dev' => [
         'open_browser' => env('BOOT_UP_OPEN_BROWSER', true),
-        'auto_accept' => env('BOOT_UP_SERVE_AUTO_ACCEPT', false),
+        'auto_accept' => env('BOOT_UP_DEV_AUTO_ACCEPT', false),
+        'logs' => env('BOOT_UP_DEV_LOGS', true),
         'steps' => [
             EnsureEnvFile::class,
             EnsureLocalEnvironment::class,

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Contracts\Server;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseCredentials;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Illuminate\Support\Str;
@@ -41,7 +41,7 @@ beforeEach(function (): void {
             return true;
         }
 
-        public function start(ServeContext $context): void {}
+        public function start(BootContext $context): void {}
 
         public function stop(): void {}
 
@@ -68,7 +68,7 @@ beforeEach(function (): void {
             return true;
         }
 
-        public function start(ServeContext $context): void {}
+        public function start(BootContext $context): void {}
 
         public function stop(): void {}
 
@@ -98,7 +98,7 @@ test('prompting disabled by config leaves the env file alone', function (): void
     Prompt::fake();
     file_put_contents($this->dir.'/.env', "DB_CONNECTION=mysql\n");
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
     $config = new DatabaseConfig(promptMissingCredentials: false);
 
     $result = ($this->step)($config)->handle($context, fn ($passed) => $passed);
@@ -111,7 +111,7 @@ test('sqlite needs no credentials and short-circuits', function (): void {
     Prompt::fake();
     file_put_contents($this->dir.'/.env', "DB_CONNECTION=sqlite\n");
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     $result = ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -132,7 +132,7 @@ test('complete credentials prompt nothing, even with an empty password', functio
     ])."\n";
     file_put_contents($this->dir.'/.env', $env);
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     $result = ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -144,7 +144,7 @@ test('missing keys are prompted with host defaults, landing in .env and config',
     Prompt::fake([Key::ENTER, Key::ENTER, Key::ENTER, Key::ENTER, Key::ENTER]);
     file_put_contents($this->dir.'/.env', "DB_CONNECTION=mysql\n");
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 
     $database = Str::slug(basename(base_path()), '_');
 
@@ -165,7 +165,7 @@ test('the sail server changes the host and username defaults', function (): void
     Prompt::fake([Key::ENTER, Key::ENTER, Key::ENTER, Key::ENTER, Key::ENTER]);
     file_put_contents($this->dir.'/.env', "DB_CONNECTION=mysql\n");
 
-    $context = new ServeContext(new ServeOptions, $this->sailServer);
+    $context = new BootContext(new BootOptions, $this->sailServer);
 
     ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -186,7 +186,7 @@ test('only the absent password key is prompted; present values survive', functio
         'DB_USERNAME=deploy',
     ])."\n");
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 
     expect($this->envFile->get('DB_HOST'))->toBe('db.internal')
         ->and($this->envFile->get('DB_PORT'))->toBe('3307')
@@ -200,7 +200,7 @@ test('the pgsql driver from .env beats the config default and sets its port', fu
     file_put_contents($this->dir.'/.env', "DB_CONNECTION=pgsql\n");
     config()->set('database.default', 'testing');
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 
     expect($this->envFile->get('DB_PORT'))->toBe('5432')
         ->and(config('database.connections.pgsql.port'))->toBe('5432')
@@ -211,7 +211,7 @@ test('a sail host under herd is reconciled to loopback on confirm', function ():
     Prompt::fake([Key::ENTER]);
     file_put_contents($this->dir.'/.env', ($this->completeEnv)('mysql', 'sail'));
 
-    $context = new ServeContext(new ServeOptions, $this->herdServer);
+    $context = new BootContext(new BootOptions, $this->herdServer);
 
     ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -228,7 +228,7 @@ test('declining the reconciliation keeps the env file untouched', function (): v
     $env = ($this->completeEnv)('mysql', 'sail');
     file_put_contents($this->dir.'/.env', $env);
 
-    $context = new ServeContext(new ServeOptions, $this->herdServer);
+    $context = new BootContext(new BootOptions, $this->herdServer);
 
     ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -241,7 +241,7 @@ test('a loopback host under sail is reconciled to the container hostname', funct
     Prompt::fake([Key::ENTER]);
     file_put_contents($this->dir.'/.env', ($this->completeEnv)('127.0.0.1', 'root'));
 
-    $context = new ServeContext(new ServeOptions, $this->sailServer);
+    $context = new BootContext(new BootOptions, $this->sailServer);
 
     ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -253,7 +253,7 @@ test('the pgsql driver reconciles to the pgsql container hostname under sail', f
     Prompt::fake([Key::ENTER]);
     file_put_contents($this->dir.'/.env', ($this->completeEnv)('localhost', 'deploy', 'pgsql'));
 
-    $context = new ServeContext(new ServeOptions, $this->sailServer);
+    $context = new BootContext(new BootOptions, $this->sailServer);
 
     ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -266,7 +266,7 @@ test('a matching host prompts nothing in either direction', function (): void {
     $env = ($this->completeEnv)('mysql', 'sail');
     file_put_contents($this->dir.'/.env', $env);
 
-    $context = new ServeContext(new ServeOptions, $this->sailServer);
+    $context = new BootContext(new BootOptions, $this->sailServer);
 
     ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -278,7 +278,7 @@ test('a custom host is never reconciled', function (): void {
     $env = ($this->completeEnv)('db.internal', 'deploy');
     file_put_contents($this->dir.'/.env', $env);
 
-    $context = new ServeContext(new ServeOptions, $this->herdServer);
+    $context = new BootContext(new BootOptions, $this->herdServer);
 
     ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -289,7 +289,7 @@ test('a custom username only gets the host reconciled', function (): void {
     Prompt::fake([Key::ENTER]);
     file_put_contents($this->dir.'/.env', ($this->completeEnv)('mysql', 'deploy'));
 
-    $context = new ServeContext(new ServeOptions, $this->herdServer);
+    $context = new BootContext(new BootOptions, $this->herdServer);
 
     ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -302,7 +302,7 @@ test('reconciliation disabled by config leaves a mismatched host alone', functio
     $env = ($this->completeEnv)('mysql', 'sail');
     file_put_contents($this->dir.'/.env', $env);
 
-    $context = new ServeContext(new ServeOptions, $this->herdServer);
+    $context = new BootContext(new BootOptions, $this->herdServer);
     $config = new DatabaseConfig(reconcileServerCredentials: false);
 
     ($this->step)($config)->handle($context, fn ($passed) => $passed);
@@ -314,7 +314,7 @@ test('reconciliation still fires when missing-credential prompting is off', func
     Prompt::fake([Key::ENTER]);
     file_put_contents($this->dir.'/.env', ($this->completeEnv)('mysql', 'sail'));
 
-    $context = new ServeContext(new ServeOptions, $this->herdServer);
+    $context = new BootContext(new BootOptions, $this->herdServer);
     $config = new DatabaseConfig(promptMissingCredentials: false);
 
     ($this->step)($config)->handle($context, fn ($passed) => $passed);
@@ -327,7 +327,7 @@ test('no server means no reconciliation', function (): void {
     $env = ($this->completeEnv)('mysql', 'sail');
     file_put_contents($this->dir.'/.env', $env);
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 
     expect(file_get_contents($this->dir.'/.env'))->toBe($env);
 });

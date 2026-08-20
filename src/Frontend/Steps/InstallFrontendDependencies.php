@@ -11,10 +11,10 @@ use Igne\LaravelBootUp\Concerns\ReadsProcessFailureOutput;
 use Igne\LaravelBootUp\Concerns\SkipsWithNote;
 use Igne\LaravelBootUp\Contracts\DescribesProgress;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Data\CommandLine;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
-use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Exceptions\FrontendException;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
@@ -23,7 +23,7 @@ use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Services\LockfileConflictDetector;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 
-#[Stage(ServeStage::Install)]
+#[Stage(BootStage::Install)]
 #[Group('dependencies')]
 final class InstallFrontendDependencies implements DescribesProgress, Step
 {
@@ -46,7 +46,7 @@ final class InstallFrontendDependencies implements DescribesProgress, Step
         private readonly LockfileConflictDetector $conflicts,
     ) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         if (! $context->options->withAssets) {
             return $this->skipStep('Frontend dependencies skipped (--without-assets).', $context, $next);
@@ -104,7 +104,7 @@ final class InstallFrontendDependencies implements DescribesProgress, Step
         return $output !== '' ? $output : $exception->getMessage();
     }
 
-    public static function progressLabel(ServeOptions $options, array $parameters): string
+    public static function progressLabel(BootOptions $options, array $parameters): string
     {
         return $options->update ? 'Updating frontend dependencies' : 'Installing frontend dependencies';
     }

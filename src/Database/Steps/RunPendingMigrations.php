@@ -12,11 +12,11 @@ use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Contracts\DescribesProgress;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Data\CommandLine;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Database\PendingMigrations;
-use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Illuminate\Support\Str;
@@ -27,7 +27,7 @@ use Illuminate\Support\Str;
  * check and the migrate run through the server's command rewrites;
  * host-side otherwise via the Migrator.
  */
-#[Stage(ServeStage::Database)]
+#[Stage(BootStage::Database)]
 #[Group('migrations')]
 final class RunPendingMigrations implements DescribesProgress, Step
 {
@@ -40,7 +40,7 @@ final class RunPendingMigrations implements DescribesProgress, Step
         private readonly CommandRewriter $rewriter,
     ) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         if (! $context->options->migrate) {
             terminal()->note('Migrations skipped (--no-migrate).');
@@ -84,7 +84,7 @@ final class RunPendingMigrations implements DescribesProgress, Step
         return false;
     }
 
-    private function migrateFresh(ServeContext $context): void
+    private function migrateFresh(BootContext $context): void
     {
         terminal()->info('Dropping all tables and re-running every migration...');
 
@@ -97,7 +97,7 @@ final class RunPendingMigrations implements DescribesProgress, Step
         $this->runThroughServer($context, CommandLine::make($command));
     }
 
-    private function seedIfRequested(ServeContext $context): void
+    private function seedIfRequested(BootContext $context): void
     {
         if (! $context->options->seed) {
             return;
@@ -108,7 +108,7 @@ final class RunPendingMigrations implements DescribesProgress, Step
         $this->runThroughServer($context, CommandLine::make('php artisan db:seed'));
     }
 
-    private function migrateThroughServer(ServeContext $context): bool
+    private function migrateThroughServer(BootContext $context): bool
     {
         $status = $this->runSilentlyThroughServer($context, CommandLine::make('php artisan migrate:status --pending'));
 
@@ -144,7 +144,7 @@ final class RunPendingMigrations implements DescribesProgress, Step
         return true;
     }
 
-    public static function progressLabel(ServeOptions $options, array $parameters): string
+    public static function progressLabel(BootOptions $options, array $parameters): string
     {
         return $options->fresh && $options->migrate
             ? 'Rebuilding the database from scratch'

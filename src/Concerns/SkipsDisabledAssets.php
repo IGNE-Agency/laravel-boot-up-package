@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Concerns;
 
-use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Enums\AssetMode;
 
 /**
@@ -18,7 +18,7 @@ trait SkipsDisabledAssets
     /**
      * The note explaining why asset handling is skipped entirely, or null.
      */
-    private function sharedAssetSkipReason(ServeContext $context): ?string
+    private function sharedAssetSkipReason(BootContext $context): ?string
     {
         return match (true) {
             ! $context->options->withAssets => 'Assets skipped (--without-assets).',

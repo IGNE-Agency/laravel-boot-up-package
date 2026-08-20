@@ -7,8 +7,8 @@ namespace Igne\LaravelBootUp\Servers\Artisan;
 use Igne\LaravelBootUp\Config\ArtisanServeConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesDevProcess;
 use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\CommandLine;
-use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 
@@ -39,7 +39,7 @@ final class ArtisanServer implements ProvidesDevProcess, Server
         return 'Laravel (php artisan serve)';
     }
 
-    public function start(ServeContext $context): void
+    public function start(BootContext $context): void
     {
         if ($this->isRunning()) {
             terminal()->note('php artisan serve is already running.');
@@ -66,7 +66,7 @@ final class ArtisanServer implements ProvidesDevProcess, Server
      * A detached run has already started the tracked process in start(),
      * and an application that was serving before this boot keeps that one.
      */
-    public function devProcess(ServeContext $context): ?CommandLine
+    public function devProcess(BootContext $context): ?CommandLine
     {
         if (! $context->options->follow || $this->isRunning()) {
             return null;

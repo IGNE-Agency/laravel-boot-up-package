@@ -11,10 +11,10 @@ use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Config\ToolsConfig;
 use Igne\LaravelBootUp\Contracts\RequiresTools;
 use Igne\LaravelBootUp\Contracts\Step;
-use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\ToolOutcome;
 use Igne\LaravelBootUp\Data\VersionConstraint;
-use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Enums\ToolStatus;
 use Igne\LaravelBootUp\Frontend\PackageJson;
@@ -28,7 +28,7 @@ use Igne\LaravelBootUp\Tools\ToolRegistry;
  * its version constraint. Quiet successes are bundled into one summary;
  * installs, updates and warnings printed during the run stay where they are.
  */
-#[Stage(ServeStage::Tools)]
+#[Stage(BootStage::Tools)]
 #[Group('tools')]
 #[Label('Checking required tools')]
 final class EnsureToolsReady implements Step
@@ -41,7 +41,7 @@ final class EnsureToolsReady implements Step
         private readonly PackageJson $packageJson,
     ) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         $this->summarize($this->outcomes($context));
 
@@ -51,7 +51,7 @@ final class EnsureToolsReady implements Step
     /**
      * @return list<ToolOutcome>
      */
-    private function outcomes(ServeContext $context): array
+    private function outcomes(BootContext $context): array
     {
         $covered = [];
         $outcomes = [];
@@ -76,7 +76,7 @@ final class EnsureToolsReady implements Step
      *
      * @return iterable<string, VersionConstraint>
      */
-    private function requiredConstraints(ServeContext $context): iterable
+    private function requiredConstraints(BootContext $context): iterable
     {
         foreach ($this->config->required as $id => $constraint) {
             yield $id => VersionConstraint::of((string) $constraint);
@@ -96,7 +96,7 @@ final class EnsureToolsReady implements Step
      *
      * @param  array<string, true>  $covered
      */
-    private function ensurePackageManager(ServeContext $context, array $covered): ?ToolOutcome
+    private function ensurePackageManager(BootContext $context, array $covered): ?ToolOutcome
     {
         if (! $context->options->withAssets || ! $this->packageJson->exists()) {
             return null;

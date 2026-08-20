@@ -101,7 +101,7 @@ queue restart
 The local `dev` / `app:deploy` pipeline runs the two migration phases by
 default. To run the deploy phases locally too, add
 `RunDeployTasks::class.':before-deploy'` / `':after-deploy'` to
-`boot-up.serve.steps` / `boot-up.deploy.steps`. Need a different position
+`boot-up.dev.steps` / `boot-up.deploy.steps`. Need a different position
 entirely? The whole pipeline is published config — implement
 `Igne\LaravelBootUp\Contracts\Step` and insert your own step class anywhere.
 

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Data;
 
 use Igne\LaravelBootUp\Contracts\Step;
-use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Enums\BootStage;
 
 /**
  * One configured serve-pipeline entry, parsed and annotated with its stage
@@ -23,7 +23,7 @@ final readonly class StepDescriptor
         public string $entry,
         public string $class,
         public array $parameters,
-        public ServeStage $stage,
+        public BootStage $stage,
         public string $label,
     ) {}
 }

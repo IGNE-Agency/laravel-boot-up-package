@@ -6,7 +6,7 @@ namespace Igne\LaravelBootUp\Tests\Feature\Console\Fixtures;
 
 use Closure;
 use Igne\LaravelBootUp\Contracts\Step;
-use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Exceptions\ProcessException;
 
 /**
@@ -15,7 +15,7 @@ use Igne\LaravelBootUp\Exceptions\ProcessException;
  */
 final class FailingStep implements Step
 {
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         throw ProcessException::pidNotCaptured('queue-worker');
     }

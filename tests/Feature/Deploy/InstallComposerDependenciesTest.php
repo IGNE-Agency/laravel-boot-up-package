@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Deploy\Composer;
 use Igne\LaravelBootUp\Deploy\Steps\InstallComposerDependencies;
 use Igne\LaravelBootUp\Process\ProcessLedger;
@@ -50,7 +50,7 @@ function installComposerCommandOf(object $process): string
 test('installs composer dependencies and continues the pipeline', function (): void {
     Process::fake(['*' => Process::result()]);
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     $result = installComposerStep($this->dir)->handle($context, fn ($passed) => $passed);
 
@@ -61,7 +61,7 @@ test('installs composer dependencies and continues the pipeline', function (): v
 test('the --update serve option switches the step to composer update', function (): void {
     Process::fake(['*' => Process::result()]);
 
-    $context = new ServeContext(new ServeOptions(update: true));
+    $context = new BootContext(new BootOptions(update: true));
 
     installComposerStep($this->dir)->handle($context, fn ($passed) => $passed);
 

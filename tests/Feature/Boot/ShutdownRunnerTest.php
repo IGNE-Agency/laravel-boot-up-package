@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Boot\ShutdownRunner;
 use Igne\LaravelBootUp\Config\DevServerConfig;
 use Igne\LaravelBootUp\Config\ShutdownConfig;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
-use Igne\LaravelBootUp\Serve\ShutdownRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\ServerSelector;
 use Igne\LaravelBootUp\Servers\StopServerPrompt;
 use Igne\LaravelBootUp\Services\Poller;
-use Igne\LaravelBootUp\Tests\Feature\Serve\Fixtures\RecordingServer;
-use Igne\LaravelBootUp\Tests\Feature\Serve\Fixtures\ResidualServer;
+use Igne\LaravelBootUp\Tests\Feature\Boot\Fixtures\RecordingServer;
+use Igne\LaravelBootUp\Tests\Feature\Boot\Fixtures\ResidualServer;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -216,7 +216,7 @@ test('prompts before stopping a server that was already running, keeping it by d
 
     shutdownRunner($this->ledger, $this->store, promptStop: true, stopDefault: false)->run();
 
-    Prompt::assertStrippedOutputContains('Double Server was already running before app:serve started.');
+    Prompt::assertStrippedOutputContains('Double Server was already running before the boot started.');
     Prompt::assertStrippedOutputContains('Stop Double Server?');
     expect($this->server->stops)->toBe(0)
         ->and($this->store->current())->toBeNull();

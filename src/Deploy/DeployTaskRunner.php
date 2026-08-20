@@ -6,9 +6,9 @@ namespace Igne\LaravelBootUp\Deploy;
 
 use Igne\LaravelBootUp\Concerns\RunsThroughServer;
 use Igne\LaravelBootUp\Contracts\ProvidesDeployTasks;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\DeployTask;
-use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Enums\DeployPhase;
 use Igne\LaravelBootUp\Exceptions\DeployException;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
@@ -33,7 +33,7 @@ final class DeployTaskRunner
         private readonly PackageManagerSelector $packageManagers,
     ) {}
 
-    public function run(DeployPhase $phase, ServeContext $context): void
+    public function run(DeployPhase $phase, BootContext $context): void
     {
         if (! $this->container->bound(ProvidesDeployTasks::class)) {
             return;
@@ -53,7 +53,7 @@ final class DeployTaskRunner
         }
     }
 
-    private function execute(DeployTask $command, ServeContext $context): void
+    private function execute(DeployTask $command, BootContext $context): void
     {
         if ($command->description !== null) {
             terminal()->info($command->description);

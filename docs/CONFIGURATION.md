@@ -128,12 +128,6 @@ and whether the application or another package overrides it, is covered in
 | ------------------- | -------------------------- | ---------- | --------------------------------------- |
 | `scheduler.enabled` | `BOOT_UP_SCHEDULER`        | `false`    | Start `schedule:work`. Opt-in.          |
 
-## Dev processes
-
-| Key         | Env var             | Default | Description                                                                                  |
-| ----------- | ------------------- | ------- | -------------------------------------------------------------------------------------------- |
-| `dev.logs`  | `BOOT_UP_DEV_LOGS`  | `true`  | Keep Laravel's `logs` process, which tails the log with Pail. Dropped when Pail is not installed. |
-
 ## Shutdown
 
 | Key                               | Env var                        | Default | Description                                                                                                      |
@@ -141,13 +135,14 @@ and whether the application or another package overrides it, is covered in
 | `shutdown.prompt_stop_server`     | `BOOT_UP_SHUTDOWN_PROMPT`      | `true`  | Ask whether to stop the server on `app:down` / Ctrl-C.                                                           |
 | `shutdown.stop_server_by_default` | `BOOT_UP_SHUTDOWN_STOP_SERVER` | `false` | The default answer to that prompt. Stopping Herd is machine-wide, so it only ever happens after an explicit yes. |
 
-## Serve
+## Dev
 
 | Key                  | Env var                     | Default  | Description                                                                          |
 | -------------------- | --------------------------- | -------- | ------------------------------------------------------------------------------------ |
-| `serve.open_browser` | `BOOT_UP_OPEN_BROWSER`      | `true`   | Open the app in your browser after boot.                                             |
-| `serve.auto_accept`  | `BOOT_UP_SERVE_AUTO_ACCEPT` | `false`  | Skip the "What dev will do — continue?" prompt. `--yes` does the same per run.       |
-| `serve.steps`        | —                           | 17 steps | The full boot pipeline, in order — see [Step pipelines](#step-pipelines).            |
+| `dev.open_browser` | `BOOT_UP_OPEN_BROWSER`      | `true`   | Open the app in your browser after boot.                                             |
+| `dev.auto_accept`  | `BOOT_UP_DEV_AUTO_ACCEPT` | `false`  | Skip the "What dev will do — continue?" prompt. `--yes` does the same per run.       |
+| `dev.steps`          | —                           | 17 steps | The full boot pipeline, in order — see [Step pipelines](#step-pipelines).            |
+| `dev.logs`           | `BOOT_UP_DEV_LOGS`          | `true`   | Keep Laravel's `logs` process, which tails the log with Pail. Dropped without Pail.  |
 
 ## Deploy
 
@@ -156,7 +151,7 @@ and whether the application or another package overrides it, is covered in
 | `deploy.cache_framework_files` | `BOOT_UP_CACHE`              | `false`            | Run the framework cache commands locally. Off by default: `config:cache` breaks `env()` lookups in local development. |
 | `deploy.finalize`              | —                            | `['storage:link']` | Artisan commands run at the end of every boot/deploy.                                                                 |
 | `deploy.script_generators`     | —                            | `[]`               | Extension point: map a platform key to a [`Contracts\ScriptGenerator`](EXTENDING.md#custom-deployment-platforms).     |
-| `deploy.auto_accept`           | `BOOT_UP_DEPLOY_AUTO_ACCEPT` | `false`            | Skip the confirmation prompt for `app:deploy` — independent of `serve.auto_accept`.                                   |
+| `deploy.auto_accept`           | `BOOT_UP_DEPLOY_AUTO_ACCEPT` | `false`            | Skip the confirmation prompt for `app:deploy` — independent of `dev.auto_accept`.                                   |
 | `deploy.steps`                 | —                            | 10 steps           | The deploy-only pipeline subset: no server, no dev processes, no browser — see [Step pipelines](#step-pipelines).     |
 
 ## Pipeline
@@ -171,7 +166,7 @@ and whether the application or another package overrides it, is covered in
 
 ## Step pipelines
 
-The boot pipeline (`serve.steps`) and the `app:deploy` pipeline
+The boot pipeline (`dev.steps`) and the `app:deploy` pipeline
 (`deploy.steps`) are plain arrays of step classes in the published config.
 Reorder them, remove steps you don't want, or insert your own
 [`Contracts\Step`](EXTENDING.md#custom-pipeline-steps) classes anywhere.

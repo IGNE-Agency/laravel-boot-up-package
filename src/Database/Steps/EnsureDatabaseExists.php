@@ -12,17 +12,17 @@ use Igne\LaravelBootUp\Concerns\SkipsWithNote;
 use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\DatabaseConnection;
-use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Database\DatabaseCreator;
-use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Illuminate\Contracts\Config\Repository;
 
 /**
  * Creates the configured database when it does not exist yet. Skipped for
  * servers that provision the database themselves (e.g. Sail's containers).
  */
-#[Stage(ServeStage::Database)]
+#[Stage(BootStage::Database)]
 #[Group('database')]
 #[Label('Ensuring the database exists')]
 final class EnsureDatabaseExists implements Step
@@ -35,7 +35,7 @@ final class EnsureDatabaseExists implements Step
         private readonly Repository $laravelConfig,
     ) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         if (! $this->config->create) {
             return $this->skipStep('Database creation is disabled in configuration — skipping.', $context, $next);

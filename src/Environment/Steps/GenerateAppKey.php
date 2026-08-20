@@ -9,13 +9,13 @@ use Igne\LaravelBootUp\Attributes\Group;
 use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\CommandLine;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 
-#[Stage(ServeStage::Prepare)]
+#[Stage(BootStage::Prepare)]
 #[Group('prepare')]
 #[Label('Checking the application key')]
 final class GenerateAppKey implements Step
@@ -25,7 +25,7 @@ final class GenerateAppKey implements Step
         private readonly ProcessRunner $processes,
     ) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         $key = $this->envFile->get('APP_KEY');
 

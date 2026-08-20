@@ -10,8 +10,8 @@ use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 
 /**
@@ -19,14 +19,14 @@ use Igne\LaravelBootUp\Servers\ActiveServerStore;
  * start() runs (write-ahead) so a crash mid-start still leaves shutdown
  * enough state to clean up.
  */
-#[Stage(ServeStage::Server)]
+#[Stage(BootStage::Server)]
 #[Group('server')]
 #[Label('Starting the development server')]
 final class StartServer implements Step
 {
     public function __construct(private readonly ActiveServerStore $store) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         $server = $context->server;
 

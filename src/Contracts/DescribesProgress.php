@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Contracts;
 
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Data\BootOptions;
 
 /**
  * A step whose progress label depends on how the command was invoked —
@@ -19,5 +19,5 @@ interface DescribesProgress
     /**
      * @param  list<string>  $parameters  the step's `Class:a,b` arguments
      */
-    public static function progressLabel(ServeOptions $options, array $parameters): string;
+    public static function progressLabel(BootOptions $options, array $parameters): string;
 }

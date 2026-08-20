@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootUp\Serve;
+namespace Igne\LaravelBootUp\Boot;
 
 use Igne\LaravelBootUp\Attributes\Group;
 use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Contracts\DescribesProgress;
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Data\StepDescriptor;
 use Igne\LaravelBootUp\Deploy\Steps\InstallComposerDependencies;
-use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
 use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
 use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
@@ -20,9 +20,9 @@ use Illuminate\Support\Str;
 use ReflectionClass;
 
 /**
- * What the configured serve pipeline is about to do: each entry parsed and
+ * What the configured boot pipeline is about to do: each entry parsed and
  * assigned a stage plus a progress label, and a concise options-aware
- * summary for the "What dev will do" block. Only ServeOptions gate
+ * summary for the "What dev will do" block. Only BootOptions gate
  * summary lines — config/context skip logic stays inside the steps.
  */
 final readonly class StepSequence
@@ -33,7 +33,7 @@ final readonly class StepSequence
      */
     private function __construct(
         public array $steps,
-        private ServeOptions $options,
+        private BootOptions $options,
         private ?string $serverLabel,
         private array $devProcesses,
     ) {}
@@ -42,7 +42,7 @@ final readonly class StepSequence
      * @param  list<string>  $configuredSteps
      * @param  list<string>  $devProcesses  names of the dev processes that will run after the boot
      */
-    public static function for(array $configuredSteps, ServeOptions $options, ?string $serverLabel = null, array $devProcesses = []): self
+    public static function for(array $configuredSteps, BootOptions $options, ?string $serverLabel = null, array $devProcesses = []): self
     {
         $steps = [];
         $stage = null;
@@ -52,7 +52,7 @@ final readonly class StepSequence
 
             // Steps without a #[Stage] inherit the stage they are slotted
             // into; leading unknowns get their own honest "Custom steps".
-            $stage = self::stageFor($class) ?? $stage ?? ServeStage::Custom;
+            $stage = self::stageFor($class) ?? $stage ?? BootStage::Custom;
 
             $steps[] = new StepDescriptor(
                 $index,
@@ -136,7 +136,7 @@ final readonly class StepSequence
      * stage. class_exists() guards reflection on typo'd config entries,
      * which must stay a pipeline-time error, not a summary-time one.
      */
-    private static function stageFor(string $class): ?ServeStage
+    private static function stageFor(string $class): ?BootStage
     {
         if (! class_exists($class)) {
             return null;
@@ -255,7 +255,7 @@ final readonly class StepSequence
      *
      * @param  list<string>  $parameters
      */
-    private static function label(string $class, array $parameters, ServeOptions $options): string
+    private static function label(string $class, array $parameters, BootOptions $options): string
     {
         if (! class_exists($class)) {
             return self::fallbackLabel($class, $parameters);

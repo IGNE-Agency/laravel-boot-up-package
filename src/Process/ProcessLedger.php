@@ -10,7 +10,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Persisted ledger of background processes started by the package,
- * surviving the boundary between app:serve and app:down.
+ * surviving the boundary between the dev command and app:down.
  */
 final class ProcessLedger
 {

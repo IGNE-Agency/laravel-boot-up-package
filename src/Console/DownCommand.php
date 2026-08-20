@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootUp\Serve\ShutdownRunner;
+use Igne\LaravelBootUp\Boot\ShutdownRunner;
 use Illuminate\Contracts\Console\Isolatable;
 
 final class DownCommand extends BootUpCommand implements Isolatable

@@ -11,8 +11,8 @@ use Igne\LaravelBootUp\Servers\Sail\SailServer;
 use Illuminate\Contracts\Config\Repository;
 
 /**
- * Which development server drives app:serve. Named DevServerConfig to stay
- * unmistakable beside ServeConfig (the app:serve pipeline itself).
+ * Which development server drives the boot. Named DevServerConfig to stay
+ * unmistakable beside DevConfig (the dev command itself).
  */
 final readonly class DevServerConfig
 {

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesDeployTasks;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Data\DeployTask;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Deploy\DeployTaskRunner;
 use Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks;
 use Igne\LaravelBootUp\Enums\AssetMode;
@@ -81,12 +81,12 @@ test("the pipeline ':after' parameter selects the after-migrations commands", fu
     Process::fake(['*' => Process::result()]);
     bindRunProjectCommandsFixtures($this->dir);
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     $result = app(Pipeline::class)
         ->send($context)
         ->through([RunDeployTasks::class.':after'])
-        ->then(fn (ServeContext $passed): ServeContext => $passed);
+        ->then(fn (BootContext $passed): BootContext => $passed);
 
     expect($result)->toBe($context);
     Process::assertRan(fn ($process): bool => runProjectCommandsCommandOf($process) === 'composer dump-autoload');
@@ -98,9 +98,9 @@ test("the ':before-deploy' parameter selects the before-deploy commands", functi
     bindRunProjectCommandsFixtures($this->dir);
 
     app(Pipeline::class)
-        ->send(new ServeContext(new ServeOptions))
+        ->send(new BootContext(new BootOptions))
         ->through([RunDeployTasks::class.':before-deploy'])
-        ->then(fn (ServeContext $passed): ServeContext => $passed);
+        ->then(fn (BootContext $passed): BootContext => $passed);
 
     Process::assertRan(fn ($process): bool => runProjectCommandsCommandOf($process) === 'php artisan pennant:purge');
     Process::assertDidntRun(fn ($process): bool => runProjectCommandsCommandOf($process) === 'php artisan config:clear');
@@ -111,9 +111,9 @@ test('the phase defaults to before-migrations without a pipeline parameter', fun
     bindRunProjectCommandsFixtures($this->dir);
 
     app(Pipeline::class)
-        ->send(new ServeContext(new ServeOptions))
+        ->send(new BootContext(new BootOptions))
         ->through([RunDeployTasks::class])
-        ->then(fn (ServeContext $passed): ServeContext => $passed);
+        ->then(fn (BootContext $passed): BootContext => $passed);
 
     Process::assertRan(fn ($process): bool => runProjectCommandsCommandOf($process) === 'php artisan config:clear');
     Process::assertDidntRun(fn ($process): bool => runProjectCommandsCommandOf($process) === 'composer dump-autoload');
@@ -124,8 +124,8 @@ test('an unknown phase suffix is rejected with the legal phases named', function
     bindRunProjectCommandsFixtures($this->dir);
 
     expect(fn () => app(Pipeline::class)
-        ->send(new ServeContext(new ServeOptions))
+        ->send(new BootContext(new BootOptions))
         ->through([RunDeployTasks::class.':during'])
-        ->then(fn (ServeContext $passed): ServeContext => $passed))
+        ->then(fn (BootContext $passed): BootContext => $passed))
         ->toThrow(InvalidArgumentException::class, 'during');
 });

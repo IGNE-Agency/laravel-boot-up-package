@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Boot\DevProcessRegistrar;
 use Igne\LaravelBootUp\Config\DevConfig;
 use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Config\HorizonConfig;
@@ -11,17 +12,16 @@ use Igne\LaravelBootUp\Config\SchedulerConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesDevProcess;
 use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\CommandRewrites;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
-use Igne\LaravelBootUp\Serve\DevProcessRegistrar;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Tests\Concerns\InteractsWithDevCommands;
 use Igne\LaravelBootUp\Workers\HorizonPresence;
@@ -85,10 +85,10 @@ function devRegistrar(
     );
 }
 
-function devContext(?Server $server = null, bool $withQueue = true, bool $withAssets = true, bool $follow = true): ServeContext
+function devContext(?Server $server = null, bool $withQueue = true, bool $withAssets = true, bool $follow = true): BootContext
 {
-    return new ServeContext(
-        new ServeOptions(withQueue: $withQueue, withAssets: $withAssets, follow: $follow),
+    return new BootContext(
+        new BootOptions(withQueue: $withQueue, withAssets: $withAssets, follow: $follow),
         $server,
     );
 }
@@ -102,7 +102,7 @@ function servingServer(string $command = 'php artisan serve --port=8000'): Serve
     {
         public function __construct(private readonly string $command) {}
 
-        public function devProcess(ServeContext $context): ?CommandLine
+        public function devProcess(BootContext $context): ?CommandLine
         {
             return CommandLine::make($this->command);
         }
@@ -122,7 +122,7 @@ function servingServer(string $command = 'php artisan serve --port=8000'): Serve
             return true;
         }
 
-        public function start(ServeContext $context): void {}
+        public function start(BootContext $context): void {}
 
         public function stop(): void {}
 
@@ -155,7 +155,7 @@ function externalServer(): Server
             return true;
         }
 
-        public function start(ServeContext $context): void {}
+        public function start(BootContext $context): void {}
 
         public function stop(): void {}
 
@@ -173,7 +173,7 @@ function containerServer(): Server
 {
     return new class implements ProvidesDevProcess, RewritesCommands, Server
     {
-        public function devProcess(ServeContext $context): ?CommandLine
+        public function devProcess(BootContext $context): ?CommandLine
         {
             return CommandLine::make(['./vendor/bin/sail', 'logs', '--follow']);
         }
@@ -202,7 +202,7 @@ function containerServer(): Server
             return true;
         }
 
-        public function start(ServeContext $context): void {}
+        public function start(BootContext $context): void {}
 
         public function stop(): void {}
 

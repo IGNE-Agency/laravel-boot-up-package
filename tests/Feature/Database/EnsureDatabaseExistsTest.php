@@ -5,8 +5,8 @@ declare(strict_types=1);
 use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\Server;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Database\DatabaseCreator;
 use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseExists;
 use Laravel\Prompts\Prompt;
@@ -53,7 +53,7 @@ beforeEach(function (): void {
             return true;
         }
 
-        public function start(ServeContext $context): void {}
+        public function start(BootContext $context): void {}
 
         public function stop(): void {}
 
@@ -72,7 +72,7 @@ afterEach(function (): void {
 
 test('skips with a note when creation is disabled in configuration', function (): void {
     $config = new DatabaseConfig(create: false);
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     $result = ($this->step)($config)->handle($context, fn ($passed) => $passed);
 
@@ -82,7 +82,7 @@ test('skips with a note when creation is disabled in configuration', function ()
 });
 
 test('skips with a note under sail — the container provisions the database', function (): void {
-    $context = new ServeContext(new ServeOptions, $this->sailServer);
+    $context = new BootContext(new BootOptions, $this->sailServer);
 
     $result = ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -92,7 +92,7 @@ test('skips with a note under sail — the container provisions the database', f
 });
 
 test('touches the sqlite database file when it is missing', function (): void {
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     $result = ($this->step)()->handle($context, fn ($passed) => $passed);
 
@@ -104,7 +104,7 @@ test('touches the sqlite database file when it is missing', function (): void {
 test('notes when the database already exists', function (): void {
     touch($this->sqlitePath);
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 
     Prompt::assertStrippedOutputContains('already exists');
 });

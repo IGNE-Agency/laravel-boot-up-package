@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Config\ServeConfig;
+use Igne\LaravelBootUp\Config\DevConfig;
 use Illuminate\Config\Repository;
 
-test('fromRepository reads the boot-up.serve schema', function (): void {
-    $config = ServeConfig::fromRepository(new Repository([
+test('fromRepository reads the boot-up.dev schema', function (): void {
+    $config = DevConfig::fromRepository(new Repository([
         'boot-up' => [
-            'serve' => [
+            'dev' => [
                 'steps' => ['StepA', 'StepB'],
                 'open_browser' => false,
                 'auto_accept' => true,

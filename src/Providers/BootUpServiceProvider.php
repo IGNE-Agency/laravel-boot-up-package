@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Providers;
 
+use Igne\LaravelBootUp\Boot\ShutdownRunner;
 use Igne\LaravelBootUp\Config\ArtisanServeConfig;
 use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Config\DeployConfig;
@@ -18,7 +19,6 @@ use Igne\LaravelBootUp\Config\QueueConfig;
 use Igne\LaravelBootUp\Config\ReverbConfig;
 use Igne\LaravelBootUp\Config\SailConfig;
 use Igne\LaravelBootUp\Config\SchedulerConfig;
-use Igne\LaravelBootUp\Config\ServeConfig;
 use Igne\LaravelBootUp\Config\ShutdownConfig;
 use Igne\LaravelBootUp\Config\ToolsConfig;
 use Igne\LaravelBootUp\Console\DeployCommand;
@@ -36,7 +36,6 @@ use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Serve\ShutdownRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Herd\HerdSites;
 use Igne\LaravelBootUp\Services\GeneratedFilePublisher;
@@ -65,7 +64,7 @@ final class BootUpServiceProvider extends ServiceProvider
         ReverbConfig::class,
         SailConfig::class,
         SchedulerConfig::class,
-        ServeConfig::class,
+        DevConfig::class,
         ShutdownConfig::class,
         ToolsConfig::class,
     ];

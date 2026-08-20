@@ -6,9 +6,9 @@ use Igne\LaravelBootUp\Config\ToolsConfig;
 use Igne\LaravelBootUp\Contracts\RequiresTools;
 use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Data\CommandRewrites;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\AlphaToolSpy;
@@ -52,7 +52,7 @@ function ensureToolsServer(array $tools, ?CommandRewrites $rewrites = null): Ser
             return false;
         }
 
-        public function start(ServeContext $context): void {}
+        public function start(BootContext $context): void {}
 
         public function stop(): void {}
 
@@ -82,7 +82,7 @@ test('ensures every configured tool and then the server tools', function (): voi
         installers: ['alpha' => AlphaToolSpy::class, 'docker' => DockerToolSpy::class],
     );
 
-    $context = new ServeContext(new ServeOptions, ensureToolsServer([Tool::Docker]));
+    $context = new BootContext(new BootOptions, ensureToolsServer([Tool::Docker]));
 
     $result = app(EnsureToolsReady::class)->handle($context, fn ($passed) => $passed);
 
@@ -100,7 +100,7 @@ test('quiet successes no longer print their own lines', function (): void {
         installers: ['alpha' => AlphaToolSpy::class],
     );
 
-    app(EnsureToolsReady::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    app(EnsureToolsReady::class)->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 
     Prompt::assertStrippedOutputDoesntContain('satisfies');
     Prompt::assertStrippedOutputDoesntContain('is installed.');
@@ -110,7 +110,7 @@ test('no summary is printed when nothing was ensured', function (): void {
     bindToolsConfig(required: [], installers: ['bun' => BunToolSpy::class]);
     bindPackageJson(exists: false);
 
-    app(EnsureToolsReady::class)->handle(new ServeContext(new ServeOptions, ensureToolsServer([])), fn ($passed) => $passed);
+    app(EnsureToolsReady::class)->handle(new BootContext(new BootOptions, ensureToolsServer([])), fn ($passed) => $passed);
 
     Prompt::assertStrippedOutputDoesntContain('Dependencies ready');
 });
@@ -121,7 +121,7 @@ test('server tools already covered by the required map are not ensured twice', f
         installers: ['docker' => DockerToolSpy::class],
     );
 
-    $context = new ServeContext(new ServeOptions, ensureToolsServer([Tool::Docker]));
+    $context = new BootContext(new BootOptions, ensureToolsServer([Tool::Docker]));
 
     app(EnsureToolsReady::class)->handle($context, fn ($passed) => $passed);
 
@@ -134,7 +134,7 @@ test('a null server (app:deploy) only ensures the required map', function (): vo
         installers: ['alpha' => AlphaToolSpy::class],
     );
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     app(EnsureToolsReady::class)->handle($context, fn ($passed) => $passed);
 
@@ -157,7 +157,7 @@ test('the selected frontend package manager is ensured when a package.json exist
     bindToolsConfig(required: [], installers: ['bun' => BunToolSpy::class]);
     bindPackageJson(exists: true);
 
-    app(EnsureToolsReady::class)->handle(new ServeContext(new ServeOptions, ensureToolsServer([])), fn ($passed) => $passed);
+    app(EnsureToolsReady::class)->handle(new BootContext(new BootOptions, ensureToolsServer([])), fn ($passed) => $passed);
 
     expect(EnsureToolsReadySpy::$ensured)->toBe(['bun']);
 });
@@ -166,7 +166,7 @@ test('the package manager is not ensured twice when the required map already cov
     bindToolsConfig(required: ['bun' => '*'], installers: ['bun' => BunToolSpy::class]);
     bindPackageJson(exists: true);
 
-    app(EnsureToolsReady::class)->handle(new ServeContext(new ServeOptions, ensureToolsServer([])), fn ($passed) => $passed);
+    app(EnsureToolsReady::class)->handle(new BootContext(new BootOptions, ensureToolsServer([])), fn ($passed) => $passed);
 
     expect(EnsureToolsReadySpy::$ensured)->toBe(['bun']);
 });
@@ -175,7 +175,7 @@ test('the package manager is skipped without a package.json', function (): void 
     bindToolsConfig(required: [], installers: ['bun' => BunToolSpy::class]);
     bindPackageJson(exists: false);
 
-    app(EnsureToolsReady::class)->handle(new ServeContext(new ServeOptions, ensureToolsServer([])), fn ($passed) => $passed);
+    app(EnsureToolsReady::class)->handle(new BootContext(new BootOptions, ensureToolsServer([])), fn ($passed) => $passed);
 
     expect(EnsureToolsReadySpy::$ensured)->toBe([]);
 });
@@ -184,7 +184,7 @@ test('the package manager is skipped with --without-assets', function (): void {
     bindToolsConfig(required: [], installers: ['bun' => BunToolSpy::class]);
     bindPackageJson(exists: true);
 
-    $context = new ServeContext(new ServeOptions(withAssets: false), ensureToolsServer([]));
+    $context = new BootContext(new BootOptions(withAssets: false), ensureToolsServer([]));
 
     app(EnsureToolsReady::class)->handle($context, fn ($passed) => $passed);
 
@@ -200,7 +200,7 @@ test('the package manager is skipped when the server wraps its binary', function
         prefix: './vendor/bin/sail',
     ));
 
-    app(EnsureToolsReady::class)->handle(new ServeContext(new ServeOptions, $sailLike), fn ($passed) => $passed);
+    app(EnsureToolsReady::class)->handle(new BootContext(new BootOptions, $sailLike), fn ($passed) => $passed);
 
     expect(EnsureToolsReadySpy::$ensured)->toBe([]);
 });

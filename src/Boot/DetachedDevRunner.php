@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootUp\Serve;
+namespace Igne\LaravelBootUp\Boot;
 
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Process\ProcessRunner;

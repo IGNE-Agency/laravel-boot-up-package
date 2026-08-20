@@ -21,7 +21,7 @@ final class ServerException extends BootUpException
         return new self(
             "Laravel Herd did not become reachable at {$url} after {$attempts} attempt(s). "
             .'Nginx may be unhealthy — inspect the services with `herd services:list`, then try `herd restart` '
-            .'(or restart Herd from its menu-bar app) and run app:serve again.'
+            .'(or restart Herd from its menu-bar app) and run php artisan dev again.'
         );
     }
 
@@ -35,7 +35,7 @@ final class ServerException extends BootUpException
         return new self(
             'Docker could not reach its image registry — a Docker/network problem, not a project problem. '
             .'Check your internet connection and VPN, restart Docker Desktop, and if it persists point Docker '
-            ."Desktop's DNS at a public resolver (Settings → Resources → Network), then run app:serve again."
+            ."Desktop's DNS at a public resolver (Settings → Resources → Network), then run php artisan dev again."
         );
     }
 }

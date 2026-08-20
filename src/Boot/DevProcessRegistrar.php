@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootUp\Serve;
+namespace Igne\LaravelBootUp\Boot;
 
 use Igne\LaravelBootUp\Config\DevConfig;
 use Igne\LaravelBootUp\Config\FrontendConfig;
@@ -10,9 +10,9 @@ use Igne\LaravelBootUp\Config\QueueConfig;
 use Igne\LaravelBootUp\Config\ReverbConfig;
 use Igne\LaravelBootUp\Config\SchedulerConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesDevProcess;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\DevProcess;
-use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Enums\BuiltInProcess;
 use Igne\LaravelBootUp\Environment\EnvFile;
@@ -71,7 +71,7 @@ final class DevProcessRegistrar
      *
      * @return list<string>
      */
-    public function preview(ServeContext $context): array
+    public function preview(BootContext $context): array
     {
         $running = [];
 
@@ -91,7 +91,7 @@ final class DevProcessRegistrar
      * Register boot-up's processes and filter out the ones this run does not
      * need.
      */
-    public function apply(ServeContext $context): void
+    public function apply(BootContext $context): void
     {
         $suppressed = [];
 
@@ -122,7 +122,7 @@ final class DevProcessRegistrar
     /**
      * @return list<DevProcess>
      */
-    private function decisions(ServeContext $context): array
+    private function decisions(BootContext $context): array
     {
         return [
             $this->server($context),
@@ -140,7 +140,7 @@ final class DevProcessRegistrar
      * process here and the framework's own `php artisan serve` default would
      * bind a second port for nothing.
      */
-    private function server(ServeContext $context): DevProcess
+    private function server(BootContext $context): DevProcess
     {
         $server = $context->server;
 
@@ -155,7 +155,7 @@ final class DevProcessRegistrar
             : DevProcess::start(BuiltInProcess::Server->value, $command);
     }
 
-    private function queue(ServeContext $context): DevProcess
+    private function queue(BootContext $context): DevProcess
     {
         $connection = $this->connection();
 
@@ -196,7 +196,7 @@ final class DevProcessRegistrar
             : DevProcess::skip(BuiltInProcess::Scheduler->value);
     }
 
-    private function assets(ServeContext $context): DevProcess
+    private function assets(BootContext $context): DevProcess
     {
         // Build mode skips quietly: the BuildAssets step speaks for that run.
         if ($this->frontendConfig->assets === AssetMode::Build) {

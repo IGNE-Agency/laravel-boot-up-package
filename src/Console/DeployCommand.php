@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
+use Igne\LaravelBootUp\Boot\StageReporter;
+use Igne\LaravelBootUp\Boot\StepSequence;
 use Igne\LaravelBootUp\Config\DeployConfig;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
-use Igne\LaravelBootUp\Serve\StageReporter;
-use Igne\LaravelBootUp\Serve\StepSequence;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Illuminate\Contracts\Console\Isolatable;
 use Illuminate\Pipeline\Pipeline;
 
@@ -34,7 +34,7 @@ final class DeployCommand extends BootUpCommand implements Isolatable
     {
         $this->announce('Deploying the application...');
 
-        $options = new ServeOptions(
+        $options = new BootOptions(
             seed: (bool) $this->option('seed'),
             migrate: ! $this->option('no-migrate'),
             update: (bool) $this->option('update'),
@@ -50,7 +50,7 @@ final class DeployCommand extends BootUpCommand implements Isolatable
         $this->reporter = $reporter;
         $pipes = $reporter->begin($plan);
 
-        $pipeline->send(new ServeContext($options))->through($pipes)->thenReturn();
+        $pipeline->send(new BootContext($options))->through($pipes)->thenReturn();
 
         $reporter->finish();
 

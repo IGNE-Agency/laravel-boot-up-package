@@ -8,7 +8,7 @@ use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Services\JsonStore;
 
 /**
- * Persists the active-server record across the app:serve / app:down
+ * Persists the active-server record across the dev / app:down
  * boundary as atomic JSON in storage/framework/boot-up.
  */
 final class ActiveServerStore

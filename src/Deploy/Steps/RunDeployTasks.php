@@ -9,11 +9,11 @@ use Igne\LaravelBootUp\Attributes\Group;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Contracts\DescribesProgress;
 use Igne\LaravelBootUp\Contracts\Step;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Deploy\DeployTaskRunner;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Enums\DeployPhase;
-use Igne\LaravelBootUp\Enums\ServeStage;
 use InvalidArgumentException;
 
 /**
@@ -23,7 +23,7 @@ use InvalidArgumentException;
  * The deploy phases `':before-deploy'` / `':after-deploy'` are also accepted
  * for pipelines that want the full four-phase model locally.
  */
-#[Stage(ServeStage::Database)]
+#[Stage(BootStage::Database)]
 #[Group('deploy-tasks')]
 final class RunDeployTasks implements DescribesProgress, Step
 {
@@ -33,7 +33,7 @@ final class RunDeployTasks implements DescribesProgress, Step
      * $phase stays a string because the value arrives spread from the
      * pipeline entry's ':phase' suffix — the enum boundary is right here.
      */
-    public function handle(ServeContext $context, Closure $next, string $phase = 'before'): mixed
+    public function handle(BootContext $context, Closure $next, string $phase = 'before'): mixed
     {
         $parsed = DeployPhase::tryFrom($phase)
             ?? throw new InvalidArgumentException("Unknown project command phase [{$phase}]; expected 'before-deploy', 'before', 'after' or 'after-deploy'.");
@@ -43,7 +43,7 @@ final class RunDeployTasks implements DescribesProgress, Step
         return $next($context);
     }
 
-    public static function progressLabel(ServeOptions $options, array $parameters): string
+    public static function progressLabel(BootOptions $options, array $parameters): string
     {
         $phase = DeployPhase::tryFrom($parameters[0] ?? '') ?? DeployPhase::Before;
 

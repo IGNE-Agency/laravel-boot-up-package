@@ -11,16 +11,16 @@ use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Concerns\SkipsWithNote;
 use Igne\LaravelBootUp\Config\DeployConfig;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\CommandLine;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 
 /**
  * Off by default: config:cache freezes env() lookups, which breaks local
  * development against a mutating .env.
  */
-#[Stage(ServeStage::Cache)]
+#[Stage(BootStage::Cache)]
 #[Group('cache')]
 #[Label('Caching framework files')]
 final class CacheFrameworkFiles implements Step
@@ -34,7 +34,7 @@ final class CacheFrameworkFiles implements Step
         private readonly ProcessRunner $processes,
     ) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         if (! $this->config->cacheFrameworkFiles) {
             return $this->skipStep('Framework file caching is disabled in configuration — skipping.', $context, $next);

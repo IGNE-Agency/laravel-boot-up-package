@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
+use Igne\LaravelBootUp\Boot\BootProcessProbe;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
-use Igne\LaravelBootUp\Serve\ServeProcessProbe;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\ServerSelector;
 use Throwable;
@@ -34,7 +34,7 @@ final class StatusCommand extends BootUpCommand
         ProcessLedger $ledger,
         ProcessReaper $reaper,
         ServerSelector $selector,
-        ServeProcessProbe $probe,
+        BootProcessProbe $probe,
     ): int {
         $this->announce('Application status');
 
@@ -58,7 +58,7 @@ final class StatusCommand extends BootUpCommand
         return $this->done('Stop everything with: php artisan app:down');
     }
 
-    private function describeServer(ActiveServerRecord $active, ServerSelector $selector, ServeProcessProbe $probe): void
+    private function describeServer(ActiveServerRecord $active, ServerSelector $selector, BootProcessProbe $probe): void
     {
         // The driver key may belong to a custom driver that no longer
         // exists in config — the record itself is still worth showing.

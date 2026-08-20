@@ -13,10 +13,10 @@ use Igne\LaravelBootUp\Concerns\SkipsDisabledAssets;
 use Igne\LaravelBootUp\Concerns\SkipsWithNote;
 use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\CommandLine;
-use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Enums\AssetMode;
-use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -27,7 +27,7 @@ use Igne\LaravelBootUp\Servers\CommandRewriter;
  * without a watcher. Runs only under AssetMode::Build; watch mode is the
  * asset watcher's business, and that runs as a dev process after the boot.
  */
-#[Stage(ServeStage::Assets)]
+#[Stage(BootStage::Assets)]
 #[Group('assets')]
 #[Label('Building assets')]
 final class BuildAssets implements Step
@@ -46,7 +46,7 @@ final class BuildAssets implements Step
         private readonly CommandRewriter $rewriter,
     ) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         if ($this->config->assets !== AssetMode::Build) {
             return $next($context);

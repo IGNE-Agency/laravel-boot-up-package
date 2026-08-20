@@ -5,9 +5,9 @@ declare(strict_types=1);
 use Igne\LaravelBootUp\Config\ShutdownConfig;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
-use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Servers\StopServerPrompt;
-use Igne\LaravelBootUp\Tests\Feature\Serve\Fixtures\RecordingServer;
+use Igne\LaravelBootUp\Tests\Feature\Boot\Fixtures\RecordingServer;
 use Laravel\Prompts\Key;
 use Laravel\Prompts\Prompt;
 
@@ -41,7 +41,7 @@ function stopPromptServer(?string $impact = null): Server
             return true;
         }
 
-        public function start(ServeContext $context): void {}
+        public function start(BootContext $context): void {}
 
         public function stop(): void {}
 

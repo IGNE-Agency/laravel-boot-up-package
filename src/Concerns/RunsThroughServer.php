@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Concerns;
 
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\CommandLine;
-use Igne\LaravelBootUp\Data\ServeContext;
 use Illuminate\Contracts\Process\ProcessResult;
 
 /**
@@ -16,12 +16,12 @@ use Illuminate\Contracts\Process\ProcessResult;
  */
 trait RunsThroughServer
 {
-    private function runThroughServer(ServeContext $context, CommandLine $command): ProcessResult
+    private function runThroughServer(BootContext $context, CommandLine $command): ProcessResult
     {
         return $this->runner->run($this->rewriter->rewriteFor($context, $command));
     }
 
-    private function runSilentlyThroughServer(ServeContext $context, CommandLine $command): ProcessResult
+    private function runSilentlyThroughServer(BootContext $context, CommandLine $command): ProcessResult
     {
         return $this->runner->runSilently($this->rewriter->rewriteFor($context, $command));
     }

@@ -5,8 +5,8 @@ declare(strict_types=1);
 use Igne\LaravelBootUp\Console\BootUpCommand;
 use Igne\LaravelBootUp\Console\DevCommand;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\Lines;
-use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Exceptions\BootUpException;
 use Igne\LaravelBootUp\Services\Terminal;
 use Igne\LaravelBootUp\Services\TrackedProgress;
@@ -49,7 +49,7 @@ arch('every pipeline step implements the Step contract')
         'Igne\LaravelBootUp\Deploy\Steps',
         'Igne\LaravelBootUp\Environment\Steps',
         'Igne\LaravelBootUp\Frontend\Steps',
-        'Igne\LaravelBootUp\Serve\Steps',
+        'Igne\LaravelBootUp\Boot\Steps',
         'Igne\LaravelBootUp\Servers\Steps',
         'Igne\LaravelBootUp\Tools\Steps',
     ])
@@ -137,7 +137,7 @@ arch('data objects are readonly values, apart from the two documented carriers')
     ->expect('Igne\LaravelBootUp\Data')
     ->classes()
     ->toBeReadonly()
-    ->ignoring([ServeContext::class, Lines::class]);
+    ->ignoring([BootContext::class, Lines::class]);
 
 arch('facades stay thin')
     ->expect('Igne\LaravelBootUp\Facades')

@@ -10,16 +10,16 @@ use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Config\DeployConfig;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\CommandLine;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 
 /**
  * Runs the deploy config's finalize artisan commands (DeployConfig) host-side
  * (default: storage:link).
  */
-#[Stage(ServeStage::Finalize)]
+#[Stage(BootStage::Finalize)]
 #[Group('finalize')]
 #[Label('Finalizing the application')]
 final class FinalizeApplication implements Step
@@ -29,7 +29,7 @@ final class FinalizeApplication implements Step
         private readonly ProcessRunner $processes,
     ) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         foreach ($this->config->finalize as $command) {
             if ($this->storageLinkAlreadySatisfied($command)) {

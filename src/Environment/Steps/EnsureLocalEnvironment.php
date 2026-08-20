@@ -10,12 +10,12 @@ use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Config\EnvironmentConfig;
 use Igne\LaravelBootUp\Contracts\Step;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Exceptions\EnvironmentException;
 
-#[Stage(ServeStage::Prepare)]
+#[Stage(BootStage::Prepare)]
 #[Group('prepare')]
 #[Label('Checking the local environment')]
 final class EnsureLocalEnvironment implements Step
@@ -29,7 +29,7 @@ final class EnsureLocalEnvironment implements Step
         private readonly ?array $serverVars = null,
     ) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         // Read APP_ENV from the .env file itself, not the booted framework:
         // a .env created earlier this run has not been loaded yet, and on a

@@ -112,7 +112,7 @@ test('every leaf in the published config file is read by some config class', fun
 test('the published step lists are non-empty and hold only pipeline steps', function (): void {
     $published = publishedConfig();
 
-    foreach (['serve', 'deploy'] as $command) {
+    foreach (['dev', 'deploy'] as $command) {
         $steps = $published[$command]['steps'];
 
         expect($steps)->not->toBeEmpty();
@@ -126,12 +126,12 @@ test('the published step lists are non-empty and hold only pipeline steps', func
     }
 });
 
-test('serve and deploy auto_accept are independent keys', function (): void {
+test('dev and deploy auto_accept are independent keys', function (): void {
     $repository = new Repository(['boot-up' => [
-        'serve' => ['auto_accept' => true],
+        'dev' => ['auto_accept' => true],
         'deploy' => ['auto_accept' => false],
     ]]);
 
-    expect(Igne\LaravelBootUp\Config\ServeConfig::fromRepository($repository)->autoAccept)->toBeTrue()
+    expect(Igne\LaravelBootUp\Config\DevConfig::fromRepository($repository)->autoAccept)->toBeTrue()
         ->and(Igne\LaravelBootUp\Config\DeployConfig::fromRepository($repository)->autoAccept)->toBeFalse();
 });

@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\FrontendConfig;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Frontend\PackageJson;
@@ -36,7 +36,7 @@ function bindAssetServices(string $dir, AssetMode $assets = AssetMode::Build): v
     ));
 }
 
-function runBuildStep(ServeContext $context): ServeContext
+function runBuildStep(BootContext $context): BootContext
 {
     app(BuildAssets::class)->handle($context, fn ($passed) => $passed);
 
@@ -61,7 +61,7 @@ test('builds the assets synchronously', function (): void {
     bindAssetServices($this->dir);
     file_put_contents($this->dir.'/package.json', '{"scripts":{"build":"vite build","dev":"vite"}}');
 
-    runBuildStep(new ServeContext(new ServeOptions));
+    runBuildStep(new BootContext(new BootOptions));
 
     Process::assertRan(fn ($process): bool => implode(' ', $process->command) === 'bun run build');
     Process::assertDidntRun(fn ($process): bool => str_contains(implode(' ', $process->command), 'nohup'));
@@ -72,7 +72,7 @@ test('skips with a note when assets are disabled by flag', function (): void {
     bindAssetServices($this->dir);
     file_put_contents($this->dir.'/package.json', '{"scripts":{"build":"vite build"}}');
 
-    runBuildStep(new ServeContext(new ServeOptions(withAssets: false)));
+    runBuildStep(new BootContext(new BootOptions(withAssets: false)));
 
     Process::assertNothingRan();
     Prompt::assertStrippedOutputContains('--without-assets');
@@ -83,7 +83,7 @@ test('skips with a note when the configured mode is skip', function (): void {
     bindAssetServices($this->dir, assets: AssetMode::Skip);
     file_put_contents($this->dir.'/package.json', '{"scripts":{"build":"vite build"}}');
 
-    runBuildStep(new ServeContext(new ServeOptions));
+    runBuildStep(new BootContext(new BootOptions));
 
     Process::assertNothingRan();
 });
@@ -92,7 +92,7 @@ test('skips with a note when no package.json exists', function (): void {
     Process::fake();
     bindAssetServices($this->dir);
 
-    runBuildStep(new ServeContext(new ServeOptions));
+    runBuildStep(new BootContext(new BootOptions));
 
     Process::assertNothingRan();
     Prompt::assertStrippedOutputContains('No package.json found');
@@ -103,7 +103,7 @@ test('skips with a note when package.json has no build script', function (): voi
     bindAssetServices($this->dir);
     file_put_contents($this->dir.'/package.json', '{"scripts":{"dev":"vite"}}');
 
-    runBuildStep(new ServeContext(new ServeOptions));
+    runBuildStep(new BootContext(new BootOptions));
 
     Process::assertNothingRan();
     Prompt::assertStrippedOutputContains("no 'build' script");
@@ -114,7 +114,7 @@ test('stays quiet in watch mode, where the watcher runs as a dev process', funct
     bindAssetServices($this->dir, assets: AssetMode::Watch);
     file_put_contents($this->dir.'/package.json', '{"scripts":{"build":"vite build","dev":"vite"}}');
 
-    runBuildStep(new ServeContext(new ServeOptions));
+    runBuildStep(new BootContext(new BootOptions));
 
     Process::assertNothingRan();
     expect(Prompt::strippedContent())->toBe('');

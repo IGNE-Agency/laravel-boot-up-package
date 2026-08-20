@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Console;
 
 use Closure;
+use Igne\LaravelBootUp\Boot\BootRunner;
+use Igne\LaravelBootUp\Boot\DetachedDevRunner;
+use Igne\LaravelBootUp\Boot\DevProcessRegistrar;
 use Igne\LaravelBootUp\Concerns\AnnouncesRun;
 use Igne\LaravelBootUp\Concerns\ConfirmsPlan;
 use Igne\LaravelBootUp\Concerns\GuardsAgainstFailures;
 use Igne\LaravelBootUp\Concerns\RequiresUnix;
-use Igne\LaravelBootUp\Config\ServeConfig;
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Config\DevConfig;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Data\VersionConstraint;
 use Igne\LaravelBootUp\Enums\Tool;
-use Igne\LaravelBootUp\Serve\DetachedDevRunner;
-use Igne\LaravelBootUp\Serve\DevProcessRegistrar;
-use Igne\LaravelBootUp\Serve\ServeRunner;
 use Igne\LaravelBootUp\Tools\ToolInspector;
 use Illuminate\Contracts\Console\Isolatable;
 use Illuminate\Foundation\Console\DevCommand as FrameworkDevCommand;
@@ -52,7 +52,7 @@ class DevCommand extends FrameworkDevCommand implements Isolatable
 
     protected $description = 'Boot everything the application needs, then run the dev processes';
 
-    private ?ServeRunner $runner = null;
+    private ?BootRunner $runner = null;
 
     private string $invokedAs = 'dev';
 
@@ -109,7 +109,7 @@ class DevCommand extends FrameworkDevCommand implements Isolatable
         // Stored before anything can fail: onFailure() fires from
         // GuardsAgainstFailures OUTSIDE handle(), where re-resolving would
         // produce a fresh runner with a fresh, unbound reporter.
-        $this->runner = $runner = $this->laravel->make(ServeRunner::class);
+        $this->runner = $runner = $this->laravel->make(BootRunner::class);
         $registrar = $this->laravel->make(DevProcessRegistrar::class);
 
         $this->warnWhenInvokedByItsOldName();
@@ -121,7 +121,7 @@ class DevCommand extends FrameworkDevCommand implements Isolatable
             return self::FAILURE;
         }
 
-        if (! $this->confirmPlan($plan, 'dev', $this->laravel->make(ServeConfig::class)->autoAccept)) {
+        if (! $this->confirmPlan($plan, 'dev', $this->laravel->make(DevConfig::class)->autoAccept)) {
             return $this->skip('Aborted — nothing was changed.');
         }
 
@@ -191,9 +191,9 @@ class DevCommand extends FrameworkDevCommand implements Isolatable
         terminal()->note('Background processes may still be running — clean up with: php artisan app:down');
     }
 
-    private function devOptions(): ServeOptions
+    private function devOptions(): BootOptions
     {
-        return new ServeOptions(
+        return new BootOptions(
             seed: (bool) $this->option('seed'),
             migrate: ! $this->option('no-migrate'),
             update: (bool) $this->option('update'),

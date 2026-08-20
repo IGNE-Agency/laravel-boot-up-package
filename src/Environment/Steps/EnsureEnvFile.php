@@ -9,18 +9,18 @@ use Igne\LaravelBootUp\Attributes\Group;
 use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Contracts\Step;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Environment\EnvFile;
 
-#[Stage(ServeStage::Prepare)]
+#[Stage(BootStage::Prepare)]
 #[Group('prepare')]
 #[Label('Checking the .env file')]
 final class EnsureEnvFile implements Step
 {
     public function __construct(private readonly EnvFile $envFile) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         if ($this->envFile->exists()) {
             terminal()->note('.env already exists.');

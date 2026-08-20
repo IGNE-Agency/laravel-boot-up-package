@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Contracts;
 
-use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\BootContext;
 
 /**
  * A development server driver. Identity is a string key so consuming
@@ -29,7 +29,7 @@ interface Server
      * Bring the server up. Must be idempotent and may wait for readiness;
      * throws Exceptions\BootUpException subclasses on failure.
      */
-    public function start(ServeContext $context): void;
+    public function start(BootContext $context): void;
 
     /**
      * Stop the server. Must only stop — never install, never prompt.

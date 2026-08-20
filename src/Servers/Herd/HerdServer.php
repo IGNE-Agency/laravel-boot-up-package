@@ -9,9 +9,9 @@ use Igne\LaravelBootUp\Contracts\RequiresTools;
 use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\CommandRewrites;
-use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -57,7 +57,7 @@ final class HerdServer implements RequiresTools, RewritesCommands, Server, Warns
         return '`herd stop` halts ALL Herd sites on this machine, not just this project.';
     }
 
-    public function start(ServeContext $context): void
+    public function start(BootContext $context): void
     {
         $project = $this->project();
 
@@ -67,7 +67,7 @@ final class HerdServer implements RequiresTools, RewritesCommands, Server, Warns
             // An already-linked site is already secured — re-running `herd
             // secure` on every serve regenerates the cert and reloads Nginx,
             // which briefly refuses connections right as the reachability probe
-            // starts and made app:serve wrongly report Herd as "not answering".
+            // starts and made the boot wrongly report Herd as "not answering".
             terminal()->note("Project already linked to Laravel Herd as https://{$linked}.test.");
         } else {
             $name = $this->claimSiteName($project);
@@ -90,7 +90,7 @@ final class HerdServer implements RequiresTools, RewritesCommands, Server, Warns
      * A linked, secured site is not a working one: Herd's daemons must be up
      * and Nginx must actually answer. Boot Herd if its processes are down,
      * then wait for the site to respond (restarting an unhealthy Nginx along
-     * the way) before app:serve reports the server ready.
+     * the way) before the boot reports the server ready.
      */
     private function ensureServing(): void
     {

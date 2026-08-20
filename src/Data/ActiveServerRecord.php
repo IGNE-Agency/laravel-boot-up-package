@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Data;
 
 /**
- * The persisted record of the server an app:serve run is using, written
+ * The persisted record of the server a boot is using, written
  * before the driver starts so shutdown always knows what to clean up.
  */
 final readonly class ActiveServerRecord

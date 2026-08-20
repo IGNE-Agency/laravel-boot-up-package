@@ -31,7 +31,7 @@ php artisan dev
 | `--without-queue`  | Do not start a queue worker.                                                                                                          |
 | `--without-assets` | Skip frontend dependencies and assets.                                                                                                |
 | `--detach` / `-d`  | Run the dev processes in the background instead of this terminal, with logs in `storage/logs/boot-up/`.                               |
-| `--yes` / `-y`     | Run without the confirmation prompt (config: `serve.auto_accept`).                                                                    |
+| `--yes` / `-y`     | Run without the confirmation prompt (config: `dev.auto_accept`).                                                                    |
 
 The dev terminal needs Node 22.13 or newer. Below that, `--detach` runs the
 same processes without it.

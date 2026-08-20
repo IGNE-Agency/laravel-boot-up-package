@@ -11,12 +11,12 @@ use Igne\LaravelBootUp\Contracts\Server;
  * The single passable travelling through the serve/deploy pipelines.
  * The server is null for app:deploy runs (no server is booted there).
  */
-final class ServeContext
+final class BootContext
 {
     public bool $serverWasAlreadyRunning = false;
 
     public function __construct(
-        public readonly ServeOptions $options,
+        public readonly BootOptions $options,
         public readonly ?Server $server = null,
     ) {}
 

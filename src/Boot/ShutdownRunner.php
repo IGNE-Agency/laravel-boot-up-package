@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootUp\Serve;
+namespace Igne\LaravelBootUp\Boot;
 
 use Igne\LaravelBootUp\Contracts\HasResidualState;
 use Igne\LaravelBootUp\Contracts\Server;
@@ -17,7 +17,7 @@ use Igne\LaravelBootUp\Servers\StopServerPrompt;
 
 /**
  * The single teardown path, shared by app:down and the Ctrl-C trap on
- * app:serve. Only ever considers the server app:serve itself started, and
+ * the boot. Only ever considers the server the boot itself started, and
  * clears all state so a second invocation is a friendly no-op.
  */
 final class ShutdownRunner
@@ -65,7 +65,7 @@ final class ShutdownRunner
 
     /**
      * The active-server record is always cleared, even if reaping a process
-     * throws — a stale record would otherwise make the next app:serve think
+     * throws — a stale record would otherwise make the next boot think
      * a server it does not own is still active. Clearing happens BEFORE the
      * stop-server prompt: Ctrl+C at a prompt calls exit(), which skips
      * finally blocks, so state cleared after the prompt would leak.
@@ -130,11 +130,11 @@ final class ShutdownRunner
             return;
         }
 
-        // Even a server that was already running before app:serve is offered
+        // Even a server that was already running before the boot is offered
         // for shutdown — the prompt is impact-aware and, for a server we did
         // not start, never stops by default.
         if (! $startedByUs) {
-            terminal()->note("{$server->label()} was already running before app:serve started.");
+            terminal()->note("{$server->label()} was already running before the boot started.");
         }
 
         if ($this->prompt->shouldStop($server, $startedByUs)) {

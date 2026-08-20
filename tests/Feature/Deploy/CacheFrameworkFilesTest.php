@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\DeployConfig;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Deploy\Steps\CacheFrameworkFiles;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -43,7 +43,7 @@ function cacheFrameworkFilesCommandOf(object $process): string
 test('skips with a note when caching is disabled', function (): void {
     Process::fake();
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     $result = cacheFrameworkFilesStep($this->dir, enabled: false)->handle($context, fn ($passed) => $passed);
 
@@ -55,7 +55,7 @@ test('skips with a note when caching is disabled', function (): void {
 test('caches config, routes and views host-side when enabled', function (): void {
     Process::fake(['*' => Process::result()]);
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     $result = cacheFrameworkFilesStep($this->dir, enabled: true)->handle($context, fn ($passed) => $passed);
 

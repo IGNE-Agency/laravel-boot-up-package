@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Boot\Steps\AnnounceApplication;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
@@ -29,12 +29,12 @@ beforeEach(function (): void {
         logDirectory: $this->workDir.'/logs',
     ));
 
-    config()->set('boot-up.serve.steps', [
+    config()->set('boot-up.dev.steps', [
         StartServer::class,
         AnnounceApplication::class,
     ]);
-    config()->set('boot-up.serve.open_browser', false);
-    config()->set('boot-up.serve.auto_accept', true);
+    config()->set('boot-up.dev.open_browser', false);
+    config()->set('boot-up.dev.auto_accept', true);
 
     // Testbench's skeleton ships a .env with QUEUE_CONNECTION=database, and
     // the .env is what a queue worker would actually run on. Point at the test's
@@ -136,7 +136,7 @@ test('fails fast on native Windows', function (): void {
 
 test('an unexpected exception fails cleanly with an app:down hint', function (): void {
     ProcessFaker::fake();
-    config()->set('boot-up.serve.steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
+    config()->set('boot-up.dev.steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
 
     $this->artisan('dev', ['server' => 'artisan'])
         ->expectsOutputToContain('Unexpected error: something exploded')
@@ -146,7 +146,7 @@ test('an unexpected exception fails cleanly with an app:down hint', function ():
 
 test('a known mid-boot failure also shows the app:down hint', function (): void {
     ProcessFaker::fake();
-    config()->set('boot-up.serve.steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\FailingStep::class]);
+    config()->set('boot-up.dev.steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\FailingStep::class]);
 
     $this->artisan('dev', ['server' => 'artisan'])
         ->expectsOutputToContain('php artisan app:down')
@@ -174,7 +174,7 @@ test('the plan names the selected server', function (): void {
 });
 
 test('asks to continue and aborts without changing anything when declined', function (): void {
-    config()->set('boot-up.serve.auto_accept', false);
+    config()->set('boot-up.dev.auto_accept', false);
     ProcessFaker::fake();
 
     $this->artisan('dev', ['server' => 'artisan'])
@@ -188,7 +188,7 @@ test('asks to continue and aborts without changing anything when declined', func
 });
 
 test('the --yes flag skips the confirmation prompt', function (): void {
-    config()->set('boot-up.serve.auto_accept', false);
+    config()->set('boot-up.dev.auto_accept', false);
     ProcessFaker::fake([
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
@@ -233,7 +233,7 @@ test('the progress bar runs and the boot ends with an outro', function (): void 
 
 test('a custom step class gets the custom steps divider', function (): void {
     ProcessFaker::fake();
-    config()->set('boot-up.serve.steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
+    config()->set('boot-up.dev.steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep::class]);
 
     $this->artisan('dev', ['server' => 'artisan'])
         ->expectsOutputToContain('Custom steps')
@@ -242,7 +242,7 @@ test('a custom step class gets the custom steps divider', function (): void {
 
 test('a Class:variant entry still resolves with its variant argument', function (): void {
     ProcessFaker::fake();
-    config()->set('boot-up.serve.steps', [
+    config()->set('boot-up.dev.steps', [
         Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks::class.':before',
     ]);
 
@@ -253,7 +253,7 @@ test('--no-migrate hides the migrations plan line', function (): void {
     ProcessFaker::fake([
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
-    config()->set('boot-up.serve.steps', [
+    config()->set('boot-up.dev.steps', [
         StartServer::class,
         Igne\LaravelBootUp\Database\Steps\RunPendingMigrations::class,
         AnnounceApplication::class,
@@ -268,7 +268,7 @@ test('the migrations plan line shows without --no-migrate', function (): void {
     ProcessFaker::fake([
         'sh -c nohup php artisan serve*' => Process::result('12345'),
     ]);
-    config()->set('boot-up.serve.steps', [
+    config()->set('boot-up.dev.steps', [
         StartServer::class,
         Igne\LaravelBootUp\Database\Steps\RunPendingMigrations::class,
         AnnounceApplication::class,

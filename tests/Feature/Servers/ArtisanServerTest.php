@@ -7,9 +7,9 @@ use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\RequiresTools;
 use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Data\ProcessRecord;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -49,7 +49,7 @@ function artisanServer(ProcessLedger $ledger, string $workDir, ?ArtisanServeConf
 test('a detached boot spawns a tracked php artisan serve', function (): void {
     ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
 
-    artisanServer($this->ledger, $this->workDir)->start(new ServeContext(new ServeOptions(follow: false)));
+    artisanServer($this->ledger, $this->workDir)->start(new BootContext(new BootOptions(follow: false)));
 
     ProcessFaker::assertRan('*nohup php artisan serve*artisan-serve.log*echo $!*');
 
@@ -69,7 +69,7 @@ test('a second start is skipped while the tracked process is alive', function ()
     ]);
 
     $server = artisanServer($this->ledger, $this->workDir);
-    $context = new ServeContext(new ServeOptions(follow: false));
+    $context = new BootContext(new BootOptions(follow: false));
 
     $server->start($context);
     $server->start($context);
@@ -132,7 +132,7 @@ test('start passes the configured host and port to artisan serve', function (): 
     ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
 
     artisanServer($this->ledger, $this->workDir, new ArtisanServeConfig(host: '0.0.0.0', port: 8080))
-        ->start(new ServeContext(new ServeOptions(follow: false)));
+        ->start(new BootContext(new BootOptions(follow: false)));
 
     ProcessFaker::assertRan('*php artisan serve --host=0.0.0.0 --port=8080*');
 });
@@ -153,7 +153,7 @@ test('devProcess runs artisan serve on the configured address', function (): voi
     ProcessFaker::fake();
     $server = artisanServer($this->ledger, $this->workDir, new ArtisanServeConfig(host: '0.0.0.0', port: 9000));
 
-    $command = $server->devProcess(new ServeContext(new ServeOptions(follow: true)));
+    $command = $server->devProcess(new BootContext(new BootOptions(follow: true)));
 
     expect($command?->toString())->toBe('php artisan serve --host=0.0.0.0 --port=9000')
         ->and($command?->timeout)->toBeNull();
@@ -163,7 +163,7 @@ test('devProcess carries no server for a detached run, which starts its own', fu
     ProcessFaker::fake();
     $server = artisanServer($this->ledger, $this->workDir);
 
-    expect($server->devProcess(new ServeContext(new ServeOptions(follow: false))))->toBeNull();
+    expect($server->devProcess(new BootContext(new BootOptions(follow: false))))->toBeNull();
 });
 
 test('devProcess carries no server when one is already serving this project', function (): void {
@@ -171,13 +171,13 @@ test('devProcess carries no server when one is already serving this project', fu
     $this->ledger->record(new ProcessRecord(4242, 'artisan-serve', 'php artisan serve', date(DATE_ATOM)));
     $server = artisanServer($this->ledger, $this->workDir);
 
-    expect($server->devProcess(new ServeContext(new ServeOptions(follow: true))))->toBeNull();
+    expect($server->devProcess(new BootContext(new BootOptions(follow: true))))->toBeNull();
 });
 
 test('a foreground boot leaves the server to the dev processes', function (): void {
     ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
 
-    artisanServer($this->ledger, $this->workDir)->start(new ServeContext(new ServeOptions(follow: true)));
+    artisanServer($this->ledger, $this->workDir)->start(new BootContext(new BootOptions(follow: true)));
 
     expect($this->ledger->withLabel('artisan-serve'))->toBeEmpty();
     ProcessFaker::assertRanTimes('*nohup php artisan serve*', 0);

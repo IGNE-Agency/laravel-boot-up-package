@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootUp\Tests\Feature\Serve\Fixtures;
+namespace Igne\LaravelBootUp\Tests\Feature\Boot\Fixtures;
 
 use Igne\LaravelBootUp\Contracts\HasResidualState;
 use Igne\LaravelBootUp\Contracts\Server;
-use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Data\BootContext;
 
 /**
  * A not-running driver double that can report residual state, for the
@@ -37,7 +37,7 @@ final class ResidualServer implements HasResidualState, Server
         return false;
     }
 
-    public function start(ServeContext $context): void {}
+    public function start(BootContext $context): void {}
 
     public function stop(): void {}
 

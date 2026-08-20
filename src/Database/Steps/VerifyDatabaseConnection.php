@@ -11,9 +11,9 @@ use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Concerns\RunsThroughServer;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\CommandLine;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Exceptions\DatabaseException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
@@ -27,7 +27,7 @@ use Throwable;
  * check runs through the server's command rewrites; otherwise a host-side
  * PDO connection is enough.
  */
-#[Stage(ServeStage::Database)]
+#[Stage(BootStage::Database)]
 #[Group('database')]
 #[Label('Verifying the database connection')]
 final class VerifyDatabaseConnection implements Step
@@ -40,7 +40,7 @@ final class VerifyDatabaseConnection implements Step
         private readonly Repository $laravelConfig,
     ) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         if ($context->server instanceof ProvidesDatabase && ! $context->server->databaseReachableFromHost()) {
             $this->verifyThroughServer($context);
@@ -53,7 +53,7 @@ final class VerifyDatabaseConnection implements Step
         return $next($context);
     }
 
-    private function verifyThroughServer(ServeContext $context): void
+    private function verifyThroughServer(BootContext $context): void
     {
         $result = $this->runSilentlyThroughServer($context, CommandLine::make('php artisan migrate:status'));
 

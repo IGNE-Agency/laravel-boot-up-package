@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\HerdConfig;
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Process\ProcessLedger;
@@ -52,7 +52,7 @@ function herdServer(string $workDir, ?string $projectPath = null, ?string $site 
 test('start links the project under the configured site name and secures it', function (): void {
     ProcessFaker::fake(['curl*' => Process::result('200')]);
 
-    herdServer($this->workDir, $this->projectDir, site: 'dashboard')->start(new ServeContext(new ServeOptions));
+    herdServer($this->workDir, $this->projectDir, site: 'dashboard')->start(new BootContext(new BootOptions));
 
     ProcessFaker::assertRan('herd link dashboard');
     ProcessFaker::assertRan('herd secure dashboard');
@@ -64,7 +64,7 @@ test('start prompts for the site name, defaulting to the project folder', functi
     ProcessFaker::fake(['curl*' => Process::result('200')]);
     Prompt::fake([Key::ENTER]);
 
-    herdServer($this->workDir, $this->projectDir)->start(new ServeContext(new ServeOptions));
+    herdServer($this->workDir, $this->projectDir)->start(new BootContext(new BootOptions));
 
     ProcessFaker::assertRan('herd link my-app');
     ProcessFaker::assertRan('herd secure my-app');
@@ -74,7 +74,7 @@ test('an already-linked project skips linking and does not re-secure', function 
     ProcessFaker::fake(['curl*' => Process::result('200')]);
     symlink($this->projectDir, $this->sitesDir.'/custom-name');
 
-    herdServer($this->workDir, $this->projectDir)->start(new ServeContext(new ServeOptions));
+    herdServer($this->workDir, $this->projectDir)->start(new BootContext(new BootOptions));
 
     ProcessFaker::assertDidntRun('herd link*');
     // Re-securing on every serve reloads Nginx and caused false "not answering".
@@ -86,7 +86,7 @@ test('a stale link to a moved project is replaced automatically', function (): v
     ProcessFaker::fake(['curl*' => Process::result('200')]);
     symlink($this->workDir.'/moved-away', $this->sitesDir.'/my-app');
 
-    herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new ServeContext(new ServeOptions));
+    herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new BootContext(new BootOptions));
 
     ProcessFaker::assertRan('herd unlink my-app');
     ProcessFaker::assertRan('herd link my-app');
@@ -99,7 +99,7 @@ test('a name owned by another live project is only replaced after confirmation',
     symlink($this->workDir.'/other-project', $this->sitesDir.'/my-app');
     Prompt::fake(['y', Key::ENTER]);
 
-    herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new ServeContext(new ServeOptions));
+    herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new BootContext(new BootOptions));
 
     ProcessFaker::assertRan('herd unlink my-app');
     ProcessFaker::assertRan('herd link my-app');
@@ -111,7 +111,7 @@ test('declining the takeover prompts for a different site name', function (): vo
     symlink($this->workDir.'/other-project', $this->sitesDir.'/taken');
     Prompt::fake([Key::ENTER, Key::ENTER]); // decline replace, accept the folder-name default
 
-    herdServer($this->workDir, $this->projectDir, site: 'taken')->start(new ServeContext(new ServeOptions));
+    herdServer($this->workDir, $this->projectDir, site: 'taken')->start(new BootContext(new BootOptions));
 
     ProcessFaker::assertDidntRun('herd unlink*');
     ProcessFaker::assertRan('herd link my-app');
@@ -120,7 +120,7 @@ test('declining the takeover prompts for a different site name', function (): vo
 test('a failing herd command aborts the start instead of pretending success', function (): void {
     ProcessFaker::fake(['herd link*' => Process::result(exitCode: 1, errorOutput: 'no herd here')]);
 
-    expect(fn () => herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new ServeContext(new ServeOptions)))
+    expect(fn () => herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new BootContext(new BootOptions)))
         ->toThrow(ServerException::class, 'no herd here');
 });
 
@@ -128,7 +128,7 @@ test('start reports the server ready once Nginx answers, without restarting a he
     // pgrep succeeds (Herd already running) and the site answers on the first probe.
     ProcessFaker::fake(['curl*' => Process::result('200')]);
 
-    herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new ServeContext(new ServeOptions));
+    herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new BootContext(new BootOptions));
 
     ProcessFaker::assertRan('curl* https://my-app.test');
     ProcessFaker::assertDidntRun('herd start');
@@ -142,7 +142,7 @@ test('start boots Herd when none of its processes are running', function (): voi
         'curl*' => Process::result('200'),         // ...but answers once booted
     ]);
 
-    herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new ServeContext(new ServeOptions));
+    herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new BootContext(new BootOptions));
 
     ProcessFaker::assertRan('herd start');
     Prompt::assertStrippedOutputContains('Laravel Herd is serving https://my-app.test.');
@@ -161,7 +161,7 @@ test('a running Herd that is briefly slow is never restarted', function (): void
         },
     ]);
 
-    herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new ServeContext(new ServeOptions));
+    herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new BootContext(new BootOptions));
 
     ProcessFaker::assertDidntRun('herd restart');
     ProcessFaker::assertDidntRun('herd start');
@@ -181,7 +181,7 @@ test('start restarts Herd once at the midpoint only when its services are down',
         },
     ]);
 
-    herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new ServeContext(new ServeOptions));
+    herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new BootContext(new BootOptions));
 
     ProcessFaker::assertRan('herd start');            // booted because down
     ProcessFaker::assertRanTimes('herd restart', 1);  // then one midpoint restart
@@ -195,7 +195,7 @@ test('start fails with actionable guidance after exhausting the health attempts'
         'curl*' => Process::result('000', exitCode: 7),
     ]);
 
-    expect(fn () => herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new ServeContext(new ServeOptions)))
+    expect(fn () => herdServer($this->workDir, $this->projectDir, site: 'my-app')->start(new BootContext(new BootOptions)))
         ->toThrow(ServerException::class, 'did not become reachable');
 
     // A running-but-unreachable Herd is never restarted — guidance is surfaced instead.

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Contracts;
 
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\CommandLine;
-use Igne\LaravelBootUp\Data\ServeContext;
 
 /**
  * Capability: the server runs as one of the dev processes, streamed
@@ -19,5 +19,5 @@ interface ProvidesDevProcess
      * The command to run as the [server] process, or null when this run
      * has already started the server some other way.
      */
-    public function devProcess(ServeContext $context): ?CommandLine;
+    public function devProcess(BootContext $context): ?CommandLine;
 }

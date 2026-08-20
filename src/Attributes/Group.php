@@ -8,7 +8,7 @@ use Attribute;
 
 /**
  * The plan-summary group a pipeline step merges into — steps sharing a
- * group produce one "What app:serve will do" line, emitted at the group's
+ * group produce one "What dev will do" line, emitted at the group's
  * first occurrence. A step without one gets its own line.
  */
 #[Attribute(Attribute::TARGET_CLASS)]

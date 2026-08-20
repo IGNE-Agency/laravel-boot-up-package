@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Data\ServeContext;
-use Igne\LaravelBootUp\Data\ServeOptions;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
 use Igne\LaravelBootUp\Exceptions\EnvironmentException;
@@ -27,7 +27,7 @@ afterEach(function (): void {
 test('leaves an existing .env untouched and continues the pipeline', function (): void {
     file_put_contents($this->envPath, "APP_ENV=local\nAPP_KEY=base64:abc\n");
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
     $nextCalled = false;
 
     $result = app(EnsureEnvFile::class)->handle($context, function ($passed) use (&$nextCalled, $context) {
@@ -46,7 +46,7 @@ test('leaves an existing .env untouched and continues the pipeline', function ()
 test('creates the .env from the example when missing', function (): void {
     file_put_contents($this->examplePath, "APP_NAME=Laravel\nAPP_ENV=local\n");
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     $result = app(EnsureEnvFile::class)->handle($context, fn ($passed) => $passed);
 
@@ -55,5 +55,5 @@ test('creates the .env from the example when missing', function (): void {
 });
 
 test('throws when neither .env nor .env.example exists', function (): void {
-    app(EnsureEnvFile::class)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    app(EnsureEnvFile::class)->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 })->throws(EnvironmentException::class, '.env.example');

@@ -18,7 +18,7 @@ use Igne\LaravelBootUp\Process\ProcessRunner;
  *    started-by-us bookkeeping in both directions.
  *  - isReachable(): Nginx actually answers an HTTPS request for the served
  *    site. A live process is not proof the site works, so this is the signal
- *    app:serve waits on before reporting the server ready.
+ *    the boot waits on before reporting the server ready.
  */
 final class HerdServices
 {
