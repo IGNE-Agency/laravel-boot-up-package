@@ -3,58 +3,23 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Data\ServeOptions;
-use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseCredentials;
-use Igne\LaravelBootUp\Database\Steps\EnsureDatabaseExists;
-use Igne\LaravelBootUp\Database\Steps\RunPendingMigrations;
-use Igne\LaravelBootUp\Database\Steps\VerifyDatabaseConnection;
-use Igne\LaravelBootUp\Deploy\Steps\CacheFrameworkFiles;
-use Igne\LaravelBootUp\Deploy\Steps\FinalizeApplication;
 use Igne\LaravelBootUp\Deploy\Steps\InstallComposerDependencies;
 use Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks;
 use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
-use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
-use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
-use Igne\LaravelBootUp\Frontend\Steps\BuildAssets;
-use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
-use Igne\LaravelBootUp\Frontend\Steps\WatchAssets;
-use Igne\LaravelBootUp\Queue\Steps\QueueWorker;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
-use Igne\LaravelBootUp\Serve\Steps\StartRegisteredProcesses;
 use Igne\LaravelBootUp\Serve\StepSequence;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
-use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
-use Igne\LaravelBootUp\Workers\Steps\HorizonWorker;
-use Igne\LaravelBootUp\Workers\Steps\ReverbWorker;
-use Igne\LaravelBootUp\Workers\Steps\SchedulerWorker;
 
+/**
+ * The published default, read from the config file so this test cannot drift
+ * from the pipeline the package actually ships.
+ *
+ * @return list<string>
+ */
 function defaultServeSteps(): array
 {
-    return [
-        EnsureEnvFile::class,
-        EnsureLocalEnvironment::class,
-        GenerateAppKey::class,
-        EnsureToolsReady::class,
-        StartServer::class,
-        InstallComposerDependencies::class,
-        InstallFrontendDependencies::class,
-        EnsureDatabaseCredentials::class,
-        EnsureDatabaseExists::class,
-        VerifyDatabaseConnection::class,
-        RunDeployTasks::class.':before',
-        RunPendingMigrations::class,
-        RunDeployTasks::class.':after',
-        CacheFrameworkFiles::class,
-        FinalizeApplication::class,
-        QueueWorker::class,
-        HorizonWorker::class,
-        ReverbWorker::class,
-        SchedulerWorker::class,
-        StartRegisteredProcesses::class,
-        BuildAssets::class,
-        WatchAssets::class,
-        AnnounceApplication::class,
-    ];
+    return (require dirname(__DIR__, 3).'/config/boot-up.php')['serve']['steps'];
 }
 
 test('assigns every default step to its stage, in order', function (): void {
@@ -62,7 +27,7 @@ test('assigns every default step to its stage, in order', function (): void {
 
     $stages = array_map(fn ($step) => $step->stage, $plan->steps);
 
-    expect($plan->count())->toBe(23)
+    expect($plan->count())->toBe(17)
         ->and($stages)->toBe([
             ServeStage::Prepare, ServeStage::Prepare, ServeStage::Prepare,
             ServeStage::Tools,
@@ -70,13 +35,12 @@ test('assigns every default step to its stage, in order', function (): void {
             ServeStage::Database, ServeStage::Database, ServeStage::Database,
             ServeStage::Database, ServeStage::Database, ServeStage::Database,
             ServeStage::Cache, ServeStage::Finalize,
-            ServeStage::Services, ServeStage::Services, ServeStage::Services, ServeStage::Services, ServeStage::Services,
-            ServeStage::Assets, ServeStage::Assets, ServeStage::Announce,
+            ServeStage::Assets, ServeStage::Announce,
         ]);
 });
 
-test('the default pipeline summarizes into twelve readable lines', function (): void {
-    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions, 'Herd');
+test('the default pipeline summarizes into eleven readable lines', function (): void {
+    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions, 'Herd', ['server', 'queue', 'vite']);
 
     expect($plan->summary())->toBe([
         'Prepare the project (.env file, local environment, application key)',
@@ -88,34 +52,10 @@ test('the default pipeline summarizes into twelve readable lines', function (): 
         'Run pending migrations',
         'Cache the framework files',
         'Finalize the application',
-        'Start long-running services when enabled: queue worker, Horizon, Reverb, scheduler — combined output streams in this terminal',
-        'Build or watch frontend assets',
+        'Build frontend assets',
         'Announce the application URL',
+        'Run the dev processes in this terminal: server, queue, vite',
     ]);
-});
-
-test('a detached run drops the combined-stream hint from the services line', function (): void {
-    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions(follow: false));
-
-    expect($plan->summary())->toContain('Start long-running services when enabled: queue worker, Horizon, Reverb, scheduler');
-});
-
-test('registered processes join the services line', function (): void {
-    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions(follow: false), null, ['stripe', 'reverb (replaces built-in)']);
-
-    expect($plan->summary())->toContain(
-        'Start long-running services when enabled: queue worker, Horizon, Reverb, scheduler — plus registered: stripe, reverb (replaces built-in)',
-    );
-});
-
-test('registered processes carry the services line alone when no built-in worker is configured', function (): void {
-    $plan = StepSequence::for([
-        StartServer::class,
-        StartRegisteredProcesses::class,
-        AnnounceApplication::class,
-    ], new ServeOptions(follow: false), null, ['stripe']);
-
-    expect($plan->summary())->toContain('Start registered processes: stripe');
 });
 
 test('a variant entry parses its class and parameters', function (): void {
@@ -178,14 +118,26 @@ test('--without-assets drops the frontend fragments and the assets line', functi
         ->and($plan->summary())->not->toContain('Build or watch frontend assets');
 });
 
-test('--without-queue drops the queue worker from the services line', function (): void {
-    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions(withQueue: false));
-
-    expect($plan->summary())->toContain('Start long-running services when enabled: Horizon, Reverb, scheduler — combined output streams in this terminal');
-});
-
 test('without a server label the server line stays generic', function (): void {
     $plan = StepSequence::for([StartServer::class], new ServeOptions);
 
     expect($plan->summary())->toBe(['Start the development server']);
+});
+
+test('the dev processes are named on their own summary line', function (): void {
+    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions, null, ['server', 'queue', 'stripe']);
+
+    expect($plan->summary())->toContain('Run the dev processes in this terminal: server, queue, stripe');
+});
+
+test('a detached run says where the dev processes go instead', function (): void {
+    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions(follow: false), null, ['queue', 'vite']);
+
+    expect($plan->summary())->toContain('Run the dev processes in the background: queue, vite');
+});
+
+test('a boot with no dev processes carries no line for them', function (): void {
+    $plan = StepSequence::for(defaultServeSteps(), new ServeOptions);
+
+    expect($plan->summary())->not->toContain('Run the dev processes in this terminal: ');
 });

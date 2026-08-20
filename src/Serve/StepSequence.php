@@ -23,42 +23,36 @@ use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
 use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
 use Igne\LaravelBootUp\Frontend\Steps\BuildAssets;
 use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
-use Igne\LaravelBootUp\Frontend\Steps\WatchAssets;
-use Igne\LaravelBootUp\Queue\Steps\QueueWorker;
 use Igne\LaravelBootUp\Serve\Steps\AnnounceApplication;
-use Igne\LaravelBootUp\Serve\Steps\StartRegisteredProcesses;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
-use Igne\LaravelBootUp\Workers\Steps\HorizonWorker;
-use Igne\LaravelBootUp\Workers\Steps\ReverbWorker;
-use Igne\LaravelBootUp\Workers\Steps\SchedulerWorker;
 use Illuminate\Support\Str;
 use ReflectionClass;
 
 /**
  * What the configured serve pipeline is about to do: each entry parsed and
  * assigned a stage plus a progress label, and a concise options-aware
- * summary for the "What app:serve will do" block. Only ServeOptions gate
+ * summary for the "What dev will do" block. Only ServeOptions gate
  * summary lines — config/context skip logic stays inside the steps.
  */
 final readonly class StepSequence
 {
     /**
      * @param  list<StepDescriptor>  $steps
-     * @param  list<string>  $registeredProcesses
+     * @param  list<string>  $devProcesses
      */
     private function __construct(
         public array $steps,
         private ServeOptions $options,
         private ?string $serverLabel,
-        private array $registeredProcesses,
+        private array $devProcesses,
     ) {}
 
     /**
      * @param  list<string>  $configuredSteps
-     * @param  list<string>  $registeredProcesses  summary labels of the BootCommands registrations that will launch
+     * @param  list<string>  $devProcesses  names of the dev processes that will run after the boot
      */
-    public static function for(array $configuredSteps, ServeOptions $options, ?string $serverLabel = null, array $registeredProcesses = []): self
+    public static function for(array $configuredSteps, ServeOptions $options, ?string $serverLabel = null, array $devProcesses = []): self
     {
         $steps = [];
         $stage = null;
@@ -80,7 +74,7 @@ final readonly class StepSequence
             );
         }
 
-        return new self($steps, $options, $serverLabel, $registeredProcesses);
+        return new self($steps, $options, $serverLabel, $devProcesses);
     }
 
     public function count(): int
@@ -123,7 +117,27 @@ final readonly class StepSequence
             }
         }
 
-        return $lines;
+        // Not a step: the dev processes start after the pipeline, from the
+        // registry rather than from the configured list.
+        $devLine = $this->devLine();
+
+        return $devLine === null ? $lines : [...$lines, $devLine];
+    }
+
+    /**
+     * What happens once the boot finishes and the processes take over.
+     */
+    private function devLine(): ?string
+    {
+        if ($this->devProcesses === []) {
+            return null;
+        }
+
+        $list = implode(', ', $this->devProcesses);
+
+        return $this->options->follow
+            ? "Run the dev processes in this terminal: {$list}"
+            : "Run the dev processes in the background: {$list}";
     }
 
     /**
@@ -189,8 +203,7 @@ final readonly class StepSequence
             'migrations' => $this->migrationsLine(),
             'cache' => 'Cache the framework files',
             'finalize' => 'Finalize the application',
-            'workers' => $this->workersLine($present),
-            'assets' => $options->withAssets ? 'Build or watch frontend assets' : null,
+            'assets' => $options->withAssets ? 'Build frontend assets' : null,
             'announce' => 'Announce the application URL',
             // A third-party group: its first step's label speaks for it.
             default => $step->label,
@@ -245,39 +258,6 @@ final readonly class StepSequence
     }
 
     /**
-     * @param  array<string, true>  $present
-     */
-    private function workersLine(array $present): ?string
-    {
-        $services = collect([
-            isset($present[QueueWorker::class]) && $this->options->withQueue ? 'queue worker' : null,
-            isset($present[HorizonWorker::class]) ? 'Horizon' : null,
-            isset($present[ReverbWorker::class]) ? 'Reverb' : null,
-            isset($present[SchedulerWorker::class]) ? 'scheduler' : null,
-        ])->filter();
-
-        $registered = isset($present[StartRegisteredProcesses::class])
-            ? implode(', ', $this->registeredProcesses)
-            : '';
-
-        if ($services->isEmpty() && $registered === '') {
-            return null;
-        }
-
-        $line = $services->isEmpty()
-            ? "Start registered processes: {$registered}"
-            : "Start long-running services when enabled: {$services->implode(', ')}";
-
-        if (! $services->isEmpty() && $registered !== '') {
-            $line .= " — plus registered: {$registered}";
-        }
-
-        return $this->options->follow
-            ? "{$line} — combined output streams in this terminal"
-            : $line;
-    }
-
-    /**
      * @param  list<string>  $parameters
      */
     private static function label(string $class, array $parameters, ServeOptions $options): string
@@ -301,13 +281,7 @@ final readonly class StepSequence
                 : 'Running pending migrations',
             CacheFrameworkFiles::class => 'Caching framework files',
             FinalizeApplication::class => 'Finalizing the application',
-            QueueWorker::class => 'Starting the queue worker',
-            HorizonWorker::class => 'Starting Horizon',
-            ReverbWorker::class => 'Starting Reverb',
-            SchedulerWorker::class => 'Starting the scheduler',
             BuildAssets::class => 'Building assets',
-            WatchAssets::class => 'Watching assets',
-            StartRegisteredProcesses::class => 'Starting registered processes',
             AnnounceApplication::class => 'Announcing the application',
             default => self::fallbackLabel($class, $parameters),
         };

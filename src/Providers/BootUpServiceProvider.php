@@ -24,10 +24,10 @@ use Igne\LaravelBootUp\Config\ShutdownConfig;
 use Igne\LaravelBootUp\Config\ToolsConfig;
 use Igne\LaravelBootUp\Console\DeployCommand;
 use Igne\LaravelBootUp\Console\DeployScriptCommand;
+use Igne\LaravelBootUp\Console\DevCommand;
 use Igne\LaravelBootUp\Console\DownCommand;
 use Igne\LaravelBootUp\Console\GenerateGitHooksCommand;
 use Igne\LaravelBootUp\Console\PipelineCommand;
-use Igne\LaravelBootUp\Console\ServeCommand;
 use Igne\LaravelBootUp\Console\StatusCommand;
 use Igne\LaravelBootUp\Contracts\TerminalLauncher;
 use Igne\LaravelBootUp\Deploy\Composer;
@@ -53,6 +53,7 @@ use Igne\LaravelBootUp\Services\Platform;
 use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Services\Terminal;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Foundation\Console\DevCommand as FrameworkDevCommand;
 use Illuminate\Process\Factory;
 use Illuminate\Support\ServiceProvider;
 
@@ -89,6 +90,8 @@ final class BootUpServiceProvider extends ServiceProvider
         $this->registerHerd();
         $this->registerProjectFiles();
 
+        $this->registerDevCommand();
+
         $this->app->singleton(PackageManagerSelector::class);
         $this->app->singleton(ShutdownRunner::class);
         $this->app->singleton(CombinedRunPlan::class);
@@ -99,6 +102,27 @@ final class BootUpServiceProvider extends ServiceProvider
             runningInConsole: $app->runningInConsole(),
             vendorPath: $app->basePath('vendor'),
         ));
+    }
+
+    /**
+     * Take over `php artisan dev` rather than shipping a command beside it.
+     *
+     * Artisan resolves the name through the framework's class string, so
+     * extending that binding puts boot-up's subclass behind it — and the
+     * terminal UI, its flags and every later upstream improvement keep
+     * working. extend() rather than a fresh singleton() because
+     * ArtisanServiceProvider is deferred: it registers its own binding at an
+     * unpredictable point and would overwrite a plain rebind, while extenders
+     * apply whenever the binding is finally resolved.
+     */
+    private function registerDevCommand(): void
+    {
+        $this->app->singleton(DevCommand::class);
+
+        $this->app->extend(
+            FrameworkDevCommand::class,
+            fn (FrameworkDevCommand $command, Application $app): DevCommand => $app->make(DevCommand::class),
+        );
     }
 
     private function registerConfigObjects(): void
@@ -211,7 +235,11 @@ final class BootUpServiceProvider extends ServiceProvider
         ], 'boot-up-config');
 
         $this->commands([
-            ServeCommand::class,
+            // Registered by class as well as through the framework's binding:
+            // Artisan resolves `dev` lazily from a class-string map, which has
+            // no way to know about the app:serve alias until the command is
+            // built. Both routes land on the same singleton.
+            DevCommand::class,
             DeployCommand::class,
             DeployScriptCommand::class,
             PipelineCommand::class,

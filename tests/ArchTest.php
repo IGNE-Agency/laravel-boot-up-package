@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Console\BootUpCommand;
+use Igne\LaravelBootUp\Console\DevCommand;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\Lines;
 use Igne\LaravelBootUp\Data\ServeContext;
@@ -10,6 +11,7 @@ use Igne\LaravelBootUp\Exceptions\BootUpException;
 use Igne\LaravelBootUp\Services\Terminal;
 use Igne\LaravelBootUp\Services\TrackedProgress;
 use Igne\LaravelBootUp\Tools\Installers\ToolInstaller;
+use Illuminate\Foundation\Console\DevCommand as FrameworkDevCommand;
 use Illuminate\Support\Facades\Facade;
 
 arch('all package code uses strict types')
@@ -20,11 +22,17 @@ arch('every class is final except the shared exception and command bases')
     ->expect('Igne\LaravelBootUp')
     ->classes()
     ->toBeFinal()
-    ->ignoring([BootUpException::class, BootUpCommand::class, ToolInstaller::class]);
+    // DevCommand is open so tests can replace its handoff to the framework.
+    ->ignoring([BootUpException::class, BootUpCommand::class, ToolInstaller::class, DevCommand::class]);
 
 arch('no raw process primitives anywhere — the ProcessRunner is the only OS seam')
     ->expect('Igne\LaravelBootUp')
-    ->not->toUse(['exec', 'shell_exec', 'passthru', 'system', 'proc_open', 'popen', 'pcntl_exec']);
+    ->not->toUse(['exec', 'shell_exec', 'passthru', 'system', 'proc_open', 'popen', 'pcntl_exec'])
+    // DevCommand hands the terminal to the command Laravel builds. It has to
+    // inherit the foreground, which is what passthru is for -- and the reason
+    // it overrides the parent at all is that upstream reaches for pcntl_exec,
+    // replacing this process and taking boot-up's teardown with it.
+    ->ignoring('Igne\LaravelBootUp\Console\DevCommand');
 
 arch('nothing depends on Symfony Process directly')
     ->expect('Igne\LaravelBootUp')
@@ -113,7 +121,13 @@ arch('Console contains only boot-up commands')
     ->expect('Igne\LaravelBootUp\Console')
     ->classes()
     ->toExtend(BootUpCommand::class)
-    ->ignoring(BootUpCommand::class);
+    // DevCommand extends Laravel's own dev command instead, so the terminal
+    // UI stays upstream's; it applies the same concerns by hand.
+    ->ignoring([BootUpCommand::class, DevCommand::class]);
+
+arch('the dev command builds on the framework\'s own')
+    ->expect(DevCommand::class)
+    ->toExtend(FrameworkDevCommand::class);
 
 arch('the Command suffix is reserved for console commands')
     ->expect('Igne\LaravelBootUp')

@@ -36,7 +36,7 @@ afterEach(function (): void {
     exec('rm -rf '.escapeshellarg($this->workDir));
 });
 
-function artisanServer(ProcessLedger $ledger, string $workDir, ?ArtisanServeConfig $config = null, ?CombinedRunPlan $plan = null): ArtisanServer
+function artisanServer(ProcessLedger $ledger, string $workDir, ?ArtisanServeConfig $config = null): ArtisanServer
 {
     $runner = new ProcessRunner(
         processes: app(Factory::class),
@@ -48,20 +48,18 @@ function artisanServer(ProcessLedger $ledger, string $workDir, ?ArtisanServeConf
     );
 
     $reaper = new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminalLauncher);
-    $plan ??= new CombinedRunPlan;
 
     return new ArtisanServer(
         $runner,
-        new WorkerLauncher($runner, new CommandRewriter, $ledger, $reaper, $plan, new BootCommandRegistry(runningInConsole: true, vendorPath: '/nonexistent/vendor')),
+        new WorkerLauncher($runner, new CommandRewriter, $ledger, $reaper, new CombinedRunPlan, new BootCommandRegistry(runningInConsole: true, vendorPath: '/nonexistent/vendor')),
         $config ?? new ArtisanServeConfig,
-        $plan,
     );
 }
 
-test('start spawns a tracked detached php artisan serve', function (): void {
+test('a detached boot spawns a tracked php artisan serve', function (): void {
     ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
 
-    artisanServer($this->ledger, $this->workDir)->start(new ServeContext(new ServeOptions));
+    artisanServer($this->ledger, $this->workDir)->start(new ServeContext(new ServeOptions(follow: false)));
 
     ProcessFaker::assertRan('*nohup php artisan serve*artisan-serve.log*echo $!*');
 
@@ -81,7 +79,7 @@ test('a second start is skipped while the tracked process is alive', function ()
     ]);
 
     $server = artisanServer($this->ledger, $this->workDir);
-    $context = new ServeContext(new ServeOptions);
+    $context = new ServeContext(new ServeOptions(follow: false));
 
     $server->start($context);
     $server->start($context);
@@ -89,37 +87,6 @@ test('a second start is skipped while the tracked process is alive', function ()
     ProcessFaker::assertRanTimes('*nohup php artisan serve*', 1);
     expect($this->ledger->withLabel('artisan-serve'))->toHaveCount(1);
     Prompt::assertStrippedOutputContains('php artisan serve is already running.');
-});
-
-test('start queues its log as the combined [server] stream', function (): void {
-    ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
-    $plan = new CombinedRunPlan;
-
-    artisanServer($this->ledger, $this->workDir, plan: $plan)->start(new ServeContext(new ServeOptions));
-
-    $services = $plan->services();
-
-    expect($services)->toHaveCount(1)
-        ->and($services[0]->name)->toBe('server')
-        ->and($services[0]->isProcess())->toBeFalse()
-        ->and($services[0]->logFile)->toBe($this->workDir.'/logs/artisan-serve.log')
-        ->and($plan->hasProcesses())->toBeFalse();
-});
-
-test('an already-running serve still queues the [server] stream', function (): void {
-    ProcessFaker::fake([
-        'kill -0 4242' => Process::result(),
-        'ps -p 4242*' => Process::result(output: "php artisan serve --host=127.0.0.1 --port=8000\n"),
-        '*' => Process::result(output: "4242\n"),
-    ]);
-    $plan = new CombinedRunPlan;
-
-    $server = artisanServer($this->ledger, $this->workDir, plan: $plan);
-    $server->start(new ServeContext(new ServeOptions));
-    $server->start(new ServeContext(new ServeOptions));
-
-    expect($plan->services())->toHaveCount(2)
-        ->and($plan->services()[1]->name)->toBe('server');
 });
 
 test('isRunning is false when the tracked pid is dead', function (): void {
@@ -175,7 +142,7 @@ test('start passes the configured host and port to artisan serve', function (): 
     ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
 
     artisanServer($this->ledger, $this->workDir, new ArtisanServeConfig(host: '0.0.0.0', port: 8080))
-        ->start(new ServeContext(new ServeOptions));
+        ->start(new ServeContext(new ServeOptions(follow: false)));
 
     ProcessFaker::assertRan('*php artisan serve --host=0.0.0.0 --port=8080*');
 });
@@ -215,4 +182,14 @@ test('devProcess carries no server when one is already serving this project', fu
     $server = artisanServer($this->ledger, $this->workDir);
 
     expect($server->devProcess(new ServeContext(new ServeOptions(follow: true))))->toBeNull();
+});
+
+test('a foreground boot leaves the server to the dev processes', function (): void {
+    ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
+
+    artisanServer($this->ledger, $this->workDir)->start(new ServeContext(new ServeOptions(follow: true)));
+
+    expect($this->ledger->withLabel('artisan-serve'))->toBeEmpty();
+    ProcessFaker::assertRanTimes('*nohup php artisan serve*', 0);
+    Prompt::assertStrippedOutputContains('php artisan serve starts with the dev processes.');
 });

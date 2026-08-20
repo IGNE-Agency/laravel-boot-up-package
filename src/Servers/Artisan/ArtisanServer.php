@@ -7,15 +7,17 @@ namespace Igne\LaravelBootUp\Servers\Artisan;
 use Igne\LaravelBootUp\Config\ArtisanServeConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesDevProcess;
 use Igne\LaravelBootUp\Contracts\Server;
-use Igne\LaravelBootUp\Data\CombinedService;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Serve\CombinedRunPlan;
 use Igne\LaravelBootUp\Serve\WorkerLauncher;
 
 /**
- * Serves via a tracked, detached `php artisan serve` process.
+ * Serves through `php artisan serve`.
+ *
+ * In the foreground it runs as the [server] dev process, so the multiplexer
+ * owns its output and restarts it if it dies. A detached boot has no
+ * multiplexer to run it, so it starts a tracked background process instead.
  */
 final class ArtisanServer implements ProvidesDevProcess, Server
 {
@@ -25,7 +27,6 @@ final class ArtisanServer implements ProvidesDevProcess, Server
         private readonly ProcessRunner $runner,
         private readonly WorkerLauncher $launcher,
         private readonly ArtisanServeConfig $config,
-        private readonly CombinedRunPlan $plan,
     ) {}
 
     public function key(): string
@@ -42,34 +43,22 @@ final class ArtisanServer implements ProvidesDevProcess, Server
     {
         if ($this->isRunning()) {
             terminal()->note('php artisan serve is already running.');
-            $this->queueServerStream();
 
             return;
         }
 
-        $record = $this->runner->start(
-            CommandLine::make([
-                'php', 'artisan', 'serve',
-                "--host={$this->config->host}",
-                "--port={$this->config->port}",
-            ])->withTimeout(null),
-            self::LABEL,
-        );
+        // A foreground boot runs the server as a dev process instead, which
+        // starts once the pipeline is done. Migrations and the rest of the
+        // boot never needed the HTTP server to be up.
+        if ($context->options->follow) {
+            terminal()->note('php artisan serve starts with the dev processes.');
+
+            return;
+        }
+
+        $record = $this->runner->start($this->serveCommand(), self::LABEL);
 
         terminal()->success("php artisan serve started (PID {$record->pid}).");
-        $this->queueServerStream();
-    }
-
-    /**
-     * The serve process must be up before migrations run, so it starts
-     * detached as always — its log is tailed into the combined stream as
-     * [server] instead. Queued unconditionally: ServeCommand only streams
-     * when actual combined processes exist, and a tail alone never holds
-     * the stream open.
-     */
-    private function queueServerStream(): void
-    {
-        $this->plan->add(CombinedService::tail(self::LABEL, 'server', $this->runner->logFile(self::LABEL)));
     }
 
     /**
@@ -83,6 +72,11 @@ final class ArtisanServer implements ProvidesDevProcess, Server
             return null;
         }
 
+        return $this->serveCommand();
+    }
+
+    private function serveCommand(): CommandLine
+    {
         return CommandLine::make([
             'php', 'artisan', 'serve',
             "--host={$this->config->host}",

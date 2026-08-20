@@ -12,7 +12,6 @@ use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Enums\ServeStage;
 use Igne\LaravelBootUp\Serve\Browser;
-use Igne\LaravelBootUp\Serve\CombinedRunPlan;
 
 #[Stage(ServeStage::Announce)]
 #[Group('announce')]
@@ -21,7 +20,6 @@ final class AnnounceApplication implements Step
     public function __construct(
         private readonly ServeConfig $config,
         private readonly Browser $browser,
-        private readonly CombinedRunPlan $plan,
     ) {}
 
     public function handle(ServeContext $context, Closure $next): mixed
@@ -34,10 +32,10 @@ final class AnnounceApplication implements Step
 
         terminal()->success("{$context->server->label()} is serving the application at {$url}");
 
-        // Pointing at the log directory would mislead when the workers are
-        // about to stream right here instead of writing log files.
-        $context->options->follow && $this->plan->hasProcesses()
-            ? terminal()->note('Service output streams below — press Ctrl+C to stop everything.')
+        // Pointing at the log directory would mislead when the dev processes
+        // are about to take over this terminal instead of writing log files.
+        $context->options->follow
+            ? terminal()->note('The dev processes start below — press q or Ctrl+C to stop everything.')
             : terminal()->note('Background process logs live in storage/logs/boot-up/.');
 
         terminal()->note('Stop everything with: php artisan app:down');

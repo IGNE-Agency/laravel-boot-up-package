@@ -8,7 +8,6 @@ use Closure;
 use Igne\LaravelBootUp\Config\ServeConfig;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
-use Igne\LaravelBootUp\Process\OutputMultiplexer;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\ServerSelector;
@@ -16,11 +15,14 @@ use Illuminate\Pipeline\Pipeline;
 use LogicException;
 
 /**
- * The serve lifecycle in one place: prepare() guards and plans, run()
- * executes the sealed begin → trap → pipeline → finish → stream →
- * shutdown sequence, fail() settles the progress bar when the command's
- * failure funnel fires. ServeCommand maps flags, runs the confirm gate,
- * and delegates here.
+ * The boot lifecycle in one place: prepare() guards and plans, run()
+ * executes the sealed begin → trap → pipeline → finish sequence and hands
+ * back the context, tearDown() settles everything the boot started, and
+ * fail() settles the progress bar when the command's failure funnel fires.
+ * DevCommand maps flags, runs the confirm gate, and delegates here.
+ *
+ * What runs AFTER the boot is not this class's business: the dev processes
+ * belong to Laravel's dev command, and app:deploy has none.
  */
 final class ServeRunner
 {
@@ -28,9 +30,14 @@ final class ServeRunner
 
     private ?StepSequence $plan = null;
 
-    private ?OutputMultiplexer $streaming = null;
-
     private bool $tearingDown = false;
+
+    /**
+     * Set once the dev processes own the terminal: from then on Ctrl+C is
+     * theirs to handle, and teardown happens when they exit rather than in
+     * the signal handler.
+     */
+    private bool $handedOff = false;
 
     public function __construct(
         private readonly ServerSelector $selector,
@@ -41,21 +48,18 @@ final class ServeRunner
         private readonly ProcessReaper $reaper,
         private readonly Pipeline $pipeline,
         private readonly StageReporter $reporter,
-        private readonly CombinedRunPlan $combined,
-        private readonly OutputMultiplexer $multiplexer,
-        private readonly StreamOrder $order,
-        private readonly BootCommandRegistry $registry,
+        private readonly DevProcessRegistrar $registrar,
     ) {}
 
     /**
      * Guard against a second instance, prune dead ledger entries, pick the
      * server (may prompt) and produce the plan. Returns null — with the
-     * warning already printed — when another app:serve owns this project.
+     * warning already printed — when another boot owns this project.
      */
     public function prepare(ServeOptions $options, ?string $server): ?StepSequence
     {
         if ($this->anotherServeIsRunning()) {
-            terminal()->warning('Another app:serve is already running for this project. Aborting.');
+            terminal()->warning('The application is already being served for this project. Aborting.');
 
             return null;
         }
@@ -70,7 +74,7 @@ final class ServeRunner
             $this->config->steps,
             $options,
             $this->context->server?->label(),
-            $this->registry->summaryLabels(),
+            $this->registrar->preview($this->context),
         );
     }
 
@@ -88,7 +92,7 @@ final class ServeRunner
      *
      * @param  Closure(list<int>, Closure): void  $trapUsing
      */
-    public function run(Closure $trapUsing): int
+    public function run(Closure $trapUsing): ServeContext
     {
         $context = $this->context;
         $plan = $this->plan;
@@ -100,6 +104,13 @@ final class ServeRunner
         $pipes = $this->reporter->begin($plan);
 
         $trapUsing([SIGINT, SIGTERM], function (): void {
+            // Once the dev processes are running, the multiplexer handles
+            // Ctrl+C and shuts its children down in order; tearing down from
+            // here would race it and print prompts over a live UI.
+            if ($this->handedOff) {
+                return;
+            }
+
             // A second signal while teardown is in flight would re-enter
             // here and exit(0) before the first pass finishes its cleanup.
             if ($this->tearingDown) {
@@ -108,10 +119,6 @@ final class ServeRunner
 
             $this->tearingDown = true;
 
-            // Mid-stream Ctrl+C: end the multiplexer loop first so the
-            // teardown prompts render on a quiet terminal. The children
-            // already received the process group's SIGINT.
-            $this->streaming?->stop();
             $this->reporter->interrupt();
             $this->shutdown->run();
             exit(0);
@@ -121,13 +128,27 @@ final class ServeRunner
 
         $this->reporter->finish();
 
-        if ($context->options->follow && $this->combined->hasProcesses()) {
-            return $this->streamCombinedOutput();
-        }
+        return $context;
+    }
 
-        terminal()->outro('Application ready.');
+    /**
+     * Hand Ctrl+C to the dev processes. Called once the boot is done and
+     * before the terminal UI takes over the foreground.
+     */
+    public function handOff(): void
+    {
+        $this->handedOff = true;
+    }
 
-        return 0;
+    /**
+     * Settle everything the boot started. Idempotent, and a friendly no-op
+     * when app:down from another terminal already did the work.
+     */
+    public function tearDown(): void
+    {
+        $this->tearingDown = true;
+
+        $this->shutdown->run();
     }
 
     /**
@@ -139,27 +160,6 @@ final class ServeRunner
     public function fail(): void
     {
         $this->reporter->fail();
-    }
-
-    /**
-     * The composer-run-dev experience: after the boot, stay in the
-     * foreground and interleave every combined worker's output here. The
-     * loop ends on Ctrl+C (the trap stops it before tearing down) or when
-     * every worker has exited — either way one shared shutdown path runs,
-     * a friendly no-op when app:down from another terminal already did.
-     */
-    private function streamCombinedOutput(): int
-    {
-        terminal()->outro('Application ready.');
-        terminal()->info('Streaming service output below — press Ctrl+C to stop everything.');
-
-        $this->streaming = $this->multiplexer;
-        $this->multiplexer->stream($this->order->apply($this->combined));
-        $this->streaming = null;
-
-        $this->shutdown->run();
-
-        return 0;
     }
 
     private function anotherServeIsRunning(): bool
