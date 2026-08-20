@@ -13,10 +13,10 @@ namespace Igne\LaravelBootUp\Enums;
  */
 enum DeployHookHost: string
 {
-    case FORTRABBIT = 'fortrabbit';
-    case FORGE = 'forge';
-    case WEBHOOK = 'webhook';
-    case NONE = 'none';
+    case Fortrabbit = 'fortrabbit';
+    case Forge = 'forge';
+    case Webhook = 'webhook';
+    case None = 'none';
 
     /**
      * Whether the pipeline gets deploy jobs at all — everything deploy-related
@@ -24,16 +24,16 @@ enum DeployHookHost: string
      */
     public function deploys(): bool
     {
-        return $this !== self::NONE;
+        return $this !== self::None;
     }
 
     public function label(): string
     {
         return match ($this) {
-            self::FORTRABBIT => 'fortrabbit',
-            self::FORGE => 'Laravel Forge',
-            self::WEBHOOK => 'Another host (generic HTTPS deploy hook)',
-            self::NONE => 'None — skip the deploy step',
+            self::Fortrabbit => 'fortrabbit',
+            self::Forge => 'Laravel Forge',
+            self::Webhook => 'Another host (generic HTTPS deploy hook)',
+            self::None => 'None — skip the deploy step',
         };
     }
 
@@ -46,17 +46,17 @@ enum DeployHookHost: string
     public function hookValueGuidance(string $environment): array
     {
         return match ($this) {
-            self::FORTRABBIT => [
+            self::Fortrabbit => [
                 "Value: the deploy hook URL from the fortrabbit dashboard — your app → {$environment} → Deploy hook.",
                 'Example: https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}',
             ],
-            self::FORGE => [
+            self::Forge => [
                 "Value: the deployment trigger URL from Forge — your server → the {$environment} site → Deployments → Deployment trigger URL.",
             ],
-            self::WEBHOOK => [
+            self::Webhook => [
                 "Value: your host's HTTPS deploy hook URL for {$environment} — any URL that starts a deploy when POSTed.",
             ],
-            self::NONE => [],
+            self::None => [],
         };
     }
 
@@ -68,10 +68,10 @@ enum DeployHookHost: string
     public function notes(): array
     {
         return match ($this) {
-            self::FORTRABBIT => [
+            self::Fortrabbit => [
                 'The deploy script sends the `User-Agent: fortrabbit` header fortrabbit requires — without it its webhook answers 403.',
             ],
-            self::FORGE, self::WEBHOOK, self::NONE => [],
+            self::Forge, self::Webhook, self::None => [],
         };
     }
 }

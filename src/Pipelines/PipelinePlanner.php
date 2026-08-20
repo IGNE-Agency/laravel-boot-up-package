@@ -29,7 +29,7 @@ final class PipelinePlanner
         return new PipelinePlan(
             // CI needs dev dependencies (the test framework) and must not
             // `artisan optimize` — exactly the DEVELOPMENT plan semantics.
-            deployment: $this->deployments->plan(environment: DeploymentEnvironment::DEVELOPMENT),
+            deployment: $this->deployments->plan(environment: DeploymentEnvironment::Development),
             nova: $nova,
             // COMPOSER_AUTH is offered whenever config opts in; absent an
             // explicit setting it defaults to on for Nova projects (the one

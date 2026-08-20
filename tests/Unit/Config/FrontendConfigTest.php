@@ -14,7 +14,7 @@ test('fromRepository reads the boot-up.frontend schema', function (): void {
         ],
     ]));
 
-    expect($config->packageManager)->toBe(PackageManager::NPM)
+    expect($config->packageManager)->toBe(PackageManager::Npm)
         ->and($config->assets)->toBe(AssetMode::Build);
 });
 

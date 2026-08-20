@@ -22,7 +22,7 @@ final class ComposerInstaller extends ToolInstaller
 
     protected function tool(): Tool
     {
-        return Tool::COMPOSER;
+        return Tool::Composer;
     }
 
     public function install(VersionConstraint $constraint): void

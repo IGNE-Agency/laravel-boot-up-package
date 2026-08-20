@@ -12,6 +12,7 @@ use Igne\LaravelBootUp\Config\ServeConfig;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Enums\ServeStage;
+use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Serve\Browser;
 
 #[Stage(ServeStage::Announce)]
@@ -38,7 +39,7 @@ final class AnnounceApplication implements Step
         // are about to take over this terminal instead of writing log files.
         $context->options->follow
             ? terminal()->note('The dev processes start below — press q or Ctrl+C to stop everything.')
-            : terminal()->note('Background process logs live in storage/logs/boot-up/.');
+            : terminal()->note('Background process logs live in storage/'.ProcessRunner::LOG_SUBDIRECTORY.'/.');
 
         terminal()->note('Stop everything with: php artisan app:down');
 

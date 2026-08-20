@@ -230,13 +230,13 @@ final class CiScripts
                 $keyword = 'if';
 
                 foreach (PackageManager::cases() as $manager) {
-                    if ($manager === PackageManager::NPM) {
+                    if ($manager === PackageManager::Npm) {
                         continue;
                     }
 
                     $condition = "[ -f {$manager->lockfile()} ]";
 
-                    if ($manager === PackageManager::BUN) {
+                    if ($manager === PackageManager::Bun) {
                         $condition .= ' || [ -f bun.lockb ]';
                     }
 
@@ -244,7 +244,7 @@ final class CiScripts
                     $keyword = 'elif';
                 }
 
-                $script->line('else echo '.PackageManager::NPM->value)
+                $script->line('else echo '.PackageManager::Npm->value)
                     ->line('fi');
             })
             ->line('}')

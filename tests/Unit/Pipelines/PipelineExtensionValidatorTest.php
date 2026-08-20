@@ -12,17 +12,17 @@ use Igne\LaravelBootUp\Pipelines\CiScripts;
 use Igne\LaravelBootUp\Pipelines\GitHubActionsGenerator;
 use Igne\LaravelBootUp\Pipelines\PipelineExtensionValidator;
 
-function validatorPlan(bool $pint = true, DeployHookHost $host = DeployHookHost::FORTRABBIT): PipelinePlan
+function validatorPlan(bool $pint = true, DeployHookHost $host = DeployHookHost::Fortrabbit): PipelinePlan
 {
     return new PipelinePlan(
         deployment: new DeploymentPlan(
-            environment: DeploymentEnvironment::DEVELOPMENT,
+            environment: DeploymentEnvironment::Development,
             migrate: true,
             finalize: [],
             beforeMigrations: [],
             afterMigrations: [],
             frontend: false,
-            packageManager: PackageManager::NPM,
+            packageManager: PackageManager::Npm,
             restartQueues: false,
         ),
         nova: false,

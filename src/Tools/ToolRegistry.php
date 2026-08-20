@@ -34,15 +34,15 @@ final class ToolRegistry
         }
 
         return match (Tool::tryFrom($id)) {
-            Tool::PHP => $this->container->make(PhpInstaller::class),
-            Tool::COMPOSER => $this->container->make(ComposerInstaller::class),
-            Tool::NODE => $this->container->make(HomebrewInstaller::class, ['tool' => Tool::NODE]),
-            Tool::DOCKER,
-            Tool::HERD => $this->container->make(HomebrewInstaller::class, ['tool' => Tool::from($id), 'cask' => true]),
-            Tool::BUN,
-            Tool::YARN,
-            Tool::NPM,
-            Tool::PNPM => $this->container->make(PackageManagerInstaller::class, ['tool' => Tool::from($id)]),
+            Tool::Php => $this->container->make(PhpInstaller::class),
+            Tool::Composer => $this->container->make(ComposerInstaller::class),
+            Tool::Node => $this->container->make(HomebrewInstaller::class, ['tool' => Tool::Node]),
+            Tool::Docker,
+            Tool::Herd => $this->container->make(HomebrewInstaller::class, ['tool' => Tool::from($id), 'cask' => true]),
+            Tool::Bun,
+            Tool::Yarn,
+            Tool::Npm,
+            Tool::Pnpm => $this->container->make(PackageManagerInstaller::class, ['tool' => Tool::from($id)]),
             default => throw ToolException::unknownTool($id),
         };
     }

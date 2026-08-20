@@ -51,7 +51,7 @@ final class PipelineCommand extends BootUpCommand
         $generator = $this->laravel->make($this->generators()[$provider]);
 
         $host = DeployHookHost::from(
-            $this->choose('host', 'Which host receives the deploy hook?', DeployHookHost::FORTRABBIT->value),
+            $this->choose('host', 'Which host receives the deploy hook?', DeployHookHost::Fortrabbit->value),
         );
 
         $plan = $this->validatedPlan($planner->plan($host), $config, $generator);

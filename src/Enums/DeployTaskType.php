@@ -6,7 +6,7 @@ namespace Igne\LaravelBootUp\Enums;
 
 enum DeployTaskType: string
 {
-    case ARTISAN = 'artisan';
-    case COMPOSER = 'composer';
-    case PACKAGE_MANAGER = 'package_manager';
+    case Artisan = 'artisan';
+    case Composer = 'composer';
+    case PackageManager = 'package_manager';
 }

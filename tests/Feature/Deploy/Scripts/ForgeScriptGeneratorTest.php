@@ -11,13 +11,13 @@ use Igne\LaravelBootUp\Enums\PackageManager;
 function forgePlan(array $overrides = []): DeploymentPlan
 {
     $defaults = [
-        'environment' => DeploymentEnvironment::PRODUCTION,
+        'environment' => DeploymentEnvironment::Production,
         'migrate' => true,
         'finalize' => ['storage:link'],
         'beforeMigrations' => [],
         'afterMigrations' => [],
         'frontend' => true,
-        'packageManager' => PackageManager::NPM,
+        'packageManager' => PackageManager::Npm,
         'restartQueues' => true,
         'zeroDowntime' => true,
     ];
@@ -69,15 +69,15 @@ test('each package manager gets its lockfile-strict install line', function (Pac
     expect($script)->toContain($line)
         ->and($script)->toContain("{$manager->value} run build");
 })->with([
-    'npm' => [PackageManager::NPM, 'npm ci || npm install'],
-    'pnpm' => [PackageManager::PNPM, 'pnpm install --frozen-lockfile || pnpm install'],
-    'yarn' => [PackageManager::YARN, 'yarn install --frozen-lockfile || yarn install'],
-    'bun' => [PackageManager::BUN, 'bun install --frozen-lockfile || bun install'],
+    'npm' => [PackageManager::Npm, 'npm ci || npm install'],
+    'pnpm' => [PackageManager::Pnpm, 'pnpm install --frozen-lockfile || pnpm install'],
+    'yarn' => [PackageManager::Yarn, 'yarn install --frozen-lockfile || yarn install'],
+    'bun' => [PackageManager::Bun, 'bun install --frozen-lockfile || bun install'],
 ]);
 
 test('development keeps dev dependencies and skips framework caching', function (): void {
     $script = forgeScript([
-        'environment' => DeploymentEnvironment::DEVELOPMENT,
+        'environment' => DeploymentEnvironment::Development,
     ]);
 
     expect($script)->toContain('$FORGE_COMPOSER install --no-interaction')
@@ -105,7 +105,7 @@ test('after-migration project commands render after migrate with composer and pa
             DeployTask::composer('dump-autoload --optimize'),
             DeployTask::packageManager('run zodgen'),
         ],
-        'packageManager' => PackageManager::PNPM,
+        'packageManager' => PackageManager::Pnpm,
     ]);
 
     $migratePosition = strpos($script, 'migrate --force');

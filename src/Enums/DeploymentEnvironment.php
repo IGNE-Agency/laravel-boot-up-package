@@ -6,13 +6,13 @@ namespace Igne\LaravelBootUp\Enums;
 
 enum DeploymentEnvironment: string
 {
-    case DEVELOPMENT = 'development';
-    case STAGING = 'staging';
-    case PRODUCTION = 'production';
+    case Development = 'development';
+    case Staging = 'staging';
+    case Production = 'production';
 
     public function includeDevDependencies(): bool
     {
-        return $this === self::DEVELOPMENT;
+        return $this === self::Development;
     }
 
     /**
@@ -21,6 +21,6 @@ enum DeploymentEnvironment: string
      */
     public function optimize(): bool
     {
-        return $this !== self::DEVELOPMENT;
+        return $this !== self::Development;
     }
 }

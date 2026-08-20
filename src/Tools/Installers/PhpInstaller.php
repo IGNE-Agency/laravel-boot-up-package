@@ -22,7 +22,7 @@ final class PhpInstaller extends ToolInstaller
 
     protected function tool(): Tool
     {
-        return Tool::PHP;
+        return Tool::Php;
     }
 
     public function install(VersionConstraint $constraint): void
@@ -49,7 +49,7 @@ final class PhpInstaller extends ToolInstaller
      */
     private function installViaHerd(): bool
     {
-        if (! $this->inspector->isInstalled(Tool::HERD)) {
+        if (! $this->inspector->isInstalled(Tool::Herd)) {
             return false;
         }
 

@@ -25,7 +25,7 @@ use Laravel\Prompts\Prompt;
 function bindFrontendInstallServices(string $dir): void
 {
     app()->instance(PackageJson::class, new PackageJson($dir.'/package.json'));
-    app()->instance(FrontendConfig::class, new FrontendConfig(PackageManager::BUN, AssetMode::Watch));
+    app()->instance(FrontendConfig::class, new FrontendConfig(PackageManager::Bun, AssetMode::Watch));
     app()->instance(ProcessRunner::class, new ProcessRunner(
         processes: app(Factory::class),
         ledger: new ProcessLedger($dir.'/processes.json'),

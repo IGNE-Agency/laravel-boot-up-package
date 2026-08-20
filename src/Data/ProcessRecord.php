@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Data;
 
+use Igne\LaravelBootUp\Process\ProcessRunner;
+
 final readonly class ProcessRecord
 {
     public function __construct(
@@ -32,7 +34,7 @@ final readonly class ProcessRecord
      */
     public function outputLocation(): string
     {
-        return "logs: storage/logs/boot-up/{$this->label}.log";
+        return 'logs: storage/'.ProcessRunner::LOG_SUBDIRECTORY."/{$this->label}.log";
     }
 
     /**

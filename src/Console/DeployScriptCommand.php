@@ -38,7 +38,7 @@ final class DeployScriptCommand extends BootUpCommand
         $generator = $this->laravel->make($this->generators()[$platform]);
 
         $environment = DeploymentEnvironment::from(
-            $this->choose('environment', 'Which environment is this script for?', DeploymentEnvironment::PRODUCTION->value),
+            $this->choose('environment', 'Which environment is this script for?', DeploymentEnvironment::Production->value),
         );
 
         $script = $generator->generate($planner->plan(

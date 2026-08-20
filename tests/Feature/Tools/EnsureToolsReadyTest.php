@@ -82,7 +82,7 @@ test('ensures every configured tool and then the server tools', function (): voi
         installers: ['alpha' => AlphaToolSpy::class, 'docker' => DockerToolSpy::class],
     );
 
-    $context = new ServeContext(new ServeOptions, ensureToolsServer([Tool::DOCKER]));
+    $context = new ServeContext(new ServeOptions, ensureToolsServer([Tool::Docker]));
 
     $result = app(EnsureToolsReady::class)->handle($context, fn ($passed) => $passed);
 
@@ -121,7 +121,7 @@ test('server tools already covered by the required map are not ensured twice', f
         installers: ['docker' => DockerToolSpy::class],
     );
 
-    $context = new ServeContext(new ServeOptions, ensureToolsServer([Tool::DOCKER]));
+    $context = new ServeContext(new ServeOptions, ensureToolsServer([Tool::Docker]));
 
     app(EnsureToolsReady::class)->handle($context, fn ($passed) => $passed);
 

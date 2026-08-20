@@ -41,7 +41,7 @@ final class HerdServer implements RequiresTools, RewritesCommands, Server, Warns
      */
     public function requiredTools(): array
     {
-        return [Tool::HERD];
+        return [Tool::Herd];
     }
 
     public function commandRewrites(): CommandRewrites

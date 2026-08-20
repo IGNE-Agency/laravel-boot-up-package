@@ -27,7 +27,7 @@ function bindAssetServices(string $dir, AssetMode $assets = AssetMode::Build): v
     $ledger = new ProcessLedger($dir.'/processes.json');
 
     app()->instance(PackageJson::class, new PackageJson($dir.'/package.json'));
-    app()->instance(FrontendConfig::class, new FrontendConfig(PackageManager::BUN, $assets));
+    app()->instance(FrontendConfig::class, new FrontendConfig(PackageManager::Bun, $assets));
     app()->instance(ProcessLedger::class, $ledger);
     app()->instance(ProcessRunner::class, new ProcessRunner(
         processes: app(Factory::class),

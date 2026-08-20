@@ -6,9 +6,9 @@ use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Enums\DeployTaskType;
 
 test('named constructors set the command type', function (): void {
-    expect(DeployTask::artisan('db:seed')->type)->toBe(DeployTaskType::ARTISAN)
-        ->and(DeployTask::composer('dump-autoload')->type)->toBe(DeployTaskType::COMPOSER)
-        ->and(DeployTask::packageManager('run build')->type)->toBe(DeployTaskType::PACKAGE_MANAGER);
+    expect(DeployTask::artisan('db:seed')->type)->toBe(DeployTaskType::Artisan)
+        ->and(DeployTask::composer('dump-autoload')->type)->toBe(DeployTaskType::Composer)
+        ->and(DeployTask::packageManager('run build')->type)->toBe(DeployTaskType::PackageManager);
 });
 
 test('the command and optional description are kept verbatim', function (): void {

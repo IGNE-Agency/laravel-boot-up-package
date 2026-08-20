@@ -15,13 +15,13 @@ use Igne\LaravelBootUp\Pipelines\PipelineExtensions;
 function githubPipelinePlan(array $overrides = [], array $deploymentOverrides = []): PipelinePlan
 {
     $deploymentDefaults = [
-        'environment' => DeploymentEnvironment::DEVELOPMENT,
+        'environment' => DeploymentEnvironment::Development,
         'migrate' => true,
         'finalize' => ['storage:link'],
         'beforeMigrations' => [],
         'afterMigrations' => [],
         'frontend' => true,
-        'packageManager' => PackageManager::NPM,
+        'packageManager' => PackageManager::Npm,
         'restartQueues' => true,
     ];
 
@@ -36,7 +36,7 @@ function githubPipelinePlan(array $overrides = [], array $deploymentOverrides = 
             'staging' => 'staging',
             'main' => 'production',
         ],
-        'host' => DeployHookHost::FORTRABBIT,
+        'host' => DeployHookHost::Fortrabbit,
     ];
 
     return new PipelinePlan(...array_merge($defaults, $overrides));
@@ -346,7 +346,7 @@ function githubGuidance(PipelinePlan $plan): string
 }
 
 test('the fortrabbit host gets the dashboard path, the hook example and the user-agent note', function (): void {
-    $guidance = githubGuidance(githubPipelinePlan(['host' => DeployHookHost::FORTRABBIT]));
+    $guidance = githubGuidance(githubPipelinePlan(['host' => DeployHookHost::Fortrabbit]));
 
     expect($guidance)->toContain('fortrabbit dashboard')
         ->and($guidance)->toContain('https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}')
@@ -355,14 +355,14 @@ test('the fortrabbit host gets the dashboard path, the hook example and the user
 });
 
 test('the forge host gets the deployment trigger URL and no fortrabbit mentions', function (): void {
-    $guidance = githubGuidance(githubPipelinePlan(['host' => DeployHookHost::FORGE]));
+    $guidance = githubGuidance(githubPipelinePlan(['host' => DeployHookHost::Forge]));
 
     expect($guidance)->toContain('Deployment trigger URL')
         ->and($guidance)->not->toContain('fortrabbit');
 });
 
 test('the webhook host gets neutral guidance naming no host', function (): void {
-    $guidance = githubGuidance(githubPipelinePlan(['host' => DeployHookHost::WEBHOOK]));
+    $guidance = githubGuidance(githubPipelinePlan(['host' => DeployHookHost::Webhook]));
 
     expect($guidance)->toContain("your host's HTTPS deploy hook URL for development")
         ->and($guidance)->not->toContain('fortrabbit')
@@ -370,7 +370,7 @@ test('the webhook host gets neutral guidance naming no host', function (): void 
 });
 
 test('informational lines live in the notes block, not the next steps', function (): void {
-    $plan = githubPipelinePlan(['host' => DeployHookHost::FORTRABBIT]);
+    $plan = githubPipelinePlan(['host' => DeployHookHost::Fortrabbit]);
 
     $notes = implode("\n", githubGenerator()->notes($plan));
     $instructions = implode("\n", githubGenerator()->instructions($plan));
@@ -387,7 +387,7 @@ test('informational lines live in the notes block, not the next steps', function
 });
 
 test('the none host renders a checks-only workflow that still runs on pushes', function (): void {
-    $yaml = githubWorkflow(githubPipelinePlan(['host' => DeployHookHost::NONE]));
+    $yaml = githubWorkflow(githubPipelinePlan(['host' => DeployHookHost::None]));
 
     expect($yaml)->toContain('# Checks run on pull requests and on pushes to develop, staging and main.')
         ->and($yaml)->toContain('# No deploy jobs were generated — rerun generate:pipeline with a deploy-hook host to add them.')
@@ -401,7 +401,7 @@ test('the none host renders a checks-only workflow that still runs on pushes', f
 });
 
 test('the none host drops deploy-hook.sh, the DEPLOY_HOOK secrets and the deploy guidance', function (): void {
-    $plan = githubPipelinePlan(['host' => DeployHookHost::NONE]);
+    $plan = githubPipelinePlan(['host' => DeployHookHost::None]);
 
     $paths = array_map(fn ($file) => $file->path, githubGenerator()->files($plan));
     $names = array_map(fn ($secret) => $secret->name, githubGenerator()->secrets($plan));

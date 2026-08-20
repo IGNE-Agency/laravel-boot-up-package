@@ -65,7 +65,7 @@ function devRegistrar(
         'require' => array_fill_keys($requires, '*'),
     ]));
 
-    $frontend ??= new FrontendConfig(packageManager: PackageManager::PNPM);
+    $frontend ??= new FrontendConfig(packageManager: PackageManager::Pnpm);
     $composerJson = new ComposerJson($dir.'/composer.json');
     $packageJson = new PackageJson($dir.'/package.json');
 
@@ -325,7 +325,7 @@ it('runs no asset watcher with --without-assets', function (): void {
 });
 
 it('runs no asset watcher when assets are built once for this run', function (): void {
-    $frontend = new FrontendConfig(packageManager: PackageManager::PNPM, assets: AssetMode::Build);
+    $frontend = new FrontendConfig(packageManager: PackageManager::Pnpm, assets: AssetMode::Build);
 
     devRegistrar($this->workDir, frontend: $frontend)->apply(devContext(servingServer()));
 

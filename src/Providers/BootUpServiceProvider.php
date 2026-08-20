@@ -141,7 +141,7 @@ final class BootUpServiceProvider extends ServiceProvider
         $this->app->singleton(ProcessRunner::class, fn (Application $app) => new ProcessRunner(
             processes: $app->make(Factory::class),
             ledger: $app->make(ProcessLedger::class),
-            logDirectory: $app->storagePath('logs/boot-up'),
+            logDirectory: $app->storagePath(ProcessRunner::LOG_SUBDIRECTORY),
         ));
     }
 

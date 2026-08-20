@@ -11,13 +11,13 @@ use Igne\LaravelBootUp\Enums\PackageManager;
 function fortrabbitPlan(array $overrides = []): DeploymentPlan
 {
     $defaults = [
-        'environment' => DeploymentEnvironment::PRODUCTION,
+        'environment' => DeploymentEnvironment::Production,
         'migrate' => true,
         'finalize' => ['storage:link'],
         'beforeMigrations' => [],
         'afterMigrations' => [],
         'frontend' => true,
-        'packageManager' => PackageManager::PNPM,
+        'packageManager' => PackageManager::Pnpm,
         'restartQueues' => true,
     ];
 
@@ -73,8 +73,8 @@ test('renders bound commands for all four phases in the canonical order', functi
 });
 
 test('npm needs no global install line, non-npm managers do', function (): void {
-    $npm = fortrabbitScript(['packageManager' => PackageManager::NPM]);
-    $bun = fortrabbitScript(['packageManager' => PackageManager::BUN]);
+    $npm = fortrabbitScript(['packageManager' => PackageManager::Npm]);
+    $bun = fortrabbitScript(['packageManager' => PackageManager::Bun]);
 
     expect($npm)->not->toContain('npm i -g')
         ->and($bun)->toContain('npm i -g bun');
@@ -97,7 +97,7 @@ test('project commands wrap the migrate line in the post-deploy section', functi
 
 test('development drops no-dev and optimize; toggles drop their lines', function (): void {
     $script = fortrabbitScript([
-        'environment' => DeploymentEnvironment::DEVELOPMENT,
+        'environment' => DeploymentEnvironment::Development,
         'migrate' => false,
         'frontend' => false,
         'restartQueues' => false,

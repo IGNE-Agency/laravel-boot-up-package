@@ -265,7 +265,7 @@ test('identity, tools and rewrites', function (): void {
 
     expect($server->key())->toBe('herd')
         ->and($server->label())->toBe('Laravel Herd')
-        ->and($server->requiredTools())->toBe([Tool::HERD])
+        ->and($server->requiredTools())->toBe([Tool::Herd])
         ->and($rewrites->replaces)->toBe([])
         ->and($rewrites->prefixes)->toBe(['php', 'composer', 'tinker'])
         ->and($rewrites->prefix)->toBe('herd');

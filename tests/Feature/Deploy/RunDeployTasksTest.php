@@ -48,7 +48,7 @@ function bindRunProjectCommandsFixtures(string $dir): void
         ),
         rewriter: new CommandRewriter,
         packageManagers: new PackageManagerSelector(
-            new FrontendConfig(PackageManager::BUN, AssetMode::Watch),
+            new FrontendConfig(PackageManager::Bun, AssetMode::Watch),
             new PackageJson($dir.'/package.json'),
         ),
     ));

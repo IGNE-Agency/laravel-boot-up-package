@@ -11,14 +11,14 @@ enum PackageManager: string
 {
     use ResolvesFromConfig;
 
-    case BUN = 'bun';
-    case YARN = 'yarn';
-    case NPM = 'npm';
-    case PNPM = 'pnpm';
+    case Bun = 'bun';
+    case Yarn = 'yarn';
+    case Npm = 'npm';
+    case Pnpm = 'pnpm';
 
     public static function default(): self
     {
-        return self::BUN;
+        return self::Bun;
     }
 
     public function binary(): string
@@ -29,10 +29,10 @@ enum PackageManager: string
     public function lockfile(): string
     {
         return match ($this) {
-            self::BUN => 'bun.lock',
-            self::YARN => 'yarn.lock',
-            self::NPM => 'package-lock.json',
-            self::PNPM => 'pnpm-lock.yaml',
+            self::Bun => 'bun.lock',
+            self::Yarn => 'yarn.lock',
+            self::Npm => 'package-lock.json',
+            self::Pnpm => 'pnpm-lock.yaml',
         };
     }
 
@@ -50,7 +50,7 @@ enum PackageManager: string
     public function updateCommand(): array
     {
         return match ($this) {
-            self::NPM => ['npm', 'update'],
+            self::Npm => ['npm', 'update'],
             default => [$this->value, 'update'],
         };
     }
@@ -72,10 +72,10 @@ enum PackageManager: string
     public function execCommand(): array
     {
         return match ($this) {
-            self::BUN => ['bunx'],
-            self::NPM => ['npx'],
-            self::PNPM => ['pnpm', 'exec'],
-            self::YARN => ['yarn', 'exec'],
+            self::Bun => ['bunx'],
+            self::Npm => ['npx'],
+            self::Pnpm => ['pnpm', 'exec'],
+            self::Yarn => ['yarn', 'exec'],
         };
     }
 
@@ -87,10 +87,10 @@ enum PackageManager: string
     public function ciInstallLine(): string
     {
         return match ($this) {
-            self::NPM => 'npm ci || npm install',
-            self::PNPM => 'pnpm install --frozen-lockfile || pnpm install',
-            self::YARN => 'yarn install --frozen-lockfile || yarn install',
-            self::BUN => 'bun install --frozen-lockfile || bun install',
+            self::Npm => 'npm ci || npm install',
+            self::Pnpm => 'pnpm install --frozen-lockfile || pnpm install',
+            self::Yarn => 'yarn install --frozen-lockfile || yarn install',
+            self::Bun => 'bun install --frozen-lockfile || bun install',
         };
     }
 
@@ -102,7 +102,7 @@ enum PackageManager: string
     public function buildScriptLines(bool $ensureInstalled): Lines
     {
         return Lines::make()
-            ->lineIf($ensureInstalled && $this !== self::NPM, "npm i -g {$this->value}")
+            ->lineIf($ensureInstalled && $this !== self::Npm, "npm i -g {$this->value}")
             ->line($this->ciInstallLine())
             ->line("{$this->value} run build");
     }
@@ -110,10 +110,10 @@ enum PackageManager: string
     public function tool(): Tool
     {
         return match ($this) {
-            self::BUN => Tool::BUN,
-            self::YARN => Tool::YARN,
-            self::NPM => Tool::NPM,
-            self::PNPM => Tool::PNPM,
+            self::Bun => Tool::Bun,
+            self::Yarn => Tool::Yarn,
+            self::Npm => Tool::Npm,
+            self::Pnpm => Tool::Pnpm,
         };
     }
 }

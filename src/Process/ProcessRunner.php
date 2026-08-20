@@ -21,6 +21,13 @@ use Illuminate\Process\PendingProcess;
  */
 final class ProcessRunner
 {
+    /**
+     * Where detached processes write, relative to the storage directory.
+     * Public because the announce step and the ledger's status lines tell
+     * the user about it, and a path they can copy has to match the real one.
+     */
+    public const string LOG_SUBDIRECTORY = 'logs/boot-up';
+
     public function __construct(
         private readonly Factory $processes,
         private readonly ProcessLedger $ledger,
@@ -46,7 +53,7 @@ final class ProcessRunner
 
     /**
      * Start a detached background process that survives this PHP process.
-     * Output is appended to storage/logs/boot-up/{label}.log.
+     * Output is appended to the log file for this label.
      */
     public function start(CommandLine $command, string $label): ProcessRecord
     {

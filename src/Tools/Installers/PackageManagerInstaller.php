@@ -46,7 +46,7 @@ final class PackageManagerInstaller extends ToolInstaller
      */
     private function installOrUpdate(bool $update): void
     {
-        if ($this->tool === Tool::NPM) {
+        if ($this->tool === Tool::Npm) {
             $this->processes->run(CommandLine::make(['npm', 'install', '-g', 'npm'])->withTimeout(null));
 
             return;

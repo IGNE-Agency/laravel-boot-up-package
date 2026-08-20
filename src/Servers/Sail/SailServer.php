@@ -52,7 +52,7 @@ final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDe
      */
     public function requiredTools(): array
     {
-        return [Tool::DOCKER];
+        return [Tool::Docker];
     }
 
     public function commandRewrites(): CommandRewrites

@@ -13,13 +13,13 @@ use Igne\LaravelBootUp\Pipelines\CiScripts;
 function ciScriptsPlan(array $overrides = [], array $deploymentOverrides = []): PipelinePlan
 {
     $deploymentDefaults = [
-        'environment' => DeploymentEnvironment::DEVELOPMENT,
+        'environment' => DeploymentEnvironment::Development,
         'migrate' => true,
         'finalize' => ['storage:link'],
         'beforeMigrations' => [],
         'afterMigrations' => [],
         'frontend' => true,
-        'packageManager' => PackageManager::NPM,
+        'packageManager' => PackageManager::Npm,
         'restartQueues' => true,
     ];
 
@@ -214,7 +214,7 @@ test('files returns every script, executable, under scripts/ci', function (): vo
 });
 
 test('files skips deploy-hook.sh when the host is none', function (): void {
-    $paths = array_map(fn ($file) => $file->path, (new CiScripts)->files(ciScriptsPlan(['host' => DeployHookHost::NONE])));
+    $paths = array_map(fn ($file) => $file->path, (new CiScripts)->files(ciScriptsPlan(['host' => DeployHookHost::None])));
 
     expect($paths)->not->toContain('scripts/ci/deploy-hook.sh')
         ->and($paths)->toHaveCount(4);
@@ -280,7 +280,7 @@ test('package-manager project commands use the runtime $PM with a frontend and t
     $command = ['beforeMigrations' => [DeployTask::packageManager('run generate')]];
 
     expect($scripts->test(ciScriptsPlan([], $command))->contents)->toContain('"$PM" run generate')
-        ->and($scripts->test(ciScriptsPlan([], [...$command, 'frontend' => false, 'packageManager' => PackageManager::PNPM]))->contents)
+        ->and($scripts->test(ciScriptsPlan([], [...$command, 'frontend' => false, 'packageManager' => PackageManager::Pnpm]))->contents)
         ->toContain('pnpm run generate');
 });
 

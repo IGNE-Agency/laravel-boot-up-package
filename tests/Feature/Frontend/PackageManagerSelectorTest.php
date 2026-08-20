@@ -31,14 +31,14 @@ test('a please-use sentinel beats the configured manager, with a warning', funct
     file_put_contents($this->dir.'/package.json', json_encode(['engines' => ['node' => 'please-use-pnpm']]));
     file_put_contents($this->dir.'/yarn.lock', '');
 
-    expect(selectorFor($this->dir, PackageManager::BUN)->selected())->toBe(PackageManager::PNPM);
+    expect(selectorFor($this->dir, PackageManager::Bun)->selected())->toBe(PackageManager::Pnpm);
     Prompt::assertStrippedOutputContains('package.json demands pnpm; using it instead of the configured bun.');
 });
 
 test('a please-use sentinel without explicit config wins silently', function (): void {
     file_put_contents($this->dir.'/package.json', json_encode(['engines' => ['node' => 'please-use-yarn']]));
 
-    expect(selectorFor($this->dir)->selected())->toBe(PackageManager::YARN);
+    expect(selectorFor($this->dir)->selected())->toBe(PackageManager::Yarn);
     Prompt::assertStrippedOutputDoesntContain('demands');
 });
 
@@ -46,14 +46,14 @@ test('an explicit config value beats the lockfile', function (): void {
     file_put_contents($this->dir.'/package.json', '{}');
     file_put_contents($this->dir.'/pnpm-lock.yaml', '');
 
-    expect(selectorFor($this->dir, PackageManager::NPM)->selected())->toBe(PackageManager::NPM);
+    expect(selectorFor($this->dir, PackageManager::Npm)->selected())->toBe(PackageManager::Npm);
 });
 
 test('without config the lockfile decides, with a note', function (): void {
     file_put_contents($this->dir.'/package.json', '{}');
     file_put_contents($this->dir.'/pnpm-lock.yaml', '');
 
-    expect(selectorFor($this->dir)->selected())->toBe(PackageManager::PNPM);
+    expect(selectorFor($this->dir)->selected())->toBe(PackageManager::Pnpm);
     Prompt::assertStrippedOutputContains('Using pnpm — detected from pnpm-lock.yaml.');
 });
 

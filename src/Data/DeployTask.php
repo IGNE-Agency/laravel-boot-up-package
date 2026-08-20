@@ -29,17 +29,17 @@ final readonly class DeployTask
 
     public static function artisan(string $command, ?string $description = null): self
     {
-        return new self(DeployTaskType::ARTISAN, $command, $description);
+        return new self(DeployTaskType::Artisan, $command, $description);
     }
 
     public static function composer(string $command, ?string $description = null): self
     {
-        return new self(DeployTaskType::COMPOSER, $command, $description);
+        return new self(DeployTaskType::Composer, $command, $description);
     }
 
     public static function packageManager(string $command, ?string $description = null): self
     {
-        return new self(DeployTaskType::PACKAGE_MANAGER, $command, $description);
+        return new self(DeployTaskType::PackageManager, $command, $description);
     }
 
     /**
@@ -49,9 +49,9 @@ final readonly class DeployTask
     public function shellLine(string $artisan, string $composer, string $packageManager): string
     {
         return match ($this->type) {
-            DeployTaskType::ARTISAN => "{$artisan} {$this->command}",
-            DeployTaskType::COMPOSER => "{$composer} {$this->command}",
-            DeployTaskType::PACKAGE_MANAGER => "{$packageManager} {$this->command}",
+            DeployTaskType::Artisan => "{$artisan} {$this->command}",
+            DeployTaskType::Composer => "{$composer} {$this->command}",
+            DeployTaskType::PackageManager => "{$packageManager} {$this->command}",
         };
     }
 

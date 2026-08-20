@@ -16,13 +16,13 @@ use Igne\LaravelBootUp\Pipelines\PipelineExtensions;
 function bitbucketPipelinePlan(array $overrides = [], array $deploymentOverrides = []): PipelinePlan
 {
     $deploymentDefaults = [
-        'environment' => DeploymentEnvironment::DEVELOPMENT,
+        'environment' => DeploymentEnvironment::Development,
         'migrate' => true,
         'finalize' => ['storage:link'],
         'beforeMigrations' => [],
         'afterMigrations' => [],
         'frontend' => true,
-        'packageManager' => PackageManager::NPM,
+        'packageManager' => PackageManager::Npm,
         'restartQueues' => true,
     ];
 
@@ -37,7 +37,7 @@ function bitbucketPipelinePlan(array $overrides = [], array $deploymentOverrides
             'staging' => 'staging',
             'main' => 'production',
         ],
-        'host' => DeployHookHost::FORTRABBIT,
+        'host' => DeployHookHost::Fortrabbit,
     ];
 
     return new PipelinePlan(...array_merge($defaults, $overrides));
@@ -235,7 +235,7 @@ function bitbucketGuidance(PipelinePlan $plan): string
 }
 
 test('the fortrabbit host gets the dashboard path, the hook example and the user-agent note', function (): void {
-    $plan = bitbucketPipelinePlan(['host' => DeployHookHost::FORTRABBIT]);
+    $plan = bitbucketPipelinePlan(['host' => DeployHookHost::Fortrabbit]);
     $guidance = bitbucketGuidance($plan);
     $notes = implode("\n", bitbucketGenerator()->notes($plan));
     $instructions = implode("\n", bitbucketGenerator()->instructions($plan));
@@ -247,14 +247,14 @@ test('the fortrabbit host gets the dashboard path, the hook example and the user
 });
 
 test('the forge host gets the deployment trigger URL and no fortrabbit mentions', function (): void {
-    $guidance = bitbucketGuidance(bitbucketPipelinePlan(['host' => DeployHookHost::FORGE]));
+    $guidance = bitbucketGuidance(bitbucketPipelinePlan(['host' => DeployHookHost::Forge]));
 
     expect($guidance)->toContain('Deployment trigger URL')
         ->and($guidance)->not->toContain('fortrabbit');
 });
 
 test('the webhook host gets neutral guidance naming no host', function (): void {
-    $guidance = bitbucketGuidance(bitbucketPipelinePlan(['host' => DeployHookHost::WEBHOOK]));
+    $guidance = bitbucketGuidance(bitbucketPipelinePlan(['host' => DeployHookHost::Webhook]));
 
     expect($guidance)->toContain("your host's HTTPS deploy hook URL for development")
         ->and($guidance)->not->toContain('fortrabbit')
@@ -262,7 +262,7 @@ test('the webhook host gets neutral guidance naming no host', function (): void 
 });
 
 test('informational lines live in the notes block, not the next steps', function (): void {
-    $plan = bitbucketPipelinePlan(['host' => DeployHookHost::FORTRABBIT]);
+    $plan = bitbucketPipelinePlan(['host' => DeployHookHost::Fortrabbit]);
     $notes = implode("\n", bitbucketGenerator()->notes($plan));
     $instructions = implode("\n", bitbucketGenerator()->instructions($plan));
 
@@ -277,7 +277,7 @@ test('informational lines live in the notes block, not the next steps', function
 });
 
 test('the none host renders a checks-only pipeline that still runs on branch pushes', function (): void {
-    $yaml = bitbucketPipeline(bitbucketPipelinePlan(['host' => DeployHookHost::NONE]));
+    $yaml = bitbucketPipeline(bitbucketPipelinePlan(['host' => DeployHookHost::None]));
 
     expect($yaml)->toContain('# Checks run on pull requests and on pushes to develop, staging and main.')
         ->and($yaml)->toContain('# No deploy steps were generated — rerun generate:pipeline with a deploy-hook host to add them.')
@@ -289,7 +289,7 @@ test('the none host renders a checks-only pipeline that still runs on branch pus
 });
 
 test('the none host drops deploy-hook.sh, the DEPLOY_HOOK secrets and the deploy guidance', function (): void {
-    $plan = bitbucketPipelinePlan(['host' => DeployHookHost::NONE]);
+    $plan = bitbucketPipelinePlan(['host' => DeployHookHost::None]);
 
     $paths = array_map(fn ($file) => $file->path, bitbucketGenerator()->files($plan));
     $names = array_map(fn ($secret) => $secret->name, bitbucketGenerator()->secrets($plan));

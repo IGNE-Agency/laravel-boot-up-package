@@ -227,7 +227,7 @@ class DevCommand extends FrameworkDevCommand implements Isolatable
      */
     private function warnWhenNodeCannotRunTheTerminal(): void
     {
-        $version = $this->laravel->make(ToolInspector::class)->installedVersion(Tool::NODE);
+        $version = $this->laravel->make(ToolInspector::class)->installedVersion(Tool::Node);
 
         if ($version === null || VersionConstraint::of(self::MULTIPLEX_NODE)->isSatisfiedBy($version)) {
             return;

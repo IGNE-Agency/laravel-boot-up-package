@@ -13,7 +13,7 @@ use Illuminate\Foundation\DevCommands;
  *
  * Laravel's dev command has no detached mode — it always runs a multiplexer in
  * the foreground — so `--detach` keeps boot-up's own machinery: every process
- * is recorded in the ledger, writes to storage/logs/boot-up/, and is therefore
+ * is recorded in the ledger, writes to its own log file, and is therefore
  * visible to app:status and stoppable with app:down.
  */
 final class DetachedDevRunner
