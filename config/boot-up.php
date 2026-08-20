@@ -182,6 +182,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Dev processes
+    |--------------------------------------------------------------------------
+    | Laravel's `dev` command tails the application log with laravel/pail.
+    | boot-up leaves that process alone when Pail is installed; set this to
+    | false to keep the log out of the run.
+    |
+    | Register your own processes from any service provider with Laravel's
+    | DevCommands class — they join the same run:
+    |
+    |     DevCommands::register('stripe listen --forward-to '.config('app.url'));
+    */
+    'dev' => [
+        'logs' => env('BOOT_UP_DEV_LOGS', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Background processes
     |--------------------------------------------------------------------------
     | Services launched in their own terminal window (run_in => 'terminal')

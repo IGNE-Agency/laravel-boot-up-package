@@ -8,9 +8,11 @@ use Igne\LaravelBootUp\Concerns\ReadsProcessFailureOutput;
 use Igne\LaravelBootUp\Config\SailConfig;
 use Igne\LaravelBootUp\Contracts\HasResidualState;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
+use Igne\LaravelBootUp\Contracts\ProvidesDevProcess;
 use Igne\LaravelBootUp\Contracts\RequiresTools;
 use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\CommandRewrites;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Enums\Tool;
@@ -20,7 +22,7 @@ use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 
-final class SailServer implements HasResidualState, ProvidesDatabase, RequiresTools, RewritesCommands, Server
+final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDevProcess, RequiresTools, RewritesCommands, Server
 {
     use ReadsProcessFailureOutput;
 
@@ -126,6 +128,17 @@ final class SailServer implements HasResidualState, ProvidesDatabase, RequiresTo
                 ? ServerException::dockerRegistryUnreachable()
                 : $retry;
         }
+    }
+
+    /**
+     * The containers are already up by the time the dev processes start, so
+     * the [server] process follows their logs rather than starting anything.
+     */
+    public function devProcess(ServeContext $context): ?CommandLine
+    {
+        return $context->options->follow
+            ? CommandLine::make(['./vendor/bin/sail', 'logs', '--follow'])->withTimeout(null)
+            : null;
     }
 
     public function isRunning(): bool

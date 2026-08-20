@@ -7,6 +7,7 @@ namespace Igne\LaravelBootUp\Providers;
 use Igne\LaravelBootUp\Config\ArtisanServeConfig;
 use Igne\LaravelBootUp\Config\DatabaseConfig;
 use Igne\LaravelBootUp\Config\DeployConfig;
+use Igne\LaravelBootUp\Config\DevConfig;
 use Igne\LaravelBootUp\Config\DevServerConfig;
 use Igne\LaravelBootUp\Config\EnvironmentConfig;
 use Igne\LaravelBootUp\Config\FrontendConfig;
@@ -61,6 +62,7 @@ final class BootUpServiceProvider extends ServiceProvider
         ArtisanServeConfig::class,
         DatabaseConfig::class,
         DeployConfig::class,
+        DevConfig::class,
         DevServerConfig::class,
         EnvironmentConfig::class,
         FrontendConfig::class,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Servers\Artisan;
 
 use Igne\LaravelBootUp\Config\ArtisanServeConfig;
+use Igne\LaravelBootUp\Contracts\ProvidesDevProcess;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\CombinedService;
 use Igne\LaravelBootUp\Data\CommandLine;
@@ -16,7 +17,7 @@ use Igne\LaravelBootUp\Serve\WorkerLauncher;
 /**
  * Serves via a tracked, detached `php artisan serve` process.
  */
-final class ArtisanServer implements Server
+final class ArtisanServer implements ProvidesDevProcess, Server
 {
     private const string LABEL = 'artisan-serve';
 
@@ -69,6 +70,24 @@ final class ArtisanServer implements Server
     private function queueServerStream(): void
     {
         $this->plan->add(CombinedService::tail(self::LABEL, 'server', $this->runner->logFile(self::LABEL)));
+    }
+
+    /**
+     * Runs as the [server] process when this boot stays in the foreground.
+     * A detached run has already started the tracked process in start(),
+     * and an application that was serving before this boot keeps that one.
+     */
+    public function devProcess(ServeContext $context): ?CommandLine
+    {
+        if (! $context->options->follow || $this->isRunning()) {
+            return null;
+        }
+
+        return CommandLine::make([
+            'php', 'artisan', 'serve',
+            "--host={$this->config->host}",
+            "--port={$this->config->port}",
+        ])->withTimeout(null);
     }
 
     public function isRunning(): bool

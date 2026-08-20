@@ -191,3 +191,28 @@ test('identity, with no optional capabilities', function (): void {
         ->and($server)->not->toBeInstanceOf(ProvidesDatabase::class)
         ->and($server)->not->toBeInstanceOf(WarnsBeforeStop::class);
 });
+
+test('devProcess runs artisan serve on the configured address', function (): void {
+    ProcessFaker::fake();
+    $server = artisanServer($this->ledger, $this->workDir, new ArtisanServeConfig(host: '0.0.0.0', port: 9000));
+
+    $command = $server->devProcess(new ServeContext(new ServeOptions(follow: true)));
+
+    expect($command?->toString())->toBe('php artisan serve --host=0.0.0.0 --port=9000')
+        ->and($command?->timeout)->toBeNull();
+});
+
+test('devProcess carries no server for a detached run, which starts its own', function (): void {
+    ProcessFaker::fake();
+    $server = artisanServer($this->ledger, $this->workDir);
+
+    expect($server->devProcess(new ServeContext(new ServeOptions(follow: false))))->toBeNull();
+});
+
+test('devProcess carries no server when one is already serving this project', function (): void {
+    ProcessFaker::fake(['*' => Process::result(output: "4242\n")]);
+    $this->ledger->record(new ProcessRecord(4242, 'artisan-serve', 'php artisan serve', date(DATE_ATOM)));
+    $server = artisanServer($this->ledger, $this->workDir);
+
+    expect($server->devProcess(new ServeContext(new ServeOptions(follow: true))))->toBeNull();
+});

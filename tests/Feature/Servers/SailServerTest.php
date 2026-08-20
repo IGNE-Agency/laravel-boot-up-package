@@ -286,3 +286,18 @@ test('identity, tools and rewrites', function (): void {
         ->and($rewrites->prefixes)->toBe(['php', 'composer', 'yarn', 'npm', 'bun', 'pnpm', 'artisan', 'node'])
         ->and($rewrites->prefix)->toBe('./vendor/bin/sail');
 });
+
+test('devProcess follows the container logs as the server stream', function (): void {
+    ProcessFaker::fake();
+
+    $command = sailServer($this->workDir)->devProcess(new ServeContext(new ServeOptions(follow: true)));
+
+    expect($command?->toString())->toBe('./vendor/bin/sail logs --follow')
+        ->and($command?->timeout)->toBeNull();
+});
+
+test('devProcess carries no server stream for a detached run', function (): void {
+    ProcessFaker::fake();
+
+    expect(sailServer($this->workDir)->devProcess(new ServeContext(new ServeOptions(follow: false))))->toBeNull();
+});
