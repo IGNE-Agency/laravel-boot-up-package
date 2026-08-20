@@ -15,6 +15,7 @@ use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Config\HerdConfig;
 use Igne\LaravelBootUp\Config\HorizonConfig;
 use Igne\LaravelBootUp\Config\PipelineConfig;
+use Igne\LaravelBootUp\Config\ProcessConfig;
 use Igne\LaravelBootUp\Config\QueueConfig;
 use Igne\LaravelBootUp\Config\ReverbConfig;
 use Igne\LaravelBootUp\Config\SailConfig;
@@ -35,12 +36,14 @@ use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
 use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Herd\HerdSites;
 use Igne\LaravelBootUp\Services\GeneratedFilePublisher;
 use Igne\LaravelBootUp\Services\LockfileConflictDetector;
 use Igne\LaravelBootUp\Services\Platform;
+use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Services\Terminal;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Foundation\Console\DevCommand as FrameworkDevCommand;
@@ -60,6 +63,7 @@ final class BootUpServiceProvider extends ServiceProvider
         HerdConfig::class,
         HorizonConfig::class,
         PipelineConfig::class,
+        ProcessConfig::class,
         QueueConfig::class,
         ReverbConfig::class,
         SailConfig::class,
@@ -141,6 +145,16 @@ final class BootUpServiceProvider extends ServiceProvider
             ledger: $app->make(ProcessLedger::class),
             logDirectory: $app->storagePath(ProcessRunner::LOG_SUBDIRECTORY),
         ));
+
+        // Bound rather than auto-wired: the grace periods are configurable,
+        // and auto-wiring would silently hand every consumer the defaults.
+        $this->app->singleton(ProcessReaper::class, fn (Application $app) => new ProcessReaper(
+            processes: $app->make(Factory::class),
+            ledger: $app->make(ProcessLedger::class),
+            poller: $app->make(Poller::class),
+            termGraceSeconds: $app->make(ProcessConfig::class)->termGraceSeconds,
+            killGraceSeconds: $app->make(ProcessConfig::class)->killGraceSeconds,
+        ));
     }
 
     private function registerHerd(): void
@@ -162,6 +176,7 @@ final class BootUpServiceProvider extends ServiceProvider
         $this->app->singleton(Composer::class, fn (Application $app) => new Composer(
             processes: $app->make(ProcessRunner::class),
             conflicts: $app->make(LockfileConflictDetector::class),
+            processConfig: $app->make(ProcessConfig::class),
             basePath: $app->basePath(),
         ));
 

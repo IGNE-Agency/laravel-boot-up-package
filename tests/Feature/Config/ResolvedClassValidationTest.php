@@ -56,3 +56,16 @@ test('the built-in installers are untouched by the check', function (): void {
 
     expect($registry->installerFor('php'))->toBeInstanceOf(InstallsTool::class);
 });
+
+test('the reaper is bound with the configured grace periods, not the defaults', function (): void {
+    config()->set('boot-up.process.term_grace_seconds', 11);
+    config()->set('boot-up.process.kill_grace_seconds', 7);
+    app()->forgetInstance(Igne\LaravelBootUp\Config\ProcessConfig::class);
+    app()->forgetInstance(Igne\LaravelBootUp\Process\ProcessReaper::class);
+
+    $reaper = app(Igne\LaravelBootUp\Process\ProcessReaper::class);
+    $read = fn (string $property): int => (new ReflectionProperty($reaper, $property))->getValue($reaper);
+
+    expect($read('termGraceSeconds'))->toBe(11)
+        ->and($read('killGraceSeconds'))->toBe(7);
+});

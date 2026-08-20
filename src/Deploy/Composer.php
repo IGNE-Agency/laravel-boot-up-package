@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Deploy;
 
 use Igne\LaravelBootUp\Concerns\ReadsProcessFailureOutput;
+use Igne\LaravelBootUp\Config\ProcessConfig;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Exceptions\DeployException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -26,11 +27,10 @@ final class Composer
      * quick commands and would abort a real install mid-way, so it is lifted
      * well clear here while still bounding a genuinely hung process.
      */
-    private const int INSTALL_TIMEOUT_SECONDS = 1800;
-
     public function __construct(
         private readonly ProcessRunner $processes,
         private readonly LockfileConflictDetector $conflicts,
+        private readonly ProcessConfig $processConfig,
         private readonly string $basePath,
     ) {}
 
@@ -102,6 +102,6 @@ final class Composer
 
     private function run(string $command): void
     {
-        $this->processes->run(CommandLine::make($command)->withTimeout(self::INSTALL_TIMEOUT_SECONDS));
+        $this->processes->run(CommandLine::make($command)->withTimeout($this->processConfig->installTimeoutSeconds));
     }
 }

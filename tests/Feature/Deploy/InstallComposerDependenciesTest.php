@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Config\ProcessConfig;
 use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Deploy\Composer;
@@ -38,6 +39,7 @@ function installComposerStep(string $dir): InstallComposerDependencies
             logDirectory: $dir.'/logs',
         ),
         new LockfileConflictDetector,
+        new ProcessConfig,
         $dir,
     ));
 }

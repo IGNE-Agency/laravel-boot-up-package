@@ -168,6 +168,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Processes
+    |--------------------------------------------------------------------------
+    | Teardown signals a process with TERM and waits 'term_grace_seconds' for
+    | it to go; if it is still there it gets KILL and 'kill_grace_seconds'.
+    | A process that survives both stays in the ledger with a warning rather
+    | than being forgotten while it is still running.
+    |
+    | 'install_timeout_seconds' is the ceiling for installing dependencies,
+    | which takes minutes on a slow network or a large project -- well clear of
+    | the per-command timeout meant for quick commands.
+    */
+    'process' => [
+        'term_grace_seconds' => (int) env('BOOT_UP_TERM_GRACE', 5),
+        'kill_grace_seconds' => (int) env('BOOT_UP_KILL_GRACE', 2),
+        'install_timeout_seconds' => (int) env('BOOT_UP_INSTALL_TIMEOUT', 1800),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Shutdown behaviour
     |--------------------------------------------------------------------------
     | Whether teardown (Ctrl+C on php artisan dev, app:down) asks before stopping

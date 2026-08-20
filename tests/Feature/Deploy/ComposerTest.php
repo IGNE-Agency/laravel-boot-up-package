@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Config\ProcessConfig;
 use Igne\LaravelBootUp\Deploy\Composer;
 use Igne\LaravelBootUp\Exceptions\DeployException;
 use Igne\LaravelBootUp\Process\ProcessLedger;
@@ -38,6 +39,7 @@ function deployComposer(string $dir): Composer
             logDirectory: $dir.'/logs',
         ),
         new LockfileConflictDetector,
+        new ProcessConfig,
         $dir,
     );
 }

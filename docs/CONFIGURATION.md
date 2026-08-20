@@ -128,6 +128,14 @@ and whether the application or another package overrides it, is covered in
 | ------------------- | -------------------------- | ---------- | --------------------------------------- |
 | `scheduler.enabled` | `BOOT_UP_SCHEDULER`        | `false`    | Start `schedule:work`. Opt-in.          |
 
+## Process
+
+| Key                              | Env var                    | Default | Description                                                                                                          |
+| -------------------------------- | -------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
+| `process.term_grace_seconds`     | `BOOT_UP_TERM_GRACE`       | `5`     | How long a process may take to honour `TERM` before it gets `KILL`. `0` signals and moves on.                        |
+| `process.kill_grace_seconds`     | `BOOT_UP_KILL_GRACE`       | `2`     | How long it may take to disappear after `KILL`. One that survives both stays in the ledger with a warning.           |
+| `process.install_timeout_seconds`| `BOOT_UP_INSTALL_TIMEOUT`  | `1800`  | Ceiling for installing Composer or frontend dependencies, which takes minutes on a slow network or a large project.  |
+
 ## Shutdown
 
 | Key                               | Env var                        | Default | Description                                                                                                      |

@@ -9,6 +9,7 @@ use Igne\LaravelBootUp\Attributes\Group;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Concerns\ReadsProcessFailureOutput;
 use Igne\LaravelBootUp\Concerns\SkipsWithNote;
+use Igne\LaravelBootUp\Config\ProcessConfig;
 use Igne\LaravelBootUp\Contracts\DescribesProgress;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\BootContext;
@@ -31,19 +32,13 @@ final class InstallFrontendDependencies implements DescribesProgress, Step
 
     use SkipsWithNote;
 
-    /**
-     * Installing node modules can take minutes on a slow network or a large
-     * project; the default per-command timeout is meant for quick commands and
-     * would abort a real install mid-way, so it is lifted well clear here.
-     */
-    private const int INSTALL_TIMEOUT_SECONDS = 1800;
-
     public function __construct(
         private readonly PackageManagerSelector $selector,
         private readonly PackageJson $packageJson,
         private readonly ProcessRunner $runner,
         private readonly CommandRewriter $rewriter,
         private readonly LockfileConflictDetector $conflicts,
+        private readonly ProcessConfig $processConfig,
     ) {}
 
     public function handle(BootContext $context, Closure $next): mixed
@@ -61,7 +56,7 @@ final class InstallFrontendDependencies implements DescribesProgress, Step
         $command = $this->rewriter->rewriteFor(
             $context,
             CommandLine::make($context->options->update ? $manager->updateCommand() : $manager->installCommand())
-                ->withTimeout(self::INSTALL_TIMEOUT_SECONDS),
+                ->withTimeout($this->processConfig->installTimeoutSeconds),
         );
 
         terminal()->info(($context->options->update ? 'Updating' : 'Installing')." frontend dependencies with {$manager->value}...");

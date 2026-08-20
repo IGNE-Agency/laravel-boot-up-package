@@ -11,6 +11,14 @@ namespace Igne\LaravelBootUp\Data;
 final readonly class CommandLine
 {
     /**
+     * The ceiling for an ordinary command. Not configurable: the constructor
+     * is private and make() takes no timeout, so "no timeout was given" and
+     * "300 was given" are the same state -- a knob here would need a sentinel.
+     * Long-running work calls withTimeout() explicitly.
+     */
+    public const int DEFAULT_TIMEOUT_SECONDS = 300;
+
+    /**
      * @param  list<string>  $tokens
      * @param  array<string, string>  $env
      */
@@ -18,7 +26,7 @@ final readonly class CommandLine
         public array $tokens,
         public ?string $cwd = null,
         public array $env = [],
-        public ?int $timeout = 300,
+        public ?int $timeout = self::DEFAULT_TIMEOUT_SECONDS,
     ) {}
 
     /**
