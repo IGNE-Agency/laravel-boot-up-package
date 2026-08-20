@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Boot\DevProcessRegistrar;
+use Igne\LaravelBootUp\Boot\HorizonPresence;
 use Igne\LaravelBootUp\Config\DevConfig;
 use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Config\HorizonConfig;
@@ -24,7 +25,6 @@ use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Igne\LaravelBootUp\Tests\Concerns\InteractsWithDevCommands;
-use Igne\LaravelBootUp\Workers\HorizonPresence;
 use Illuminate\Config\Repository;
 use Illuminate\Foundation\DevCommand;
 use Illuminate\Foundation\DevCommands;

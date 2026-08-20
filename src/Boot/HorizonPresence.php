@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Igne\LaravelBootUp\Workers;
+namespace Igne\LaravelBootUp\Boot;
 
 use Igne\LaravelBootUp\Config\HorizonConfig;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;

@@ -20,7 +20,6 @@ use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
-use Igne\LaravelBootUp\Workers\HorizonPresence;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Foundation\DevCommand;
 use Illuminate\Foundation\DevCommands;
