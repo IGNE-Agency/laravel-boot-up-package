@@ -56,7 +56,7 @@ $this->app->singleton(
 );
 ```
 
-That's it. `app:serve` and `app:deploy` resolve the binding lazily — no binding
+That's it. `php artisan dev` and `app:deploy` resolve the binding lazily — no binding
 means no project commands, no error.
 
 ## Command types
@@ -98,7 +98,7 @@ migrations
 queue restart
 ```
 
-The local `app:serve` / `app:deploy` pipeline runs the two migration phases by
+The local `dev` / `app:deploy` pipeline runs the two migration phases by
 default. To run the deploy phases locally too, add
 `RunDeployTasks::class.':before-deploy'` / `':after-deploy'` to
 `boot-up.serve.steps` / `boot-up.deploy.steps`. Need a different position

@@ -28,7 +28,7 @@ return [
     |--------------------------------------------------------------------------
     | Environment guard
     |--------------------------------------------------------------------------
-    | app:serve refuses to run when APP_ENV (read from the .env file) is not
+    | php artisan dev refuses to run when APP_ENV (read from the .env file) is not
     | in 'allowed'. A missing .env or APP_ENV counts as a fresh local setup.
     */
     'environment' => [
@@ -58,7 +58,7 @@ return [
         // prompts on first link, defaulting to the project folder name.
         'site' => env('BOOT_UP_HERD_SITE'),
 
-        // app:serve does not trust "Herd started" — it verifies Nginx
+        // boot-up does not trust "Herd started" — it verifies Nginx
         // actually answers the served site. A running Herd is never
         // restarted (only a down one, once, halfway through the checks),
         // so a healthy Herd is never disrupted. 'attempts' bounds the
@@ -189,7 +189,7 @@ return [
     |--------------------------------------------------------------------------
     | Shutdown behaviour
     |--------------------------------------------------------------------------
-    | Whether teardown (Ctrl+C on app:serve, app:down) asks before stopping
+    | Whether teardown (Ctrl+C on php artisan dev, app:down) asks before stopping
     | the development server, and what the unattended answer is.
     */
     'shutdown' => [
@@ -199,7 +199,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | app:serve
+    | php artisan dev
     |--------------------------------------------------------------------------
     | The full boot, in order. Insert your own Contracts\Step classes anywhere,
     | remove steps you do not want, or reorder them. 'auto_accept' (or --yes)

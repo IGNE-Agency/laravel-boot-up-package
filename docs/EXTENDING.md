@@ -1,70 +1,68 @@
 # Extending the package
 
-Seven extension points, none of which require touching package code.
+Seven extension points, none of which require touching package code. The first
+is Laravel's own API rather than boot-up's — extra dev processes are registered
+the same way in any Laravel application, and boot-up simply boots the project
+before they run.
 
-## Registered dev processes
+## Dev processes
 
-Extra long-running processes for `app:serve` — the package's take on
-Laravel's `php artisan dev` / `DevCommands`. Register from any service
-provider's `boot()`:
+`php artisan dev` is Laravel's own command with boot-up's boot in front of it,
+so extra long-running processes are registered the ordinary Laravel way — from
+any service provider's `boot()`, with no boot-up API involved:
 
 ```php
-use Igne\LaravelBootUp\Facades\BootCommands;
+use Illuminate\Foundation\DevCommands;
 
-BootCommands::artisan('reverb:start', 'reverb')->orange();
-BootCommands::register('stripe listen --forward-to '.config('app.url'));
-BootCommands::packageManager('run dev')->after('queue');
-BootCommands::packageManagerExec('vite --port 3000');
+DevCommands::register('stripe listen --forward-to '.config('app.url'))->orange();
+DevCommands::artisan('reverb:start', 'reverb');
+DevCommands::node('dev', 'vite');
+DevCommands::nodeExec('vite --port 3000');
 ```
 
-`register()` runs the command as written; `artisan()` prefixes `php artisan`;
-`packageManager()` prefixes the project's package manager binary
-(`packageManager('run dev')` becomes `bun run dev` — the same contract as
-`DeployTask::packageManager()`); `packageManagerExec()` prefixes the
-manager's exec runner (`bunx` / `npx` / `pnpm exec` / `yarn exec`).
+Laravel's own documentation covers that API in full: naming, the six colours,
+`only()` / `except()`, and the priority rule that an application's registration
+always outranks a package's. Anything registered this way also shows up in
+`php artisan dev:list`.
 
-The optional second argument names the process; otherwise the command's
-first token is the name (`packageManager('run <script>')` names itself after
-the script). The name is the ledger label, the `[prefix]` in the combined
-stream, and the slot the replacement and filter semantics below act on.
+`DevCommands` has no per-process environment or working directory, because the
+command is a shell string — write what you need into it:
 
-Each registration returns a fluent object:
+```php
+DevCommands::register('STRIPE_KEY=sk_test stripe listen');
+DevCommands::register('sh -c "cd services/api && npm run watch"');
+```
 
-- `->blue()` `->purple()` `->pink()` `->orange()` `->green()` `->yellow()`,
-  or `->color($streamColor)` — pick the stream prefix color
-  (`Enums\StreamColor`); processes without one draw the unused palette
-  colors in stream order.
-- `->inTerminal()` / `->inBackground()` — run in an own terminal window /
-  detached with a log file, instead of the combined stream.
-- `->env([...])`, `->in($directory)` — extra environment variables / working
-  directory.
-- `->first()`, `->last()`, `->before('vite')`, `->after('queue')` — position
-  in the combined output stream. Built-in stream names: `server`, `queue`,
-  `horizon`, `reverb`, `scheduler`, `vite`. The last call wins; unknown or
-  absent targets are ignored.
+### What boot-up adds
 
-Semantics worth knowing:
+The framework registers four processes unconditionally: `server`, `queue`,
+`logs` and `vite`. boot-up decides which of them this project can actually
+use, and rewrites each command for the server that booted:
 
-- **Replacing a built-in** — registering under a built-in worker's stream
-  name (`queue`, `horizon`, `reverb`, `scheduler`, `vite`) replaces it
-  entirely: the built-in's config keys no longer apply, the registration's
-  own run mode/color/placement govern, and it inherits the built-in's slot
-  in the stream. The name `server` is reserved for the development server.
-- **Filters** — `BootCommands::only('queue', 'stripe')` and
-  `BootCommands::except('scheduler')` filter built-ins and registrations
-  alike; calls merge.
-- **Priority** — registrations from application code always beat a vendor
-  package's registration under the same name; a vendor package can suggest a
-  process but never silently override yours.
-- Registered processes launch in the services stage of the boot, are
-  ledger-tracked (`app:status` sees them, `app:down` stops them), get server
-  command rewrites (Sail), and degrade to background processes under
-  `--detach` or a non-interactive stdout — exactly like the built-ins.
+| Process     | boot-up's decision                                                                |
+| ----------- | --------------------------------------------------------------------------------- |
+| `server`    | The driver's own command — or none at all under Herd, which serves the app itself. |
+| `queue`     | `queue:work` on the connection from `.env`, dropped on `sync` or when Horizon runs the queue. |
+| `horizon`   | Started when `laravel/horizon` is installed and enabled.                           |
+| `reverb`    | Started when `laravel/reverb` is installed and enabled.                            |
+| `scheduler` | `schedule:work`, opt-in through `boot-up.scheduler.enabled`.                       |
+| `vite`      | The package manager boot-up installed with, dropped without a `dev` script.        |
+| `logs`      | Left to the framework, dropped when `laravel/pail` is not installed.               |
+
+Your own registration always wins: register under one of those names and
+boot-up leaves it alone. It also leaves a `server` another package registered —
+Octane's, for instance — untouched. For the rest it takes a package's
+registration over, because it is the only party that knows the command has to
+run inside Sail's containers.
+
+Under `php artisan dev --detach` every process starts detached instead, with a
+log file in `storage/logs/boot-up/`, visible to `app:status` and stoppable with
+`app:down`.
 
 ## Project commands
 
 Generators and warmers that run across four deploy phases (`beforeDeploy`,
-`beforeMigrations`, `afterMigrations`, `afterDeploy`) during `app:serve` /
+`beforeMigrations`, `afterMigrations`, `afterDeploy`) during `php artisan dev` /
 `app:deploy` and get embedded in exported deployment scripts.
 
 1. Implement `Igne\LaravelBootUp\Contracts\ProvidesDeployTasks` (all four
@@ -82,7 +80,7 @@ Full guide: [CUSTOM_COMMANDS.md](CUSTOM_COMMANDS.md) — example:
 Print through the package's terminal for consistent styling: the global
 `terminal()` helper (no import needed — `terminal()->success('Done.')`) or the
 `Igne\LaravelBootUp\Facades\Terminal` facade; both resolve the same singleton,
-so your output plays nicely with the `app:serve` progress bar. A
+so your output plays nicely with the boot progress bar. A
 `Igne\LaravelBootUp\Facades\Platform` facade (`Platform::isWindows()`) exists
 too.
 
@@ -112,6 +110,10 @@ driver into extra behaviour:
   (like Sail's Docker).
 - `RewritesCommands` — `commandRewrites()` reroutes project commands through
   the server (like Sail's `./vendor/bin/sail` prefix).
+- `ProvidesDevProcess` — `devProcess()` gives the command that runs as the
+  `[server]` dev process, or `null` when the server is external to the run
+  (Herd serves through its own nginx, so it has no process here) or has
+  already been started some other way.
 
 ## Custom tools
 

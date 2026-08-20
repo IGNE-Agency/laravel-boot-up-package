@@ -1,36 +1,44 @@
 # Commands
 
 The authoritative reference is always the CLI itself — `php artisan list`
-shows every command, and `php artisan app:serve --help` (or any other
+shows every command, and `php artisan dev --help` (or any other
 command with `--help`) shows its full signature. This page mirrors those
 signatures with more context.
 
-## `app:serve`
+## `dev`
 
-Boot everything the application needs and serve it locally. Prints the plan
-first, asks to continue, then works through it with a progress bar and a
-section divider per stage. Long-running workers stream into the same
-terminal by default; Ctrl+C tears everything down.
+Boot everything the application needs, then run the dev processes. Prints the
+plan first, asks to continue, then works through it with a progress bar and a
+section divider per stage — and hands off to Laravel's dev terminal, where each
+process gets its own tab. Ctrl+C (or `q`) tears everything down.
+
+This is Laravel's own `dev` command with the boot in front of it, so every
+option it defines works here too: `--tabs`, `--stream`, `--inline`,
+`--timestamps`, `--no-restart`, `--json` and the buffer sizes. `app:serve` still
+works as a deprecated alias.
 
 ```bash
-php artisan app:serve
+php artisan dev
 ```
 
 | Argument / option  | Description                                                                                                                           |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `server`           | The development server to use: `herd`, `sail`, `artisan`, or any driver registered in `boot-up.server.drivers`. Prompts when omitted. |
-| `--seed` / `-s`    | Seed the database after migrating — always, even with nothing to migrate.                                                             |
+| `--seed`           | Seed the database after migrating — always, even with nothing to migrate. (No `-s`: the framework claims it for `--stream`.)          |
 | `--fresh`          | Drop all tables and re-run every migration (asks first).                                                                              |
 | `--no-migrate`     | Skip running pending migrations. Wins over `--fresh` as the least destructive option.                                                 |
 | `--update` / `-u`  | Update dependencies instead of installing.                                                                                            |
 | `--without-queue`  | Do not start a queue worker.                                                                                                          |
 | `--without-assets` | Skip frontend dependencies and assets.                                                                                                |
-| `--detach` / `-d`  | Do not stream combined worker output; run everything detached with logs in `storage/logs/boot-up/`.                                   |
+| `--detach` / `-d`  | Run the dev processes in the background instead of this terminal, with logs in `storage/logs/boot-up/`.                               |
 | `--yes` / `-y`     | Run without the confirmation prompt (config: `serve.auto_accept`).                                                                    |
+
+The dev terminal needs Node 22.13 or newer. Below that, `--detach` runs the
+same processes without it.
 
 ## `app:down`
 
-Stop tracked processes and the server `app:serve` started — and nothing it
+Stop tracked processes and the server `php artisan dev` started — and nothing it
 didn't. After a failed Sail boot it also offers `sail down` to clear
 leftover Docker resources (stopped containers, networks, half-pulled
 images).
@@ -44,8 +52,9 @@ No arguments or options; the stop-server prompt is configured by the
 
 ## `app:status`
 
-Show the active server and tracked processes, with where each one's output
-lives (the combined stream, a terminal window, or its log file).
+Show the active server and tracked processes, with the log file each one's
+output goes to. Only a detached run has tracked processes: in the foreground
+they belong to the dev terminal.
 
 ```bash
 php artisan app:status
@@ -54,7 +63,7 @@ php artisan app:status
 ## `app:deploy`
 
 Install dependencies, run project commands and migrate — without booting a
-server, starting workers, or opening a browser. Like `app:serve`, it prints
+server, running dev processes, or opening a browser. Like `dev`, it prints
 the plan up front and tracks a progress bar as it runs.
 
 ```bash

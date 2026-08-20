@@ -1,6 +1,6 @@
 {
   "name": "igne-agency/laravel-boot-up",
-  "description": "Boot a Laravel project on any machine with one command: app:serve installs missing tools (PHP, Node, Composer, Herd, Docker), creates .env, sets up the database, runs migrations, builds assets, starts a queue worker and serves via Herd, Sail or artisan serve; app:down cleanly stops everything it started. Also exports deployment scripts for Laravel Forge and fortrabbit (generate:deploy-script) and generates CI/CD pipelines with linting, tests and webhook deploys for GitHub Actions and Bitbucket Pipelines (generate:pipeline). Development only - not for production use.",
+  "description": "Boot a Laravel project on any machine with one command: php artisan dev installs missing tools (PHP, Node, Composer, Herd, Docker), creates .env, sets up the database, runs migrations, builds assets and serves via Herd, Sail or artisan serve, then hands the queue worker and asset watcher to Laravel's own dev terminal; app:down cleanly stops everything it started. Also exports deployment scripts for Laravel Forge and fortrabbit (generate:deploy-script) and generates CI/CD pipelines with linting, tests and webhook deploys for GitHub Actions and Bitbucket Pipelines (generate:pipeline). Development only - not for production use.",
   "type": "library",
   "license": "MIT",
   "keywords": [

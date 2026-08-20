@@ -1,7 +1,8 @@
 # Laravel Boot-Up
 
 A development-only Laravel package that boots a project on any machine — even a
-blank one — with two commands, and cleanly shuts it down again.
+blank one — with two commands, and cleanly shuts it down again. It builds on
+Laravel's own `php artisan dev` rather than replacing it.
 
 > Requires PHP 8.3+, Laravel 13, macOS or Linux (native Windows fails fast with
 > a clear message — use WSL2). Development only.
@@ -19,31 +20,37 @@ this package has no business in production.
 
 ```bash
 composer install
-php artisan app:serve
+php artisan dev
 ```
 
-`app:serve` installs the tools you're missing, creates your `.env`, sets up the
-database, installs dependencies, runs migrations, builds or watches assets,
-starts the workers your project needs, and serves the app via **Herd**,
-**Sail**, or **`php artisan serve`**. Workers stream into the same terminal;
-Ctrl+C stops everything. `app:down` stops everything it started — and nothing
-it didn't.
+`dev` installs the tools you're missing, creates your `.env`, sets up the
+database, installs dependencies, runs migrations, builds assets, and serves the
+app via **Herd**, **Sail**, or **`php artisan serve`** — then hands the queue
+worker, the asset watcher and everything else to Laravel's own dev terminal,
+where each process gets its own searchable tab. `app:down` stops everything it
+started — and nothing it didn't.
 
-Your own dev processes join the same stream — register them from a service
-provider, `php artisan dev`-style:
+This is Laravel's `php artisan dev` with the boot in front of it, so your own
+processes join it exactly as they would in any Laravel application:
 
 ```php
-BootCommands::register('stripe listen --forward-to '.config('app.url'))->orange();
+use Illuminate\Foundation\DevCommands;
+
+DevCommands::register('stripe listen --forward-to '.config('app.url'))->orange();
 ```
 
-See [Registered dev processes](docs/EXTENDING.md#registered-dev-processes).
+boot-up only decides which of the built-in processes your project actually
+needs — no queue worker on a `sync` connection, no log tail without Pail, no
+`vite` without a `dev` script, and every command rewritten to run inside Sail's
+containers when that is where the project lives. See
+[Dev processes](docs/EXTENDING.md#dev-processes).
 
 ## Commands
 
 | Command                  | What it does                                                          |
 | ------------------------ | --------------------------------------------------------------------- |
-| `app:serve`              | Boot everything the application needs and serve it locally.           |
-| `app:down`               | Stop tracked processes and the server `app:serve` started.            |
+| `dev`                    | Boot everything the application needs, then run the dev processes.    |
+| `app:down`               | Stop tracked processes and the server `dev` started.                  |
 | `app:status`             | Show the active server and tracked processes.                         |
 | `app:deploy`             | Install, run project commands and migrate — without booting a server. |
 | `generate:deploy-script` | Export a paste-ready deployment script (Forge, fortrabbit).           |
@@ -51,7 +58,7 @@ See [Registered dev processes](docs/EXTENDING.md#registered-dev-processes).
 | `generate:git-hooks`     | Install a tracked pre-commit hook running the pipeline's Pint check.  |
 
 Every flag is documented in [docs/COMMANDS.md](docs/COMMANDS.md) — and
-`php artisan list` / `php artisan app:serve --help` are always authoritative.
+`php artisan list` / `php artisan dev --help` are always authoritative.
 
 ## Documentation
 
