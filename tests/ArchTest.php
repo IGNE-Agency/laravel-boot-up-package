@@ -49,10 +49,8 @@ arch('every pipeline step implements the Step contract')
         'Igne\LaravelBootUp\Deploy\Steps',
         'Igne\LaravelBootUp\Environment\Steps',
         'Igne\LaravelBootUp\Frontend\Steps',
-        'Igne\LaravelBootUp\Queue\Steps',
         'Igne\LaravelBootUp\Serve\Steps',
         'Igne\LaravelBootUp\Servers\Steps',
-        'Igne\LaravelBootUp\Workers\Steps',
         'Igne\LaravelBootUp\Tools\Steps',
     ])
     ->toImplement(Step::class);

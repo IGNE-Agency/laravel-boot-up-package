@@ -3,10 +3,8 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Data\VersionConstraint;
-use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tools\Installers\Homebrew;
 use Igne\LaravelBootUp\Tools\Installers\PhpInstaller;
 use Igne\LaravelBootUp\Tools\ToolInspector;
@@ -27,10 +25,7 @@ function makePhpInstaller(string $workDir): PhpInstaller
     $runner = new ProcessRunner(
         processes: app(Factory::class),
         ledger: new ProcessLedger($workDir.'/processes.json'),
-        terminal: new NullTerminalLauncher,
-        poller: new Poller,
         logDirectory: $workDir.'/logs',
-        runtimeDirectory: $workDir.'/runtime',
     );
 
     return new PhpInstaller(new ToolInspector($runner), new Homebrew($runner), $runner);

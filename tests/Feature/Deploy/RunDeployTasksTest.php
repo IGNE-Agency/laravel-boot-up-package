@@ -11,14 +11,11 @@ use Igne\LaravelBootUp\Deploy\DeployTaskRunner;
 use Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks;
 use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Enums\PackageManager;
-use Igne\LaravelBootUp\Enums\RunMode;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
-use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
-use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Pipeline\Pipeline;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -47,14 +44,11 @@ function bindRunProjectCommandsFixtures(string $dir): void
         runner: new ProcessRunner(
             processes: app(Factory::class),
             ledger: new ProcessLedger($dir.'/processes.json'),
-            terminal: new NullTerminalLauncher,
-            poller: new Poller,
             logDirectory: $dir.'/logs',
-            runtimeDirectory: $dir.'/runtime',
         ),
         rewriter: new CommandRewriter,
         packageManagers: new PackageManagerSelector(
-            new FrontendConfig(PackageManager::BUN, AssetMode::Watch, RunMode::Background),
+            new FrontendConfig(PackageManager::BUN, AssetMode::Watch),
             new PackageJson($dir.'/package.json'),
         ),
     ));

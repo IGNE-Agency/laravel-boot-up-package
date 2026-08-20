@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Contracts\TerminalLauncher;
 use Igne\LaravelBootUp\Data\ProcessRecord;
-use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Services\Poller;
@@ -27,50 +25,20 @@ afterEach(function (): void {
  * Zero grace periods so a surviving process fails fast instead of
  * sleeping through the real TERM/KILL windows.
  */
-function reaper(ProcessLedger $ledger, ?TerminalLauncher $terminal = null): ProcessReaper
+function reaper(ProcessLedger $ledger): ProcessReaper
 {
     return new ProcessReaper(
         app(Factory::class),
         $ledger,
         new Poller,
-        $terminal ?? new NullTerminalLauncher,
         termGraceSeconds: 0,
         killGraceSeconds: 0,
     );
 }
 
-/**
- * A terminal launcher that records the window handles it is asked to close.
- */
-function recordingTerminal(): TerminalLauncher
+function workerRecord(int $pid = 4242, ?string $startedAt = null): ProcessRecord
 {
-    return new class implements TerminalLauncher
-    {
-        /** @var list<string> */
-        public array $closed = [];
-
-        public function available(): bool
-        {
-            return true;
-        }
-
-        public function open(string $command, ?string $directory = null): ?string
-        {
-            return null;
-        }
-
-        public function close(?string $handle): void
-        {
-            if ($handle !== null) {
-                $this->closed[] = $handle;
-            }
-        }
-    };
-}
-
-function workerRecord(int $pid = 4242, ?string $startedAt = null, ?string $window = null): ProcessRecord
-{
-    return new ProcessRecord($pid, 'queue-worker', 'php artisan queue:work database', $startedAt ?? date(DATE_ATOM), $window);
+    return new ProcessRecord($pid, 'queue', 'php artisan queue:work database', $startedAt ?? date(DATE_ATOM));
 }
 
 test('a process that survives KILL stays in the ledger with a warning', function (): void {
@@ -89,7 +57,7 @@ test('a process that survives KILL stays in the ledger with a warning', function
     ProcessFaker::assertRan('kill -KILL 4242');
     expect($reaped)->toBeFalse()
         ->and($this->ledger->all())->toHaveCount(1);
-    Prompt::assertStrippedOutputContains('Could not stop queue-worker (pid 4242)');
+    Prompt::assertStrippedOutputContains('Could not stop queue (pid 4242)');
 });
 
 test('a confirmed kill forgets the ledger entry and reports success', function (): void {
@@ -180,29 +148,6 @@ test('signals the whole descendant tree, deepest first', function (): void {
     ProcessFaker::assertRan('kill -TERM 4242');
     // The KILL pass never runs because the tree is gone after TERM.
     ProcessFaker::assertDidntRun('kill -KILL*');
-});
-
-test('closes the terminal window once the process is gone', function (): void {
-    Prompt::fake();
-    $terminal = recordingTerminal();
-    $this->ledger->record(workerRecord(window: '55'));
-
-    $alive = true;
-    ProcessFaker::fake([
-        'kill -0 4242' => function () use (&$alive) {
-            return Process::result(exitCode: $alive ? 0 : 1);
-        },
-        'ps -p 4242*' => fn () => Process::result('00:05'),
-        'kill -TERM 4242' => function () use (&$alive) {
-            $alive = false;
-
-            return Process::result();
-        },
-    ]);
-
-    reaper($this->ledger, $terminal)->reap(workerRecord(window: '55'));
-
-    expect($terminal->closed)->toBe(['55']);
 });
 
 test('prune drops dead entries and keeps live ones without signalling', function (): void {

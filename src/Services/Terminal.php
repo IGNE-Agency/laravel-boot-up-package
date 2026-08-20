@@ -6,7 +6,7 @@ namespace Igne\LaravelBootUp\Services;
 
 use Closure;
 use Igne\LaravelBootUp\Data\Lines;
-use Igne\LaravelBootUp\Enums\StreamColor;
+use Illuminate\Foundation\DevCommandColor;
 use Laravel\Prompts\Concerns\Colors;
 
 use function Laravel\Prompts\confirm;
@@ -118,7 +118,7 @@ final class Terminal
      */
     public function orange(string $text): string
     {
-        return $this->hex(StreamColor::Orange->value, $text);
+        return $this->hex(DevCommandColor::ORANGE->value, $text);
     }
 
     /**

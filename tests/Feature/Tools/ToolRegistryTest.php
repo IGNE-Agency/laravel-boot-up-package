@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\ToolsConfig;
 use Igne\LaravelBootUp\Exceptions\ToolException;
-use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\RegistryCustomToolSpy;
 use Igne\LaravelBootUp\Tools\Installers\ComposerInstaller;
 use Igne\LaravelBootUp\Tools\Installers\HomebrewInstaller;
@@ -23,10 +21,7 @@ beforeEach(function (): void {
     $this->app->instance(ProcessRunner::class, new ProcessRunner(
         processes: app(Factory::class),
         ledger: new ProcessLedger($this->workDir.'/processes.json'),
-        terminal: new NullTerminalLauncher,
-        poller: new Poller,
         logDirectory: $this->workDir.'/logs',
-        runtimeDirectory: $this->workDir.'/runtime',
     ));
 });
 

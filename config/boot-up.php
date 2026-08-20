@@ -129,7 +129,6 @@ return [
         // (package.json's please-use-* engines sentinel always wins).
         'package_manager' => env('BOOT_UP_PACKAGE_MANAGER'),
         'assets' => env('BOOT_UP_ASSETS', 'watch'), // watch | build | skip
-        'watch_in' => env('BOOT_UP_ASSETS_WATCH_IN', 'combined'), // combined | terminal | background
     ],
 
     /*
@@ -141,7 +140,6 @@ return [
     */
     'queue' => [
         'enabled' => env('BOOT_UP_QUEUE', true),
-        'run_in' => env('BOOT_UP_QUEUE_RUN_IN', 'combined'), // combined | terminal | background
         'flags' => [],
     ],
 
@@ -154,24 +152,20 @@ return [
     | applies). The scheduler is opt-in: schedule:work on a project with
     | no scheduled tasks is pure noise.
     |
-    | run_in: 'combined' streams the worker into the app:serve terminal with
-    | a colored [name] prefix (Ctrl+C stops everything), 'terminal' opens its
-    | own terminal window, 'background' runs it detached with logs in
-    | storage/logs/boot-up/.
+    | Each of these runs as a dev process: `php artisan dev` streams them all
+    | in one terminal, and `php artisan dev --detach` runs them in the
+    | background with logs in storage/logs/boot-up/.
     */
     'horizon' => [
         'enabled' => env('BOOT_UP_HORIZON', true),
-        'run_in' => env('BOOT_UP_HORIZON_RUN_IN', 'combined'), // combined | terminal | background
     ],
 
     'reverb' => [
         'enabled' => env('BOOT_UP_REVERB', true),
-        'run_in' => env('BOOT_UP_REVERB_RUN_IN', 'combined'), // combined | terminal | background
     ],
 
     'scheduler' => [
         'enabled' => env('BOOT_UP_SCHEDULER', false),
-        'run_in' => env('BOOT_UP_SCHEDULER_RUN_IN', 'combined'), // combined | terminal | background
     ],
 
     /*
@@ -189,21 +183,6 @@ return [
     */
     'dev' => [
         'logs' => env('BOOT_UP_DEV_LOGS', true),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Background processes
-    |--------------------------------------------------------------------------
-    | Services launched in their own terminal window (run_in => 'terminal')
-    | report their PID back through a pid file. A cold Terminal.app or a heavy
-    | shell startup profile (nvm, oh-my-zsh, ...) can delay that; this bounds
-    | the wait in seconds before boot-up recovers the PID from the process
-    | table or, failing that, restarts the process in the background — it never
-    | aborts the boot.
-    */
-    'process' => [
-        'terminal_pid_timeout' => (int) env('BOOT_UP_TERMINAL_PID_TIMEOUT', 20),
     ],
 
     /*

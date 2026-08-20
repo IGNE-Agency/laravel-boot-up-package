@@ -6,10 +6,8 @@ use Igne\LaravelBootUp\Config\DeployConfig;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Deploy\Steps\CacheFrameworkFiles;
-use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -32,10 +30,7 @@ function cacheFrameworkFilesStep(string $dir, bool $enabled): CacheFrameworkFile
         new ProcessRunner(
             processes: app(Factory::class),
             ledger: new ProcessLedger($dir.'/processes.json'),
-            terminal: new NullTerminalLauncher,
-            poller: new Poller,
             logDirectory: $dir.'/logs',
-            runtimeDirectory: $dir.'/runtime',
         ),
     );
 }

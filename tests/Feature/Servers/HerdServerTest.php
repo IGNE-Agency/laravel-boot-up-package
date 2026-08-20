@@ -7,13 +7,11 @@ use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Exceptions\ServerException;
-use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\Herd\HerdServer;
 use Igne\LaravelBootUp\Servers\Herd\HerdServices;
 use Igne\LaravelBootUp\Servers\Herd\HerdSites;
-use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -38,10 +36,7 @@ function herdServer(string $workDir, ?string $projectPath = null, ?string $site 
     $runner = new ProcessRunner(
         processes: app(Factory::class),
         ledger: new ProcessLedger($workDir.'/processes.json'),
-        terminal: new NullTerminalLauncher,
-        poller: new Poller,
         logDirectory: $workDir.'/logs',
-        runtimeDirectory: $workDir.'/runtime',
     );
 
     return new HerdServer(

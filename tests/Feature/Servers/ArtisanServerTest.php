@@ -10,7 +10,6 @@ use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
-use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -37,15 +36,12 @@ function artisanServer(ProcessLedger $ledger, string $workDir, ?ArtisanServeConf
     $runner = new ProcessRunner(
         processes: app(Factory::class),
         ledger: $ledger,
-        terminal: new NullTerminalLauncher,
-        poller: new Poller,
         logDirectory: $workDir.'/logs',
-        runtimeDirectory: $workDir.'/runtime',
     );
 
     return new ArtisanServer(
         $runner,
-        new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminalLauncher),
+        new ProcessReaper(app(Factory::class), $ledger, new Poller),
         $config ?? new ArtisanServeConfig,
     );
 }

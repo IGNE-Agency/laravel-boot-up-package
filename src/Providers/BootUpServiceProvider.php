@@ -14,7 +14,6 @@ use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Config\HerdConfig;
 use Igne\LaravelBootUp\Config\HorizonConfig;
 use Igne\LaravelBootUp\Config\PipelineConfig;
-use Igne\LaravelBootUp\Config\ProcessConfig;
 use Igne\LaravelBootUp\Config\QueueConfig;
 use Igne\LaravelBootUp\Config\ReverbConfig;
 use Igne\LaravelBootUp\Config\SailConfig;
@@ -29,28 +28,20 @@ use Igne\LaravelBootUp\Console\DownCommand;
 use Igne\LaravelBootUp\Console\GenerateGitHooksCommand;
 use Igne\LaravelBootUp\Console\PipelineCommand;
 use Igne\LaravelBootUp\Console\StatusCommand;
-use Igne\LaravelBootUp\Contracts\TerminalLauncher;
 use Igne\LaravelBootUp\Deploy\Composer;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Environment\ShellProfile;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
-use Igne\LaravelBootUp\Process\LinuxTerminalLauncher;
-use Igne\LaravelBootUp\Process\MacTerminalLauncher;
-use Igne\LaravelBootUp\Process\NullTerminalLauncher;
-use Igne\LaravelBootUp\Process\OutputMultiplexer;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Serve\BootCommandRegistry;
-use Igne\LaravelBootUp\Serve\CombinedRunPlan;
 use Igne\LaravelBootUp\Serve\ShutdownRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Herd\HerdSites;
 use Igne\LaravelBootUp\Services\GeneratedFilePublisher;
 use Igne\LaravelBootUp\Services\LockfileConflictDetector;
 use Igne\LaravelBootUp\Services\Platform;
-use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Services\Terminal;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Foundation\Console\DevCommand as FrameworkDevCommand;
@@ -70,7 +61,6 @@ final class BootUpServiceProvider extends ServiceProvider
         HerdConfig::class,
         HorizonConfig::class,
         PipelineConfig::class,
-        ProcessConfig::class,
         QueueConfig::class,
         ReverbConfig::class,
         SailConfig::class,
@@ -94,14 +84,6 @@ final class BootUpServiceProvider extends ServiceProvider
 
         $this->app->singleton(PackageManagerSelector::class);
         $this->app->singleton(ShutdownRunner::class);
-        $this->app->singleton(CombinedRunPlan::class);
-
-        // Bound in register() so providers can call BootCommands::…
-        // from their boot() regardless of boot order.
-        $this->app->singleton(BootCommandRegistry::class, fn (Application $app): BootCommandRegistry => new BootCommandRegistry(
-            runningInConsole: $app->runningInConsole(),
-            vendorPath: $app->basePath('vendor'),
-        ));
     }
 
     /**
@@ -133,28 +115,18 @@ final class BootUpServiceProvider extends ServiceProvider
     }
 
     /**
-     * The output seam plus the platform-picked OS terminal-window launcher.
+     * The output seam, and the platform it renders on.
      */
     private function registerTerminal(): void
     {
         $this->app->singleton(Terminal::class, fn () => new Terminal);
 
         $this->app->singleton(Platform::class, fn () => new Platform);
-
-        $this->app->singleton(TerminalLauncher::class, function (Application $app): TerminalLauncher {
-            $platform = $app->make(Platform::class);
-
-            return match (true) {
-                $platform->isMacos() => $app->make(MacTerminalLauncher::class),
-                $platform->isLinux() => $app->make(LinuxTerminalLauncher::class),
-                default => new NullTerminalLauncher,
-            };
-        });
     }
 
     /**
      * The process ledger and active-server record survive the
-     * app:serve → app:down boundary; the runner feeds them.
+     * dev → app:down boundary; the runner feeds them.
      */
     private function registerProcessTracking(): void
     {
@@ -169,16 +141,7 @@ final class BootUpServiceProvider extends ServiceProvider
         $this->app->singleton(ProcessRunner::class, fn (Application $app) => new ProcessRunner(
             processes: $app->make(Factory::class),
             ledger: $app->make(ProcessLedger::class),
-            terminal: $app->make(TerminalLauncher::class),
-            poller: $app->make(Poller::class),
             logDirectory: $app->storagePath('logs/boot-up'),
-            runtimeDirectory: $app->storagePath('framework/boot-up'),
-            terminalPidTimeout: $app->make(ProcessConfig::class)->terminalPidTimeout,
-        ));
-
-        $this->app->singleton(OutputMultiplexer::class, fn (Application $app) => new OutputMultiplexer(
-            processes: $app->make(Factory::class),
-            ledger: $app->make(ProcessLedger::class),
         ));
     }
 

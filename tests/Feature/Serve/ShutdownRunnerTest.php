@@ -6,7 +6,6 @@ use Igne\LaravelBootUp\Config\DevServerConfig;
 use Igne\LaravelBootUp\Config\ShutdownConfig;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\ProcessRecord;
-use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Serve\ShutdownRunner;
@@ -46,7 +45,7 @@ function shutdownRunner(ProcessLedger $ledger, ActiveServerStore $store, bool $p
 
     return new ShutdownRunner(
         $ledger,
-        new ProcessReaper(app(Factory::class), $ledger, new Poller, new NullTerminalLauncher),
+        new ProcessReaper(app(Factory::class), $ledger, new Poller),
         $store,
         new ServerSelector(app(), $drivers),
         new StopServerPrompt($shutdown),
@@ -153,7 +152,7 @@ test('keeps the ledger entry when a process cannot be stopped', function (): voi
 
     (new ShutdownRunner(
         $this->ledger,
-        new ProcessReaper(app(Factory::class), $this->ledger, new Poller, new NullTerminalLauncher, termGraceSeconds: 0, killGraceSeconds: 0),
+        new ProcessReaper(app(Factory::class), $this->ledger, new Poller, termGraceSeconds: 0, killGraceSeconds: 0),
         $this->store,
         new ServerSelector(app(), new DevServerConfig(drivers: ['double' => RecordingServer::class])),
         new StopServerPrompt(new ShutdownConfig(promptStopServer: false, stopServerByDefault: true)),

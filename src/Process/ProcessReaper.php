@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Process;
 
-use Igne\LaravelBootUp\Contracts\TerminalLauncher;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
@@ -13,7 +12,7 @@ use Illuminate\Process\Factory;
  * Terminates ledger-tracked processes: TERM the whole descendant tree,
  * a grace period, then KILL. Guards against PID reuse by comparing the
  * running process's start time against the recorded snapshot before
- * signalling, and closes each process's terminal window once it is gone.
+ * signalling.
  */
 final class ProcessReaper
 {
@@ -21,7 +20,6 @@ final class ProcessReaper
         private readonly Factory $processes,
         private readonly ProcessLedger $ledger,
         private readonly Poller $poller,
-        private readonly TerminalLauncher $terminal,
         private readonly int $termGraceSeconds = 5,
         private readonly int $killGraceSeconds = 2,
     ) {}
@@ -139,11 +137,10 @@ final class ProcessReaper
     }
 
     /**
-     * The process is gone: close its terminal window (if any) and forget it.
+     * The process is gone: forget it.
      */
     private function settle(ProcessRecord $record): bool
     {
-        $this->terminal->close($record->window);
         $this->ledger->forget($record->pid);
 
         return true;

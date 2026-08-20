@@ -10,14 +10,11 @@ use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Enums\PackageManager;
-use Igne\LaravelBootUp\Enums\RunMode;
 use Igne\LaravelBootUp\Exceptions\FrontendException;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
-use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -28,14 +25,11 @@ use Laravel\Prompts\Prompt;
 function bindFrontendInstallServices(string $dir): void
 {
     app()->instance(PackageJson::class, new PackageJson($dir.'/package.json'));
-    app()->instance(FrontendConfig::class, new FrontendConfig(PackageManager::BUN, AssetMode::Watch, RunMode::Background));
+    app()->instance(FrontendConfig::class, new FrontendConfig(PackageManager::BUN, AssetMode::Watch));
     app()->instance(ProcessRunner::class, new ProcessRunner(
         processes: app(Factory::class),
         ledger: new ProcessLedger($dir.'/processes.json'),
-        terminal: new NullTerminalLauncher,
-        poller: new Poller,
         logDirectory: $dir.'/logs',
-        runtimeDirectory: $dir.'/runtime',
     ));
 }
 

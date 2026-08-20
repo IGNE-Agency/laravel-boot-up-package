@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\DevServerConfig;
 use Igne\LaravelBootUp\Exceptions\ServerException;
-use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
 use Igne\LaravelBootUp\Servers\Herd\HerdServer;
 use Igne\LaravelBootUp\Servers\Sail\SailServer;
 use Igne\LaravelBootUp\Servers\ServerSelector;
-use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ValetServer;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -28,10 +26,7 @@ beforeEach(function (): void {
     app()->singleton(ProcessRunner::class, fn (): ProcessRunner => new ProcessRunner(
         processes: app(Factory::class),
         ledger: app(ProcessLedger::class),
-        terminal: new NullTerminalLauncher,
-        poller: new Poller,
         logDirectory: $this->workDir.'/logs',
-        runtimeDirectory: $this->workDir.'/runtime',
     ));
 });
 

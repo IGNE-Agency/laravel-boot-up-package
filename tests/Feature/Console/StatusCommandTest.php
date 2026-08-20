@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\ProcessRecord;
-use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
-use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -25,10 +23,7 @@ beforeEach(function (): void {
     app()->singleton(ProcessRunner::class, fn ($app) => new ProcessRunner(
         processes: $app->make(Factory::class),
         ledger: $this->ledger,
-        terminal: new NullTerminalLauncher,
-        poller: new Poller,
         logDirectory: $this->workDir.'/logs',
-        runtimeDirectory: $this->workDir.'/runtime',
     ));
 });
 

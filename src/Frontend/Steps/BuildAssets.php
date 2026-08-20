@@ -23,8 +23,8 @@ use Igne\LaravelBootUp\Servers\CommandRewriter;
 
 /**
  * One synchronous asset build, for projects that want compiled assets
- * without a watcher. Runs only under AssetMode::Build — its WatchAssets
- * sibling voices every other skip, so the two never note twice.
+ * without a watcher. Runs only under AssetMode::Build; watch mode is the
+ * asset watcher's business, and that runs as a dev process after the boot.
  */
 #[Stage(ServeStage::Assets)]
 #[Group('assets')]

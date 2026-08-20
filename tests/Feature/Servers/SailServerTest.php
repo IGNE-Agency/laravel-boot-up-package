@@ -10,7 +10,6 @@ use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Environment\ShellProfile;
 use Igne\LaravelBootUp\Exceptions\ServerException;
-use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\Sail\Docker;
@@ -48,10 +47,7 @@ function sailServer(
     $runner = new ProcessRunner(
         processes: app(Factory::class),
         ledger: new ProcessLedger($workDir.'/processes.json'),
-        terminal: new NullTerminalLauncher,
-        poller: new Poller,
         logDirectory: $workDir.'/logs',
-        runtimeDirectory: $workDir.'/runtime',
     );
 
     $config = new SailConfig(readyTimeoutSeconds: $readyTimeout, dockerStartTimeoutSeconds: $dockerTimeout);

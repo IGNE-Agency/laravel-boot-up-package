@@ -10,11 +10,9 @@ use Igne\LaravelBootUp\Data\ServeContext;
 use Igne\LaravelBootUp\Data\ServeOptions;
 use Igne\LaravelBootUp\Database\Steps\VerifyDatabaseConnection;
 use Igne\LaravelBootUp\Exceptions\DatabaseException;
-use Igne\LaravelBootUp\Process\NullTerminalLauncher;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
-use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
@@ -30,10 +28,7 @@ beforeEach(function (): void {
         new ProcessRunner(
             processes: app(Factory::class),
             ledger: new ProcessLedger($this->dir.'/processes.json'),
-            terminal: new NullTerminalLauncher,
-            poller: new Poller,
             logDirectory: $this->dir.'/logs',
-            runtimeDirectory: $this->dir.'/runtime',
         ),
         new CommandRewriter,
         config(),
