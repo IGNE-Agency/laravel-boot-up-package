@@ -11,7 +11,16 @@ final class DownCommand extends BootUpCommand implements Isolatable
 {
     protected $signature = 'app:down';
 
-    protected $description = 'Stop tracked background processes and the server that app:serve started';
+    protected $description = 'Stop tracked background processes and the server that php artisan dev started';
+
+    /**
+     * Teardown signals processes and reads the process table, so it needs a
+     * Unix-like environment just as much as the boot does.
+     */
+    protected function requiresUnix(): bool
+    {
+        return true;
+    }
 
     public function handle(ShutdownRunner $shutdown): int
     {

@@ -100,6 +100,26 @@ final class ProcessReaper
     /**
      * Returns whether every tracked process is confirmed gone.
      */
+    /**
+     * Whether anything recorded under this label is still alive. A label can
+     * hold several records after a crash-and-restart, so one live process is
+     * enough to count as running.
+     */
+    public function isRunning(string $label): bool
+    {
+        return $this->ledger->withLabel($label)
+            ->contains(fn (ProcessRecord $record): bool => $this->isAlive($record));
+    }
+
+    /**
+     * Stop everything recorded under this label.
+     */
+    public function stop(string $label): void
+    {
+        $this->ledger->withLabel($label)
+            ->each(fn (ProcessRecord $record) => $this->reap($record));
+    }
+
     public function reapAll(): bool
     {
         return $this->ledger->all()

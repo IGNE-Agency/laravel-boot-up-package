@@ -223,3 +223,36 @@ test('prune drops dead entries and keeps live ones without signalling', function
     expect($this->ledger->all())->toHaveCount(1)
         ->and($this->ledger->all()->first()->pid)->toBe(2000);
 });
+
+test('isRunning is true while any process under the label is alive', function (): void {
+    $this->ledger->record(new ProcessRecord(3001, 'queue', 'php artisan queue:work', date(DATE_ATOM)));
+    ProcessFaker::fake(['kill -0 3001' => Process::result()]);
+
+    expect(reaper($this->ledger)->isRunning('queue'))->toBeTrue();
+});
+
+test('isRunning is false when every process under the label is dead', function (): void {
+    $this->ledger->record(new ProcessRecord(3002, 'queue', 'php artisan queue:work', date(DATE_ATOM)));
+    ProcessFaker::fake(['kill -0 3002' => Process::result(exitCode: 1)]);
+
+    expect(reaper($this->ledger)->isRunning('queue'))->toBeFalse();
+});
+
+test('isRunning is false for a label nothing was ever recorded under', function (): void {
+    ProcessFaker::fake();
+
+    expect(reaper($this->ledger)->isRunning('queue'))->toBeFalse();
+    Process::assertNothingRan();
+});
+
+test('stop reaps every process under the label and leaves the others alone', function (): void {
+    $this->ledger->record(new ProcessRecord(3003, 'queue', 'php artisan queue:work', date(DATE_ATOM)));
+    $this->ledger->record(new ProcessRecord(3004, 'queue', 'php artisan queue:work', date(DATE_ATOM)));
+    $this->ledger->record(new ProcessRecord(3005, 'vite', 'bun run dev', date(DATE_ATOM)));
+    ProcessFaker::fake(['kill -0 *' => Process::result(exitCode: 1)]);
+
+    reaper($this->ledger)->stop('queue');
+
+    expect($this->ledger->withLabel('queue'))->toBeEmpty()
+        ->and($this->ledger->withLabel('vite'))->toHaveCount(1);
+});

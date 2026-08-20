@@ -16,7 +16,7 @@ use Throwable;
 /**
  * Read-only view of everything boot-up is running: the active server and
  * each tracked background process. Deliberately mutates nothing — dead
- * entries are shown as dead and pruned by the next app:serve, not here.
+ * entries are shown as dead and pruned by the next boot, not here.
  */
 final class StatusCommand extends BootUpCommand
 {
@@ -73,10 +73,10 @@ final class StatusCommand extends BootUpCommand
         // at most one assertion per write.
         terminal()->info("Server: {$name}");
         terminal()->info($active->startedByUs
-            ? 'The server was started by app:serve.'
-            : 'The server was already running before app:serve started.');
+            ? 'The server was started by php artisan dev.'
+            : 'The server was already running before php artisan dev started.');
         terminal()->info($probe->isServing($active->servePid)
-            ? "app:serve is running (pid {$active->servePid})."
-            : "Its app:serve (pid {$active->servePid}) is no longer running.");
+            ? "php artisan dev is running (pid {$active->servePid})."
+            : "Its php artisan dev (pid {$active->servePid}) is no longer running.");
     }
 }

@@ -102,7 +102,7 @@ test('reaps tracked processes with TERM and clears the ledger', function (): voi
 
 test('removes a stale public/hot when a tracked asset watcher is torn down', function (): void {
     Prompt::fake();
-    $this->ledger->record(new ProcessRecord(2000, 'assets-watch', 'bun run dev', date(DATE_ATOM)));
+    $this->ledger->record(new ProcessRecord(2000, 'vite', 'bun run dev', date(DATE_ATOM)));
 
     // The watcher is already gone, so reap settles it and clears the ledger.
     ProcessFaker::fake(['kill -0 2000' => Process::result(exitCode: 1)]);
@@ -352,8 +352,9 @@ test('unattended shutdown only cleans residual state when stops default to yes',
     expect($residual->cleanUps)->toBe(1);
 });
 
-test('the stale-hot-file cleanup shares the exact watcher label with WatchAssets', function (): void {
+test('the stale-hot-file cleanup looks for the asset watcher dev process', function (): void {
     $constant = new ReflectionClassConstant(ShutdownRunner::class, 'ASSET_WATCHER_LABEL');
 
-    expect($constant->getValue())->toBe(Igne\LaravelBootUp\Frontend\Steps\WatchAssets::LABEL);
+    // The label is the name the process is registered and recorded under.
+    expect($constant->getValue())->toBe('vite');
 });

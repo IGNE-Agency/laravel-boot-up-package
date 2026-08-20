@@ -8,7 +8,6 @@ use Igne\LaravelBootUp\Contracts\HasResidualState;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\ProcessRecord;
-use Igne\LaravelBootUp\Frontend\Steps\WatchAssets;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
@@ -22,7 +21,11 @@ use Igne\LaravelBootUp\Servers\StopServerPrompt;
  */
 final class ShutdownRunner
 {
-    private const string ASSET_WATCHER_LABEL = WatchAssets::LABEL;
+    /**
+     * The dev process that runs the asset watcher, and so the one that may
+     * have left a public/hot marker behind.
+     */
+    private const string ASSET_WATCHER_LABEL = 'vite';
 
     private bool $hasRun = false;
 

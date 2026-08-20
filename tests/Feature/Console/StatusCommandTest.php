@@ -61,8 +61,8 @@ test('shows the active server, its serve pid state, and every tracked process', 
 
     $this->artisan('app:status')
         ->expectsOutputToContain('Laravel (php artisan serve) at http://127.0.0.1:8000')
-        ->expectsOutputToContain('The server was started by app:serve.')
-        ->expectsOutputToContain('app:serve is running (pid 99999).')
+        ->expectsOutputToContain('The server was started by php artisan dev.')
+        ->expectsOutputToContain('php artisan dev is running (pid 99999).')
         ->expectsOutputToContain('queue-worker (pid 4242): running — logs: storage/logs/boot-up/queue-worker.log')
         ->expectsOutputToContain('assets-watch (pid 5555): dead — logs: storage/logs/boot-up/assets-watch.log')
         ->expectsOutputToContain('php artisan app:down')
@@ -77,8 +77,8 @@ test('a dead serve pid is reported, not hidden', function (): void {
     $this->store->remember(new ActiveServerRecord('artisan', false, 99999, date(DATE_ATOM)));
 
     $this->artisan('app:status')
-        ->expectsOutputToContain('The server was already running before app:serve started.')
-        ->expectsOutputToContain('Its app:serve (pid 99999) is no longer running.')
+        ->expectsOutputToContain('The server was already running before php artisan dev started.')
+        ->expectsOutputToContain('Its php artisan dev (pid 99999) is no longer running.')
         ->assertSuccessful();
 });
 

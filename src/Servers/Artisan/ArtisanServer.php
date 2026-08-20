@@ -9,8 +9,8 @@ use Igne\LaravelBootUp\Contracts\ProvidesDevProcess;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ServeContext;
+use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Serve\WorkerLauncher;
 
 /**
  * Serves through `php artisan serve`.
@@ -25,7 +25,7 @@ final class ArtisanServer implements ProvidesDevProcess, Server
 
     public function __construct(
         private readonly ProcessRunner $runner,
-        private readonly WorkerLauncher $launcher,
+        private readonly ProcessReaper $reaper,
         private readonly ArtisanServeConfig $config,
     ) {}
 
@@ -86,12 +86,12 @@ final class ArtisanServer implements ProvidesDevProcess, Server
 
     public function isRunning(): bool
     {
-        return $this->launcher->isRunning(self::LABEL);
+        return $this->reaper->isRunning(self::LABEL);
     }
 
     public function stop(): void
     {
-        $this->launcher->stop(self::LABEL);
+        $this->reaper->stop(self::LABEL);
     }
 
     /**
