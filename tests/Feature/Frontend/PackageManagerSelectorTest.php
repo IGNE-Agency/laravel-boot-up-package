@@ -60,3 +60,24 @@ test('without config the lockfile decides, with a note', function (): void {
 test('no signal at all falls back to the default', function (): void {
     expect(selectorFor($this->dir)->selected())->toBe(PackageManager::default());
 });
+
+test('a binary bun lockfile is recognised, and named as the file that was found', function (): void {
+    file_put_contents($this->dir.'/package.json', '{}');
+    file_put_contents($this->dir.'/bun.lockb', '');
+
+    $selector = new PackageManagerSelector(new FrontendConfig, new PackageJson($this->dir.'/package.json'));
+
+    expect($selector->selected())->toBe(PackageManager::Bun);
+    Prompt::assertStrippedOutputContains('detected from bun.lockb');
+});
+
+test('the text bun lockfile wins when a project has both', function (): void {
+    file_put_contents($this->dir.'/package.json', '{}');
+    file_put_contents($this->dir.'/bun.lock', '');
+    file_put_contents($this->dir.'/bun.lockb', '');
+
+    $selector = new PackageManagerSelector(new FrontendConfig, new PackageJson($this->dir.'/package.json'));
+
+    expect($selector->selected())->toBe(PackageManager::Bun);
+    Prompt::assertStrippedOutputContains('detected from bun.lock.');
+});

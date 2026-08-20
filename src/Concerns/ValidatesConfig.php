@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Concerns;
 
+use Composer\Semver\VersionParser;
 use Igne\LaravelBootUp\Data\StepEntry;
 use Igne\LaravelBootUp\Exceptions\ConfigException;
+use Throwable;
 
 /**
  * Checks for config that is only wrong once something tries to use it.
@@ -61,6 +63,37 @@ trait ValidatesConfig
         }
 
         return $class;
+    }
+
+    /**
+     * Version constraints are checked here rather than where they are compared:
+     * VersionConstraint treats anything it cannot parse as satisfied, on the
+     * principle that a version boot-up fails to read must not block the boot.
+     * That is right for a tool's reported version and wrong for a constraint
+     * from config, where it means the constraint is quietly ignored forever.
+     *
+     * @param  array<string, string>  $constraints
+     * @return array<string, string>
+     */
+    private static function validatedConstraints(array $constraints, string $key): array
+    {
+        $parser = new VersionParser;
+
+        foreach ($constraints as $tool => $constraint) {
+            $value = (string) $constraint;
+
+            if ($value === '*' || $value === '') {
+                continue;
+            }
+
+            try {
+                $parser->parseConstraints($value);
+            } catch (Throwable) {
+                throw ConfigException::invalidType("{$key}.{$tool}", "[{$value}]", 'a version constraint such as ^8.3');
+            }
+        }
+
+        return $constraints;
     }
 
     private static function atLeast(mixed $value, int $minimum, string $key): int

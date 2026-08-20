@@ -48,7 +48,9 @@ final class PackageManagerSelector
         $locked = $this->packageJson->lockedPackageManager();
 
         if ($locked !== null) {
-            terminal()->note("Using {$locked->value} — detected from {$locked->lockfile()}.");
+            $lockfile = $this->packageJson->matchedLockfile($locked) ?? $locked->lockfile();
+
+            terminal()->note("Using {$locked->value} — detected from {$lockfile}.");
 
             return $locked;
         }

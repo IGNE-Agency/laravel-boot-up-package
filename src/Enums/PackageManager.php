@@ -26,14 +26,29 @@ enum PackageManager: string
         return $this->value;
     }
 
-    public function lockfile(): string
+    /**
+     * Every lockfile name this manager is known to write. Bun moved from the
+     * binary bun.lockb to a text bun.lock, and both are still in the wild.
+     *
+     * @return non-empty-list<string>
+     */
+    public function lockfiles(): array
     {
         return match ($this) {
-            self::Bun => 'bun.lock',
-            self::Yarn => 'yarn.lock',
-            self::Npm => 'package-lock.json',
-            self::Pnpm => 'pnpm-lock.yaml',
+            self::Bun => ['bun.lock', 'bun.lockb'],
+            self::Yarn => ['yarn.lock'],
+            self::Npm => ['package-lock.json'],
+            self::Pnpm => ['pnpm-lock.yaml'],
         };
+    }
+
+    /**
+     * The name this manager writes today — for messages and for the lockfile
+     * a generated script installs against.
+     */
+    public function lockfile(): string
+    {
+        return $this->lockfiles()[0];
     }
 
     /**

@@ -8,16 +8,14 @@ use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
 
 /**
- * The single passable travelling through the serve/deploy pipelines.
+ * The single passable travelling through the boot and deploy pipelines.
  * The server is null for app:deploy runs (no server is booted there).
  */
-final class BootContext
+final readonly class BootContext
 {
-    public bool $serverWasAlreadyRunning = false;
-
     public function __construct(
-        public readonly BootOptions $options,
-        public readonly ?Server $server = null,
+        public BootOptions $options,
+        public ?Server $server = null,
     ) {}
 
     /**

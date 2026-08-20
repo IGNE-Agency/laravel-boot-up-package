@@ -34,8 +34,10 @@ final class StartServer implements Step
             return $next($context);
         }
 
+        // Whether we started it is what teardown needs, and the persisted
+        // record is where it has to survive to -- app:down runs in another
+        // process entirely.
         $wasRunning = $server->isRunning();
-        $context->serverWasAlreadyRunning = $wasRunning;
 
         $this->store->remember(new ActiveServerRecord(
             key: $server->key(),

@@ -38,10 +38,23 @@ final class ProcessLedger
      */
     public function all(): Collection
     {
-        return (new Collection($this->store->read() ?? []))
+        $entries = new Collection($this->store->read() ?? []);
+
+        $usable = $entries
             ->filter(fn (mixed $entry): bool => \is_array($entry) && isset($entry['pid'], $entry['label'], $entry['command'], $entry['started_at']))
-            ->map(fn (array $entry): ProcessRecord => ProcessRecord::fromArray($entry))
             ->values();
+
+        // Unlike the active-server record, a malformed entry does not condemn
+        // the file: quarantining it would orphan every process the other
+        // entries still track. Dropping them quietly would be worse, though --
+        // something started and is now unaccounted for.
+        if ($usable->count() !== $entries->count()) {
+            $dropped = $entries->count() - $usable->count();
+
+            terminal()->warning("Ignored {$dropped} unreadable process record(s); those processes are no longer tracked and may need stopping by hand.");
+        }
+
+        return $usable->map(fn (array $entry): ProcessRecord => ProcessRecord::fromArray($entry));
     }
 
     /**

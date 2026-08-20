@@ -44,8 +44,24 @@ final class PackageJson
     public function lockedPackageManager(): ?PackageManager
     {
         foreach (PackageManager::cases() as $manager) {
-            if (is_file(\dirname($this->path).'/'.$manager->lockfile())) {
+            if ($this->matchedLockfile($manager) !== null) {
                 return $manager;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Which of this manager's lockfiles the project actually has, so a
+     * message can name the file that was found rather than the one the
+     * manager writes today.
+     */
+    public function matchedLockfile(PackageManager $manager): ?string
+    {
+        foreach ($manager->lockfiles() as $lockfile) {
+            if (is_file(\dirname($this->path).'/'.$lockfile)) {
+                return $lockfile;
             }
         }
 

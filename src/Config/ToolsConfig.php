@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Config;
 
+use Igne\LaravelBootUp\Concerns\ValidatesConfig;
 use Igne\LaravelBootUp\Contracts\InstallsTool;
 use Illuminate\Contracts\Config\Repository;
 
 final readonly class ToolsConfig
 {
+    use ValidatesConfig;
+
     private const array DEFAULT_REQUIRED = ['php' => '*', 'node' => '*', 'composer' => '*'];
 
     /**
@@ -27,7 +30,7 @@ final readonly class ToolsConfig
         return new self(
             autoInstall: (bool) $config->get('boot-up.tools.auto_install', true),
             autoUpdate: (bool) $config->get('boot-up.tools.auto_update', true),
-            required: (array) $config->get('boot-up.tools.required', self::DEFAULT_REQUIRED),
+            required: self::validatedConstraints((array) $config->get('boot-up.tools.required', self::DEFAULT_REQUIRED), 'boot-up.tools.required'),
             installers: (array) $config->get('boot-up.tools.installers', []),
         );
     }

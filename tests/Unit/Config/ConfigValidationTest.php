@@ -8,6 +8,7 @@ use Igne\LaravelBootUp\Config\DevConfig;
 use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Config\HerdConfig;
 use Igne\LaravelBootUp\Config\SailConfig;
+use Igne\LaravelBootUp\Config\ToolsConfig;
 use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Exceptions\ConfigException;
 use Illuminate\Config\Repository;
@@ -99,4 +100,23 @@ test('an unset enum still means the documented default', function (): void {
 
         expect(FrontendConfig::fromRepository($config)->assets)->toBe(AssetMode::default());
     }
+});
+
+test('a version constraint that cannot be parsed is rejected, naming the tool', function (): void {
+    $config = new Repository(['boot-up' => ['tools' => ['required' => ['php' => '^^8.3']]]]);
+
+    expect(fn () => ToolsConfig::fromRepository($config))
+        ->toThrow(ConfigException::class, 'boot-up.tools.required.php');
+});
+
+test('a wildcard and an empty constraint both mean any version', function (): void {
+    $config = new Repository(['boot-up' => ['tools' => ['required' => ['php' => '*', 'node' => '']]]]);
+
+    expect(ToolsConfig::fromRepository($config)->required)->toBe(['php' => '*', 'node' => '']);
+});
+
+test('a real constraint passes through untouched', function (): void {
+    $config = new Repository(['boot-up' => ['tools' => ['required' => ['php' => '^8.3']]]]);
+
+    expect(ToolsConfig::fromRepository($config)->required)->toBe(['php' => '^8.3']);
 });

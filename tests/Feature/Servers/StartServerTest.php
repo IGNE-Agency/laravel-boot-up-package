@@ -79,7 +79,6 @@ test('persists the active-server record before the driver starts', function (): 
         ->and($server->observedAtStart->key)->toBe('double')
         ->and($server->observedAtStart->startedByUs)->toBeTrue()
         ->and($server->observedAtStart->servePid)->toBe((int) getmypid())
-        ->and($context->serverWasAlreadyRunning)->toBeFalse()
         ->and($result)->toBe($context);
     Prompt::assertStrippedOutputContains('Double Server is running.');
 });
@@ -91,8 +90,7 @@ test('records startedByUs=false when the server was already running', function (
     (new StartServer($this->store))->handle($context, fn (BootContext $passed): BootContext => $passed);
 
     expect($server->starts)->toBe(1)
-        ->and($server->observedAtStart->startedByUs)->toBeFalse()
-        ->and($context->serverWasAlreadyRunning)->toBeTrue();
+        ->and($server->observedAtStart->startedByUs)->toBeFalse();
 });
 
 test('a null server (app:deploy) passes through without touching the store', function (): void {

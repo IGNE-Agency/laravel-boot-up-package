@@ -234,11 +234,9 @@ final class CiScripts
                         continue;
                     }
 
-                    $condition = "[ -f {$manager->lockfile()} ]";
-
-                    if ($manager === PackageManager::Bun) {
-                        $condition .= ' || [ -f bun.lockb ]';
-                    }
+                    $condition = collect($manager->lockfiles())
+                        ->map(fn (string $lockfile): string => "[ -f {$lockfile} ]")
+                        ->implode(' || ');
 
                     $script->line("{$keyword} {$condition}; then echo {$manager->value}");
                     $keyword = 'elif';

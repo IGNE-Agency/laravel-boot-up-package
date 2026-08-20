@@ -5,7 +5,6 @@ declare(strict_types=1);
 use Igne\LaravelBootUp\Console\BootUpCommand;
 use Igne\LaravelBootUp\Console\DevCommand;
 use Igne\LaravelBootUp\Contracts\Step;
-use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\Lines;
 use Igne\LaravelBootUp\Exceptions\BootUpException;
 use Igne\LaravelBootUp\Services\Terminal;
@@ -133,12 +132,31 @@ arch('the Command suffix is reserved for console commands')
     ->not->toHaveSuffix('Command')
     ->ignoring('Igne\LaravelBootUp\Console');
 
-arch('data objects are readonly values, apart from the two documented carriers')
+arch('data objects are readonly values, apart from the one documented carrier')
     ->expect('Igne\LaravelBootUp\Data')
     ->classes()
     ->toBeReadonly()
-    ->ignoring([BootContext::class, Lines::class]);
+    ->ignoring([Lines::class]);
 
 arch('facades stay thin')
     ->expect('Igne\LaravelBootUp\Facades')
     ->toExtend(Facade::class);
+
+test('the Terminal facade documents every method it fronts', function (): void {
+    $docblock = (string) (new ReflectionClass(Igne\LaravelBootUp\Facades\Terminal::class))->getDocComment();
+
+    preg_match_all('/@method static \S+ (\w+)\(/', $docblock, $matches);
+
+    // Only what Terminal itself declares: laravel/prompts' colour trait adds
+    // dozens of helpers that are not part of the seam boot-up exposes.
+    $terminal = new ReflectionClass(Terminal::class);
+
+    $declared = collect($terminal->getMethods(ReflectionMethod::IS_PUBLIC))
+        ->reject(fn (ReflectionMethod $method): bool => $method->isConstructor() || $method->isStatic())
+        ->filter(fn (ReflectionMethod $method): bool => $method->getFileName() === $terminal->getFileName())
+        ->map(fn (ReflectionMethod $method): string => $method->getName())
+        ->values()
+        ->all();
+
+    expect($matches[1])->toEqualCanonicalizing($declared);
+});

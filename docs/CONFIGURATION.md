@@ -197,6 +197,12 @@ An enum key given something that is not a string — an array, or the bool that
 `env('BOOT_UP_ASSETS', false)` produces — is reported as that type. Leaving such
 a key unset, or setting it to an empty string, still means "use the default".
 
+A `tools.required` constraint that is not valid semver is rejected too. That one
+is checked here rather than where versions are compared, because a constraint
+boot-up cannot parse is treated as satisfied — which is right for a version a
+tool reported and wrong for one you typed, where it would mean the constraint is
+ignored for good.
+
 ## Step pipelines
 
 The boot pipeline (`dev.steps`) and the `app:deploy` pipeline

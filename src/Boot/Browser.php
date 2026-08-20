@@ -17,8 +17,27 @@ final class Browser
 
     public function open(string $url): void
     {
-        $binary = $this->platform->isMacos() ? 'open' : 'xdg-open';
+        $this->runner->runSilently(CommandLine::make([$this->opener(), $url]));
+    }
 
-        $this->runner->runSilently(CommandLine::make([$binary, $url]));
+    /**
+     * WSL is the interesting case: it reports Linux and usually has no
+     * xdg-open, but it can hand a URL to the Windows host. wslview ships with
+     * wslu and falls back through the shell to explorer.exe, which is the one
+     * thing every WSL install can reach.
+     */
+    private function opener(): string
+    {
+        return match (true) {
+            $this->platform->isMacos() => 'open',
+            $this->platform->isWindows() => 'explorer.exe',
+            $this->isWsl() => 'wslview',
+            default => 'xdg-open',
+        };
+    }
+
+    private function isWsl(): bool
+    {
+        return ($_SERVER['WSL_DISTRO_NAME'] ?? '') !== '' || is_file('/proc/sys/fs/binfmt_misc/WSLInterop');
     }
 }

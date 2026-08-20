@@ -62,9 +62,17 @@ final class JsonStore
      */
     public function quarantine(): void
     {
-        rename($this->path, "{$this->path}.corrupt");
-
         $file = basename($this->path);
+
+        // Non-fatal on purpose: this runs inside a read, and refusing to boot
+        // because an unreadable file could not be renamed would be worse than
+        // saying so. The message has to stay honest either way.
+        if (! rename($this->path, "{$this->path}.corrupt")) {
+            terminal()->warning("[{$file}] could not be read and could not be moved aside; delete it by hand.");
+
+            return;
+        }
+
         terminal()->warning(sprintf($this->corruptWarning, "{$file}.corrupt"));
     }
 }

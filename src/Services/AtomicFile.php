@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Services;
 
+use Igne\LaravelBootUp\Exceptions\FileException;
+
 /**
  * Crash-safe file primitives: content goes to a temporary sibling first
  * and is renamed into place, so readers never observe a half-written file.
@@ -17,8 +19,17 @@ final class AtomicFile
         $suffix = bin2hex(random_bytes(4));
         $temporary = "{$path}.tmp-{$suffix}";
 
-        file_put_contents($temporary, $content);
-        rename($temporary, $path);
+        // A silent failure here loses state the boot depends on: a PID that
+        // never reached the ledger is a process nothing can stop later.
+        if (file_put_contents($temporary, $content) === false) {
+            throw FileException::writeFailed($temporary);
+        }
+
+        if (! rename($temporary, $path)) {
+            @unlink($temporary);
+
+            throw FileException::moveFailed($temporary, $path);
+        }
     }
 
     private static function ensureDirectory(string $directory): void
