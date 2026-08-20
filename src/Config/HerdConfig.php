@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Config;
 
+use Igne\LaravelBootUp\Concerns\ValidatesConfig;
 use Illuminate\Contracts\Config\Repository;
 
 final readonly class HerdConfig
 {
+    use ValidatesConfig;
+
     /**
      * @param  string|null  $site  fixed Herd site name; null prompts with the folder name as default
      */
@@ -24,9 +27,9 @@ final readonly class HerdConfig
 
         return new self(
             site: $site === null ? null : (string) $site,
-            healthAttempts: (int) $config->get('boot-up.herd.health.attempts', 10),
-            healthDelayMs: (int) $config->get('boot-up.herd.health.delay_ms', 500),
-            healthTimeoutSeconds: (int) $config->get('boot-up.herd.health.timeout_seconds', 5),
+            healthAttempts: self::atLeast($config->get('boot-up.herd.health.attempts', 10), 1, 'boot-up.herd.health.attempts'),
+            healthDelayMs: self::atLeast($config->get('boot-up.herd.health.delay_ms', 500), 0, 'boot-up.herd.health.delay_ms'),
+            healthTimeoutSeconds: self::atLeast($config->get('boot-up.herd.health.timeout_seconds', 5), 1, 'boot-up.herd.health.timeout_seconds'),
         );
     }
 }

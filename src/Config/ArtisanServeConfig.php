@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Config;
 
+use Igne\LaravelBootUp\Concerns\ValidatesConfig;
 use Illuminate\Contracts\Config\Repository;
 
 /**
@@ -12,6 +13,8 @@ use Illuminate\Contracts\Config\Repository;
  */
 final readonly class ArtisanServeConfig
 {
+    use ValidatesConfig;
+
     public function __construct(
         public string $host = '127.0.0.1',
         public int $port = 8000,
@@ -21,7 +24,7 @@ final readonly class ArtisanServeConfig
     {
         return new self(
             host: (string) $config->get('boot-up.artisan.host', '127.0.0.1'),
-            port: (int) $config->get('boot-up.artisan.port', 8000),
+            port: self::withinRange($config->get('boot-up.artisan.port', 8000), 1, 65535, 'boot-up.artisan.port'),
         );
     }
 }

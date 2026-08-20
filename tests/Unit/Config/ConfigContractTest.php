@@ -135,3 +135,19 @@ test('dev and deploy auto_accept are independent keys', function (): void {
     expect(Igne\LaravelBootUp\Config\DevConfig::fromRepository($repository)->autoAccept)->toBeTrue()
         ->and(Igne\LaravelBootUp\Config\DeployConfig::fromRepository($repository)->autoAccept)->toBeFalse();
 });
+
+test('the provider registers every config class exactly once', function (): void {
+    $constant = new ReflectionClassConstant(
+        Igne\LaravelBootUp\Providers\BootUpServiceProvider::class,
+        'CONFIG_CLASSES',
+    );
+
+    $registered = $constant->getValue();
+    $counts = array_count_values($registered);
+
+    expect(array_keys($counts))->toEqualCanonicalizing(configClasses());
+
+    foreach ($counts as $class => $times) {
+        expect($times)->toBe(1, "{$class} is registered {$times} times");
+    }
+});

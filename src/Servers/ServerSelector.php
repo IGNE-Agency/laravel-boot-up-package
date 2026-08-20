@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers;
 
+use Igne\LaravelBootUp\Concerns\ValidatesConfig;
 use Igne\LaravelBootUp\Config\DevServerConfig;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Exceptions\ServerException;
@@ -15,6 +16,8 @@ use Illuminate\Contracts\Container\Container;
  */
 final class ServerSelector
 {
+    use ValidatesConfig;
+
     public function __construct(
         private readonly Container $container,
         private readonly DevServerConfig $config,
@@ -43,6 +46,10 @@ final class ServerSelector
     public function driver(string $key): Server
     {
         $class = $this->config->drivers[$key] ?? throw ServerException::unknownServer($key);
+
+        // Both select() and options() come through here, so one check covers
+        // the argument, the configured default and the interactive picker.
+        self::validatedClass($class, "boot-up.server.drivers.{$key}", Server::class);
 
         return $this->container->make($class);
     }

@@ -11,6 +11,7 @@ use Igne\LaravelBootUp\Deploy\DeployTaskRunner;
 use Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks;
 use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Enums\PackageManager;
+use Igne\LaravelBootUp\Exceptions\ConfigException;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Process\ProcessLedger;
@@ -127,5 +128,5 @@ test('an unknown phase suffix is rejected with the legal phases named', function
         ->send(new BootContext(new BootOptions))
         ->through([RunDeployTasks::class.':during'])
         ->then(fn (BootContext $passed): BootContext => $passed))
-        ->toThrow(InvalidArgumentException::class, 'during');
+        ->toThrow(ConfigException::class, 'during');
 });

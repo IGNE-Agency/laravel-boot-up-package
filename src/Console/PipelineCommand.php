@@ -100,7 +100,12 @@ final class PipelineCommand extends BootUpCommand
      */
     private function generators(): array
     {
-        return $this->mergeGenerators(self::BUILT_IN_GENERATORS, $this->laravel->make(PipelineConfig::class)->generators);
+        return $this->mergeGenerators(
+            self::BUILT_IN_GENERATORS,
+            $this->laravel->make(PipelineConfig::class)->generators,
+            'boot-up.pipeline.generators',
+            PipelineGenerator::class,
+        );
     }
 
     /**

@@ -16,9 +16,6 @@ use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
 use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
 use Igne\LaravelBootUp\Frontend\Steps\BuildAssets;
 use Igne\LaravelBootUp\Frontend\Steps\InstallFrontendDependencies;
-use Igne\LaravelBootUp\Servers\Artisan\ArtisanServer;
-use Igne\LaravelBootUp\Servers\Herd\HerdServer;
-use Igne\LaravelBootUp\Servers\Sail\SailServer;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
 
@@ -39,18 +36,19 @@ return [
     |--------------------------------------------------------------------------
     | Development server
     |--------------------------------------------------------------------------
-    | Extension point: add your own driver under 'drivers' with a string key
-    | and a class implementing Igne\LaravelBootUp\Contracts\Server. Driver
-    | settings live in their own sections below ('herd', 'artisan', 'sail').
+    | The 'herd', 'sail' and 'artisan' drivers are always available; their
+    | settings live in their own sections below. Extension point: add your own
+    | under 'drivers' with a string key and a class implementing
+    | Igne\LaravelBootUp\Contracts\Server, e.g.
+    |
+    |     'drivers' => ['valet' => \App\BootUp\ValetServer::class],
+    |
+    | Entries merge over the built-ins, so a key of 'herd' replaces that driver.
     */
     'server' => [
         'default' => env('BOOT_UP_SERVER'),
         'prompt' => env('BOOT_UP_SERVER_PROMPT', true),
-        'drivers' => [
-            'herd' => HerdServer::class,
-            'sail' => SailServer::class,
-            'artisan' => ArtisanServer::class,
-        ],
+        'drivers' => [],
     ],
 
     'herd' => [

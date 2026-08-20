@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Data;
 
 use Igne\LaravelBootUp\Enums\DeployTaskType;
-use InvalidArgumentException;
+use Igne\LaravelBootUp\Exceptions\DeployException;
 
 /**
  * A project-supplied command executed during deploy. Commands run as plain
@@ -58,13 +58,11 @@ final readonly class DeployTask
     private function validate(): void
     {
         if (trim($this->command) === '') {
-            throw new InvalidArgumentException('Project command cannot be empty.');
+            throw DeployException::emptyCommand();
         }
 
         if (preg_match('/[;&|`<>\n]/', $this->command) === 1 || str_contains($this->command, '$(')) {
-            throw new InvalidArgumentException(
-                "Project command '{$this->command}' contains shell metacharacters; commands run as plain argument lists and cannot chain, pipe or redirect."
-            );
+            throw DeployException::shellMetacharacters($this->command);
         }
 
         // Word-boundary matching: 'rm' blocks `rm -rf /` but not `confirm:users`,
@@ -72,9 +70,7 @@ final readonly class DeployTask
         $blocked = implode('|', array_map(static fn (string $word): string => preg_quote($word, '/'), self::DANGEROUS_WORDS));
 
         if (preg_match("/(?<=^|\s)({$blocked})\b/i", trim($this->command), $matches) === 1) {
-            throw new InvalidArgumentException(
-                "Project command '{$this->command}' contains the blocked word '{$matches[1]}'."
-            );
+            throw DeployException::blockedWord($this->command, $matches[1]);
         }
     }
 }

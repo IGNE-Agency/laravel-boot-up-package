@@ -30,6 +30,14 @@ trait ResolvesFromConfig
             return null;
         }
 
+        // Casting blindly would turn an array into the warning "Array to
+        // string conversion" and an object into an Error, neither naming the
+        // key -- and env('BOOT_UP_ASSETS=false') arrives as bool false, which
+        // casts to '' and reported "unknown value []".
+        if (! \is_string($value) && ! \is_int($value)) {
+            throw ConfigException::invalidType($key, get_debug_type($value));
+        }
+
         return self::tryFrom((string) $value) ?? throw ConfigException::invalidEnumValue($key, (string) $value, self::class);
     }
 }

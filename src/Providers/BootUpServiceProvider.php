@@ -64,7 +64,6 @@ final class BootUpServiceProvider extends ServiceProvider
         ReverbConfig::class,
         SailConfig::class,
         SchedulerConfig::class,
-        DevConfig::class,
         ShutdownConfig::class,
         ToolsConfig::class,
     ];

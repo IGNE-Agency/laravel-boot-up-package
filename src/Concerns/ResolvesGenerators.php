@@ -11,17 +11,24 @@ namespace Igne\LaravelBootUp\Concerns;
  */
 trait ResolvesGenerators
 {
+    use ValidatesConfig;
+
     /**
      * @param  array<string, class-string>  $builtIn
      * @param  array<string, class-string>  $configured
+     * @param  class-string  $contract
      * @return array<string, class-string>
      */
-    private function mergeGenerators(array $builtIn, array $configured): array
+    private function mergeGenerators(array $builtIn, array $configured, string $key, string $contract): array
     {
-        return array_merge($builtIn, $configured);
+        return array_merge($builtIn, self::validatedClassMap($configured, $key, $contract));
     }
 
     /**
+     * Every generator is instantiated to read its label, so a bad class here
+     * breaks the picker even for a provider the user is not choosing --
+     * mergeGenerators() validates the configured map before it gets this far.
+     *
      * @param  array<string, class-string>  $generators
      * @return array<string, string>
      */

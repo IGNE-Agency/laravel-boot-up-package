@@ -10,6 +10,7 @@ use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Contracts\DescribesProgress;
 use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Data\StepDescriptor;
+use Igne\LaravelBootUp\Data\StepEntry;
 use Igne\LaravelBootUp\Deploy\Steps\InstallComposerDependencies;
 use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
@@ -48,7 +49,8 @@ final readonly class StepSequence
         $stage = null;
 
         foreach (array_values($configuredSteps) as $index => $entry) {
-            [$class, $parameters] = self::parse($entry);
+            $parsed = StepEntry::parse($entry);
+            [$class, $parameters] = [$parsed->class, $parsed->parameters];
 
             // Steps without a #[Stage] inherit the stage they are slotted
             // into; leading unknowns get their own honest "Custom steps".
@@ -160,18 +162,6 @@ final readonly class StepSequence
         $attributes = (new ReflectionClass($class))->getAttributes(Group::class);
 
         return $attributes === [] ? null : $attributes[0]->newInstance()->name;
-    }
-
-    /**
-     * @return array{0: string, 1: list<string>}
-     */
-    private static function parse(string $entry): array
-    {
-        // Mirrors Illuminate\Pipeline\Pipeline::parsePipeString(), which is
-        // protected upstream: "Class:a,b" => [Class, ['a', 'b']].
-        [$class, $parameters] = array_pad(explode(':', $entry, 2), 2, null);
-
-        return [$class, $parameters === null ? [] : explode(',', $parameters)];
     }
 
     /**

@@ -28,7 +28,7 @@ in their own sections: [Herd](#herd), [Artisan](#artisan), [Sail](#sail).
 | ---------------- | ----------------------- | ------------------- | ------------------------------------------------------------------------------------------------ |
 | `server.default` | `BOOT_UP_SERVER`        | `null`              | `herd`, `sail` or `artisan`. `null` prompts on first run.                                        |
 | `server.prompt`  | `BOOT_UP_SERVER_PROMPT` | `true`              | Whether to prompt for a server when none is configured.                                          |
-| `server.drivers` | —                       | herd, sail, artisan | Extension point: add your own [`Contracts\Server`](EXTENDING.md#custom-servers) implementations. |
+| `server.drivers` | —                       | `[]`                | Extension point: add your own [`Contracts\Server`](EXTENDING.md#custom-servers) implementations. `herd`, `sail` and `artisan` are always available; an entry reusing one of those keys replaces that driver. A class that is not a `Server` is rejected when it is selected. |
 
 ## Herd
 
@@ -163,6 +163,31 @@ and whether the application or another package overrides it, is covered in
 | `pipeline.composer_auth` | `null`                                                            | Whether the pipeline gets a `COMPOSER_AUTH` secret to authenticate composer against a private/licensed registry (Nova, a private Satis, ...). `null` auto-detects (on with `laravel/nova`); `true`/`false` force it. Env: `BOOT_UP_PIPELINE_COMPOSER_AUTH`. |
 | `pipeline.steps`         | `[]`                                                              | Extra steps injected into the generated pipeline jobs. See [Extending the pipeline](PIPELINES.md#extending-the-pipeline).                                                                                                                                   |
 | `pipeline.files`         | `[]`                                                              | Extra whole files emitted verbatim next to the generated pipeline. See [Extending the pipeline](PIPELINES.md#extending-the-pipeline).                                                                                                                       |
+
+## When configuration is wrong
+
+Every check names the key it came from, because a misconfiguration you cannot
+locate is barely better than one that fails silently.
+
+The two step pipelines are validated **before the plan is printed**: an entry
+naming a class that does not exist, or one that is not a `Contracts\Step`, stops
+the run there. That matters because the alternative is failing partway through
+the pipeline, after the plan was confirmed and after earlier steps may already
+have written `.env` or run migrations.
+
+The driver, installer and generator maps are validated **where they resolve** —
+selecting a server, asking for a tool's installer, listing the generators.
+Nothing has been changed by that point, so an unrelated command does not need to
+fail over a key it never reads.
+
+Numbers are range-checked rather than accepted and worked around: a
+`herd.health.attempts` of `0` used to report "unreachable after 0 attempt(s)"
+without probing once, and a negative `herd.health.delay_ms` crashed mid-boot
+inside `usleep()`.
+
+An enum key given something that is not a string — an array, or the bool that
+`env('BOOT_UP_ASSETS', false)` produces — is reported as that type. Leaving such
+a key unset, or setting it to an empty string, still means "use the default".
 
 ## Step pipelines
 

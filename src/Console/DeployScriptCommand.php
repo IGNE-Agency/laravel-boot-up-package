@@ -65,7 +65,12 @@ final class DeployScriptCommand extends BootUpCommand
      */
     private function generators(): array
     {
-        return $this->mergeGenerators(self::BUILT_IN_GENERATORS, $this->laravel->make(DeployConfig::class)->scriptGenerators);
+        return $this->mergeGenerators(
+            self::BUILT_IN_GENERATORS,
+            $this->laravel->make(DeployConfig::class)->scriptGenerators,
+            'boot-up.deploy.script_generators',
+            ScriptGenerator::class,
+        );
     }
 
     /**

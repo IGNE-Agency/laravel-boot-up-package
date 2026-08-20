@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Enums\DeployTaskType;
+use Igne\LaravelBootUp\Exceptions\DeployException;
 
 test('named constructors set the command type', function (): void {
     expect(DeployTask::artisan('db:seed')->type)->toBe(DeployTaskType::Artisan)
@@ -33,7 +34,7 @@ test('valid commands pass validation', function (string $command): void {
 test('an empty command is rejected', function (string $command): void {
     DeployTask::artisan($command);
 })->with(['empty' => '', 'whitespace only' => '   '])
-    ->throws(InvalidArgumentException::class, 'cannot be empty');
+    ->throws(DeployException::class, 'cannot be empty');
 
 test('shell metacharacters are rejected because commands run as argument lists', function (string $command): void {
     DeployTask::artisan($command);
@@ -48,7 +49,7 @@ test('shell metacharacters are rejected because commands run as argument lists',
     'output redirect' => 'db:seed > /dev/null',
     'input redirect' => 'db:seed < seeds.sql',
     'newline' => "db:seed\nmigrate:fresh",
-])->throws(InvalidArgumentException::class, 'shell metacharacters');
+])->throws(DeployException::class, 'shell metacharacters');
 
 test('dangerous commands are rejected on word boundaries', function (string $command): void {
     DeployTask::artisan($command);
@@ -64,7 +65,7 @@ test('dangerous commands are rejected on word boundaries', function (string $com
     'eval' => 'eval something',
     'exec' => 'exec something',
     'dangerous word mid-command' => 'db:seed --then rm -rf /',
-])->throws(InvalidArgumentException::class, 'blocked word');
+])->throws(DeployException::class, 'blocked word');
 
 test('blocked words embedded in larger words are not rejected', function (string $command): void {
     expect(DeployTask::artisan($command))->toBeInstanceOf(DeployTask::class);

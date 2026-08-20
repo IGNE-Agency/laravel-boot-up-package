@@ -14,7 +14,7 @@ use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Deploy\DeployTaskRunner;
 use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Enums\DeployPhase;
-use InvalidArgumentException;
+use Igne\LaravelBootUp\Exceptions\ConfigException;
 
 /**
  * Runs the host's project commands for one phase. Placed in the pipeline with
@@ -36,7 +36,7 @@ final class RunDeployTasks implements DescribesProgress, Step
     public function handle(BootContext $context, Closure $next, string $phase = 'before'): mixed
     {
         $parsed = DeployPhase::tryFrom($phase)
-            ?? throw new InvalidArgumentException("Unknown project command phase [{$phase}]; expected 'before-deploy', 'before', 'after' or 'after-deploy'.");
+            ?? throw ConfigException::invalidEnumValue('boot-up.dev.steps', $phase, DeployPhase::class);
 
         $this->runner->run($parsed, $context);
 
@@ -45,8 +45,13 @@ final class RunDeployTasks implements DescribesProgress, Step
 
     public static function progressLabel(BootOptions $options, array $parameters): string
     {
-        $phase = DeployPhase::tryFrom($parameters[0] ?? '') ?? DeployPhase::Before;
+        $configured = $parameters[0] ?? DeployPhase::Before->value;
+        $phase = DeployPhase::tryFrom($configured);
 
-        return "Running project commands ({$phase->label()})";
+        // A typo would otherwise read as a real phase in the plan the user is
+        // about to confirm, seconds before the boot rejects it.
+        return $phase === null
+            ? "Running project commands (unknown phase [{$configured}])"
+            : "Running project commands ({$phase->label()})";
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Tools;
 
+use Igne\LaravelBootUp\Concerns\ValidatesConfig;
 use Igne\LaravelBootUp\Config\ToolsConfig;
 use Igne\LaravelBootUp\Contracts\InstallsTool;
 use Igne\LaravelBootUp\Enums\Tool;
@@ -20,6 +21,8 @@ use Illuminate\Contracts\Container\Container;
  */
 final class ToolRegistry
 {
+    use ValidatesConfig;
+
     public function __construct(
         private readonly Container $container,
         private readonly ToolsConfig $config,
@@ -30,6 +33,8 @@ final class ToolRegistry
         $custom = $this->config->installers[$id] ?? null;
 
         if ($custom !== null) {
+            self::validatedClass($custom, "boot-up.tools.installers.{$id}", InstallsTool::class);
+
             return $this->container->make($custom);
         }
 
