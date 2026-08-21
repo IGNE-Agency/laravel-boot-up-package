@@ -64,9 +64,7 @@ final class DevProcessRegistrar
     ) {}
 
     /**
-     * The names that will run, for the plan summary. Best effort: it is read
-     * before the pipeline has created .env or installed dependencies, so it
-     * describes the project as it stands right now.
+     * The names that will run, in the order their tabs will appear.
      *
      * @return list<string>
      */
@@ -76,14 +74,27 @@ final class DevProcessRegistrar
 
         foreach ($this->decisions($context) as $process) {
             if ($process->runs) {
-                $running[] = $process->name;
+                $running[$process->name] = true;
             }
         }
 
-        // Whatever the application and its packages registered for themselves.
-        $registered = array_diff(array_column(DevCommands::commands(), 'name'), BuiltInProcess::names());
+        $ordered = [];
 
-        return [...$running, ...array_values($registered)];
+        // Registering an existing name replaces it in its own slot, so the
+        // names already in the registry -- Laravel's defaults and whatever
+        // the application and its packages registered -- keep their position.
+        foreach (array_column(DevCommands::commands(), 'name') as $name) {
+            if (! isset($running[$name]) && \in_array($name, BuiltInProcess::names(), true)) {
+                continue;
+            }
+
+            $ordered[] = $name;
+            unset($running[$name]);
+        }
+
+        // The rest are boot-up's own, which register for the first time and
+        // are therefore appended, in the order the decisions are made.
+        return [...$ordered, ...array_keys($running)];
     }
 
     /**

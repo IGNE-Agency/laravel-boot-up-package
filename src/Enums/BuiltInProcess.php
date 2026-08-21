@@ -13,16 +13,21 @@ namespace Igne\LaravelBootUp\Enums;
  * application registers under to take a process over. Naming them once keeps
  * those uses from drifting apart — renaming the watcher, for instance, would
  * otherwise quietly strand the stale-hot-file cleanup.
+ *
+ * The case order is the registration order: Laravel's four defaults first,
+ * then the three boot-up appends. That is the order the tabs appear in, so
+ * anything reporting on the process set reads in the same order the user
+ * will see it.
  */
 enum BuiltInProcess: string
 {
     case Server = 'server';
     case Queue = 'queue';
+    case Logs = 'logs';
+    case Vite = 'vite';
     case Horizon = 'horizon';
     case Reverb = 'reverb';
     case Scheduler = 'scheduler';
-    case Vite = 'vite';
-    case Logs = 'logs';
 
     /**
      * @return list<string>

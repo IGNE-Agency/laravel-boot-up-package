@@ -432,3 +432,41 @@ it('previews without changing the registry', function (): void {
 
     expect($this->devCommandNames())->toBe($before);
 });
+
+it('previews the processes in the order their tabs will appear', function (): void {
+    // Reverb self-registers from a provider, so it holds a slot ahead of
+    // Laravel's defaults — the preview has to respect that, and boot-up's own
+    // additions land after everything already registered.
+    $this->seedDevCommand('php artisan reverb:start', 'reverb', DevCommand::PRIORITY_VENDOR);
+    DevCommands::register('stripe listen --forward-to localhost', 'stripe');
+
+    $registrar = devRegistrar($this->workDir, requires: ['laravel/reverb', 'laravel/pail']);
+    $context = devContext(servingServer());
+
+    $preview = $registrar->preview($context);
+    $registrar->apply($context);
+
+    expect($preview)->toBe($this->devCommandNames());
+});
+
+it('previews an appended process after the ones already registered', function (): void {
+    $registrar = devRegistrar($this->workDir, scheduler: new SchedulerConfig(enabled: true));
+    $context = devContext(servingServer());
+
+    $preview = $registrar->preview($context);
+    $registrar->apply($context);
+
+    expect($preview)->toBe($this->devCommandNames())
+        ->and($preview)->toBe(['server', 'queue', 'vite', 'scheduler']);
+});
+
+it('leaves a suppressed process out of the preview', function (): void {
+    $registrar = devRegistrar($this->workDir, queue: new QueueConfig(enabled: false));
+    $context = devContext(servingServer());
+
+    $preview = $registrar->preview($context);
+    $registrar->apply($context);
+
+    expect($preview)->not->toContain('queue')
+        ->and($preview)->toBe($this->devCommandNames());
+});
