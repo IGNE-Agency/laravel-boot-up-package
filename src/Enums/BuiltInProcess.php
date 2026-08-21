@@ -30,6 +30,25 @@ enum BuiltInProcess: string
     case Scheduler = 'scheduler';
 
     /**
+     * The artisan command that makes a long-running service pick up new code
+     * after a deploy, or null when there is nothing to restart.
+     *
+     * Horizon does not answer to queue:restart — it supervises its own
+     * workers and terminates gracefully instead. The scheduler is absent on
+     * purpose: in production that is cron invoking schedule:run, not a
+     * process a deploy can signal.
+     */
+    public function restartCommand(): ?string
+    {
+        return match ($this) {
+            self::Queue => 'queue:restart',
+            self::Horizon => 'horizon:terminate',
+            self::Reverb => 'reverb:restart',
+            self::Server, self::Logs, self::Vite, self::Scheduler => null,
+        };
+    }
+
+    /**
      * @return list<string>
      */
     public static function names(): array

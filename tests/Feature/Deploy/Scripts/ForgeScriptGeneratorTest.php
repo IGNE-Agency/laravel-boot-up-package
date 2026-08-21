@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Igne\LaravelBootUp\Data\DeploymentPlan;
 use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Deploy\Scripts\ForgeScriptGenerator;
+use Igne\LaravelBootUp\Enums\BuiltInProcess;
 use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 use Igne\LaravelBootUp\Enums\PackageManager;
 
@@ -18,7 +19,7 @@ function forgePlan(array $overrides = []): DeploymentPlan
         'afterMigrations' => [],
         'frontend' => true,
         'packageManager' => PackageManager::Npm,
-        'restartQueues' => true,
+        'restarts' => [BuiltInProcess::Queue],
         'zeroDowntime' => true,
     ];
 
@@ -89,7 +90,7 @@ test('config toggles drop their lines', function (): void {
     $script = forgeScript([
         'migrate' => false,
         'frontend' => false,
-        'restartQueues' => false,
+        'restarts' => [],
         'finalize' => [],
     ]);
 
@@ -148,4 +149,29 @@ touch /tmp/fpmlock 2>/dev/null || true
 ) 9</tmp/fpmlock
 
 SCRIPT);
+});
+
+test('a Horizon project terminates Horizon instead of restarting the queue', function (): void {
+    $script = forgeScript(['restarts' => [BuiltInProcess::Horizon]]);
+
+    expect($script)->toContain('horizon:terminate')
+        ->not->toContain('queue:restart')
+        ->not->toContain('$RESTART_QUEUES()');
+});
+
+test('the queue keeps using Forge\'s own macro on a zero-downtime site', function (): void {
+    expect(forgeScript(['restarts' => [BuiltInProcess::Queue], 'zeroDowntime' => true]))
+        ->toContain('$RESTART_QUEUES()');
+});
+
+test('a classic site restarts the queue through artisan', function (): void {
+    expect(forgeScript(['restarts' => [BuiltInProcess::Queue], 'zeroDowntime' => false]))
+        ->toContain('queue:restart')
+        ->not->toContain('$RESTART_QUEUES()');
+});
+
+test('several services are restarted in the order they run', function (): void {
+    $script = forgeScript(['restarts' => [BuiltInProcess::Horizon, BuiltInProcess::Reverb]]);
+
+    expect(strpos($script, 'horizon:terminate'))->toBeLessThan(strpos($script, 'reverb:restart'));
 });

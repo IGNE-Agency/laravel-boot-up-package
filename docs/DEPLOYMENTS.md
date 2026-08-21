@@ -41,11 +41,30 @@ dashboard instead of one script.
 
 - **Build commands** — dependency installation and the frontend build (your
   configured package manager is installed via `npm i -g` when it isn't npm).
-- **Post deploy commands** — migrations, optimization, finalize commands and a
-  queue restart.
+- **Post deploy commands** — migrations, optimization, finalize commands and the
+  service restarts.
 
 `generate:deploy-script fortrabbit {environment}` outputs both lists, ready to paste
 into the matching dashboard fields.
+
+## Service restarts
+
+A generated script tells the project's long-running services to pick up the new
+code, matching whatever it actually runs:
+
+| Service | Command | When |
+| --- | --- | --- |
+| Queue workers | `queue:restart` (or Forge's own `$RESTART_QUEUES()` on a zero-downtime site) | `queue.enabled`, and Horizon is not managing the queue |
+| Horizon | `horizon:terminate` | `laravel/horizon` is installed and `horizon.enabled` |
+| Reverb | `reverb:restart` | `laravel/reverb` is installed and `reverb.enabled` |
+
+Horizon supervises its own workers and does not answer `queue:restart`, so a
+Horizon project gets `horizon:terminate` *instead of* the queue restart rather
+than as well as it. The scheduler is absent on purpose: in production that is
+cron invoking `schedule:run`, not a process a deploy can signal.
+
+The queue connection is deliberately not consulted — it comes from the deploy
+target's environment, not from the machine generating the script.
 
 ## Project commands
 

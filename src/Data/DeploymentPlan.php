@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Data;
 
+use Igne\LaravelBootUp\Enums\BuiltInProcess;
 use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 use Igne\LaravelBootUp\Enums\PackageManager;
 
@@ -19,6 +20,7 @@ final readonly class DeploymentPlan
      * @param  list<DeployTask>  $afterMigrations
      * @param  list<DeployTask>  $beforeDeploy  earliest custom hook, before optimize/migrations
      * @param  list<DeployTask>  $afterDeploy  latest custom hook, after the release is finalized/live
+     * @param  list<BuiltInProcess>  $restarts  long-running services to restart, in the order they run
      */
     public function __construct(
         public DeploymentEnvironment $environment,
@@ -28,7 +30,7 @@ final readonly class DeploymentPlan
         public array $afterMigrations,
         public bool $frontend,
         public PackageManager $packageManager,
-        public bool $restartQueues,
+        public array $restarts,
         public bool $zeroDowntime = true,
         public array $beforeDeploy = [],
         public array $afterDeploy = [],

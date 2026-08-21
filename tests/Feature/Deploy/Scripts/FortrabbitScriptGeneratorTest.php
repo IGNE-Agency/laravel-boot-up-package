@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Igne\LaravelBootUp\Data\DeploymentPlan;
 use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Deploy\Scripts\FortrabbitScriptGenerator;
+use Igne\LaravelBootUp\Enums\BuiltInProcess;
 use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 use Igne\LaravelBootUp\Enums\PackageManager;
 
@@ -18,7 +19,7 @@ function fortrabbitPlan(array $overrides = []): DeploymentPlan
         'afterMigrations' => [],
         'frontend' => true,
         'packageManager' => PackageManager::Pnpm,
-        'restartQueues' => true,
+        'restarts' => [BuiltInProcess::Queue],
     ];
 
     return new DeploymentPlan(...array_merge($defaults, $overrides));
@@ -100,7 +101,7 @@ test('development drops no-dev and optimize; toggles drop their lines', function
         'environment' => DeploymentEnvironment::Development,
         'migrate' => false,
         'frontend' => false,
-        'restartQueues' => false,
+        'restarts' => [],
         'finalize' => [],
     ]);
 
@@ -111,4 +112,16 @@ test('development drops no-dev and optimize; toggles drop their lines', function
         ->and($script)->not->toContain('run build')
         ->and($script)->not->toContain('queue:restart')
         ->and($script)->not->toContain('storage:link');
+});
+
+test('a Horizon project terminates Horizon instead of restarting the queue', function (): void {
+    $script = fortrabbitScript(['restarts' => [BuiltInProcess::Horizon]]);
+
+    expect($script)->toContain('horizon:terminate')->not->toContain('queue:restart');
+});
+
+test('a Reverb project restarts it after the queue', function (): void {
+    $script = fortrabbitScript(['restarts' => [BuiltInProcess::Queue, BuiltInProcess::Reverb]]);
+
+    expect(strpos($script, 'queue:restart'))->toBeLessThan(strpos($script, 'reverb:restart'));
 });

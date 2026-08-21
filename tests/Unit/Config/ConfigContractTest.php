@@ -151,3 +151,37 @@ test('the provider registers every config class exactly once', function (): void
         expect($times)->toBe(1, "{$class} is registered {$times} times");
     }
 });
+
+test('the deploy pipeline is a same-order subset of the boot pipeline', function (): void {
+    $published = publishedConfig();
+
+    $boot = $published['dev']['steps'];
+    $positions = array_map(
+        fn (string $step): int|false => array_search($step, $boot, true),
+        $published['deploy']['steps'],
+    );
+
+    // Deploy runs a subset of the boot's work; running it in a different
+    // order would mean two pipelines that cannot be reasoned about together.
+    expect($positions)->not->toContain(false)
+        ->and($positions)->toBe(array_values(collect($positions)->sort()->all()));
+});
+
+test('the generate commands do not read the boot pipeline config', function (): void {
+    // Their job is to render artifacts from the deploy config; reaching into
+    // the boot steps would couple them to a pipeline they never run.
+    $sources = collect([
+        'src/Console/DeployScriptCommand.php',
+        'src/Console/PipelineCommand.php',
+        'src/Console/GenerateGitHooksCommand.php',
+        'src/Deploy/Scripts/DeploymentPlanner.php',
+        'src/Pipelines/CiScripts.php',
+    ])->mapWithKeys(fn (string $path): array => [
+        $path => (string) file_get_contents(dirname(__DIR__, 3).'/'.$path),
+    ]);
+
+    foreach ($sources as $path => $source) {
+        expect($source)->not->toContain('DevConfig', "{$path} reads DevConfig")
+            ->not->toContain('BootOptions', "{$path} reads BootOptions");
+    }
+});

@@ -23,7 +23,7 @@ function validatorPlan(bool $pint = true, DeployHookHost $host = DeployHookHost:
             afterMigrations: [],
             frontend: false,
             packageManager: PackageManager::Npm,
-            restartQueues: false,
+            restarts: [],
         ),
         nova: false,
         composerAuth: false,

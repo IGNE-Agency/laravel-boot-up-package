@@ -7,6 +7,7 @@ namespace Igne\LaravelBootUp\Deploy\Scripts;
 use Igne\LaravelBootUp\Contracts\ScriptGenerator;
 use Igne\LaravelBootUp\Data\DeploymentPlan;
 use Igne\LaravelBootUp\Data\Lines;
+use Igne\LaravelBootUp\Enums\BuiltInProcess;
 
 /**
  * Renders a Laravel Forge deployment script: the zero-downtime release
@@ -61,7 +62,24 @@ final class ForgeScriptGenerator implements ScriptGenerator
             ->when($plan->afterDeploy !== [], fn (Lines $script) => $script
                 ->blank()
                 ->lines($snippets->deployTasks($plan->afterDeploy)))
-            ->lineWithBreakIf($plan->restartQueues, '$RESTART_QUEUES()');
+            ->linesWithBreak($this->restarts($snippets));
+    }
+
+    /**
+     * Forge exposes $RESTART_QUEUES() on zero-downtime sites, so the queue
+     * keeps using the platform's own macro; Horizon and Reverb have no macro
+     * and are told directly.
+     */
+    private function restarts(DeployScriptSnippets $snippets): Lines
+    {
+        return Lines::make()->each(
+            $snippets->plan->restarts,
+            fn (Lines $script, BuiltInProcess $process) => $script->line(
+                $process === BuiltInProcess::Queue && $snippets->plan->zeroDowntime
+                    ? '$RESTART_QUEUES()'
+                    : $snippets->artisan((string) $process->restartCommand()),
+            ),
+        );
     }
 
     private function classic(DeployScriptSnippets $snippets): Lines
@@ -82,7 +100,7 @@ final class ForgeScriptGenerator implements ScriptGenerator
                 ->linesWithBreak($plan->packageManager->buildScriptLines(ensureInstalled: false)))
             ->when($plan->afterDeploy !== [], fn (Lines $script) => $script
                 ->linesWithBreak($snippets->deployTasks($plan->afterDeploy)))
-            ->lineWithBreakIf($plan->restartQueues, $snippets->artisan('queue:restart'))
+            ->linesWithBreak($this->restarts($snippets))
             ->blank()
             ->comment('Prevent concurrent PHP-FPM reloads...')
             ->line('touch /tmp/fpmlock 2>/dev/null || true')

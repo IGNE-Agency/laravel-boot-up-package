@@ -7,6 +7,7 @@ namespace Igne\LaravelBootUp\Deploy\Scripts;
 use Igne\LaravelBootUp\Contracts\ScriptGenerator;
 use Igne\LaravelBootUp\Data\DeploymentPlan;
 use Igne\LaravelBootUp\Data\Lines;
+use Igne\LaravelBootUp\Enums\BuiltInProcess;
 
 /**
  * Renders the two command lists Fortrabbit's dashboard expects per
@@ -62,6 +63,7 @@ final class FortrabbitScriptGenerator implements ScriptGenerator
             ->each($plan->finalize, fn (Lines $script, string $command) => $script
                 ->line($snippets->artisan($command)))
             ->lines($snippets->deployTasks($plan->afterDeploy))
-            ->lineIf($plan->restartQueues, $snippets->artisan('queue:restart'));
+            ->each($plan->restarts, fn (Lines $script, BuiltInProcess $process) => $script
+                ->line($snippets->artisan((string) $process->restartCommand())));
     }
 }

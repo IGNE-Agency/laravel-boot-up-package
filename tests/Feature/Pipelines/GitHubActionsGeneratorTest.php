@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Igne\LaravelBootUp\Data\DeploymentPlan;
 use Igne\LaravelBootUp\Data\PipelineJobStep;
 use Igne\LaravelBootUp\Data\PipelinePlan;
+use Igne\LaravelBootUp\Enums\BuiltInProcess;
 use Igne\LaravelBootUp\Enums\DeployHookHost;
 use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 use Igne\LaravelBootUp\Enums\PackageManager;
@@ -22,7 +23,7 @@ function githubPipelinePlan(array $overrides = [], array $deploymentOverrides = 
         'afterMigrations' => [],
         'frontend' => true,
         'packageManager' => PackageManager::Npm,
-        'restartQueues' => true,
+        'restarts' => [BuiltInProcess::Queue],
     ];
 
     $defaults = [
