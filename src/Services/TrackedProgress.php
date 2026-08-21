@@ -33,6 +33,27 @@ final class TrackedProgress extends Progress
     }
 
     /**
+     * Progress::start() installs a SIGINT handler of its own that renders a
+     * cancelled bar and exit()s. boot-up's commands own SIGINT — their trap
+     * tears the boot down, and Symfony's signal registry calls EVERY handler
+     * in the chain — so a surviving prompts closure would draw over whatever
+     * holds the screen and exit() before teardown finished. Start the bar,
+     * then hand SIGINT back exactly as it was found, keeping the async signal
+     * delivery start() switched on.
+     */
+    #[\Override]
+    public function start(): void
+    {
+        $handler = \function_exists('pcntl_signal_get_handler') ? pcntl_signal_get_handler(SIGINT) : null;
+
+        parent::start();
+
+        if ($handler !== null) {
+            pcntl_signal(SIGINT, $handler);
+        }
+    }
+
+    /**
      * Whether a live frame is on screen that foreign output would corrupt.
      * Error/submit/cancel frames are settled — nothing redraws over them.
      */
@@ -126,14 +147,9 @@ final class TrackedProgress extends Progress
 
     /**
      * Progress::resetSignals() forces SIGINT back to SIG_DFL, which would
-     * disarm the serve command's teardown trap the moment the bar settles —
-     * exactly when "press Ctrl+C to stop everything" is on screen. The
-     * command's trap owns SIGINT; leave it alone.
-     *
-     * Consequence: the cancel closure Progress::start() registered stays in
-     * the SIGINT chain for the rest of the process. Harmless while the trap
-     * handler exits before it can render — revisit if the trap ever returns
-     * instead of exiting.
+     * disarm the command's teardown trap the moment the bar settles — while
+     * the boot it is reporting on is still running. The command owns SIGINT;
+     * leave it alone.
      */
     protected function resetSignals(): void {}
 

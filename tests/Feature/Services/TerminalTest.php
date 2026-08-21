@@ -218,23 +218,32 @@ test('fail settles the bar in its error state and detaches it', function (): voi
         ->and($afterError)->not->toContain('Boot progress');
 });
 
-test('settling the bar leaves the SIGINT handler armed', function (string $method): void {
+test('the bar never touches the command\'s SIGINT handler', function (string $method): void {
     Prompt::fake();
 
     $originalAsync = pcntl_async_signals();
     $originalHandler = pcntl_signal_get_handler(SIGINT);
+    $sentinel = function (): void {};
 
     try {
+        // Stands in for the command's teardown trap, which owns SIGINT for as
+        // long as the boot runs.
+        pcntl_signal(SIGINT, $sentinel);
+
         $progress = (new Terminal)->progress('Boot progress', 2);
         $progress->start();
+
+        // Progress::start() installs a closure that renders a cancelled bar
+        // and exit()s. Left in place it would draw over whatever holds the
+        // screen and exit() before teardown finished.
+        expect(pcntl_signal_get_handler(SIGINT))->toBe($sentinel);
+
         $progress->advance();
         $progress->{$method}();
 
-        // Progress's own resetSignals() would force SIGINT back to SIG_DFL
-        // here, disarming app:serve's teardown trap right as the combined
-        // stream (whose banner says "press Ctrl+C to stop everything")
-        // begins. TrackedProgress overrides it away.
-        expect(pcntl_signal_get_handler(SIGINT))->not->toBe(SIG_DFL);
+        // And settling must not force SIGINT back to SIG_DFL either, which
+        // would disarm the trap while the boot is still running.
+        expect(pcntl_signal_get_handler(SIGINT))->toBe($sentinel);
     } finally {
         pcntl_async_signals($originalAsync);
         pcntl_signal(SIGINT, $originalHandler);
