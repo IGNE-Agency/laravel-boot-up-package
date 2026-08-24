@@ -2,14 +2,14 @@
 
 Seven extension points, none of which require touching package code. The first
 is Laravel's own API rather than boot-up's — extra dev processes are registered
-the same way in any Laravel application, and boot-up simply boots the project
-before they run.
+the same way in any Laravel application, and boot-up only decides which of the
+built-in ones this project needs.
 
 ## Dev processes
 
-`php artisan dev` is Laravel's own command with boot-up's boot in front of it,
-so extra long-running processes are registered the ordinary Laravel way — from
-any service provider's `boot()`, with no boot-up API involved:
+`php artisan dev` *is* Laravel's own command, so extra long-running processes
+are registered the ordinary Laravel way — from any service provider's `boot()`,
+with no boot-up API involved:
 
 ```php
 use Illuminate\Foundation\DevCommands;
@@ -55,6 +55,9 @@ Octane's, for instance — untouched. For the rest it takes a package's
 registration over, because it is the only party that knows the command has to
 run inside Sail's containers.
 
+`app:setup` ends by listing the processes `dev` will run, in the order their
+tabs will appear — third-party registrations included.
+
 Under `php artisan dev --detach` every process starts detached instead, with a
 log file in `storage/logs/boot-up/`, visible to `app:status` and stoppable with
 `app:down`.
@@ -62,7 +65,7 @@ log file in `storage/logs/boot-up/`, visible to `app:status` and stoppable with
 ## Project commands
 
 Generators and warmers that run across four deploy phases (`beforeDeploy`,
-`beforeMigrations`, `afterMigrations`, `afterDeploy`) during `php artisan dev` /
+`beforeMigrations`, `afterMigrations`, `afterDeploy`) during `app:setup` /
 `app:deploy` and get embedded in exported deployment scripts.
 
 1. Implement `Igne\LaravelBootUp\Contracts\ProvidesDeployTasks` (all four
@@ -75,7 +78,7 @@ Full guide: [CUSTOM_COMMANDS.md](CUSTOM_COMMANDS.md) — example:
 ## Custom pipeline steps
 
 1. Implement `Igne\LaravelBootUp\Contracts\Step`.
-2. Insert the class anywhere in the published    `boot-up.setup.steps` / `boot-up.deploy.steps` arrays.
+2. Insert the class anywhere in the published `boot-up.setup.steps` / `boot-up.deploy.steps` arrays.
 
 Print through the package's terminal for consistent styling: the global
 `terminal()` helper (no import needed — `terminal()->success('Done.')`) or the

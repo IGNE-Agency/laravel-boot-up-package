@@ -73,8 +73,8 @@ final class BootRunner
     /**
      * The sealed lifecycle. $trapUsing REGISTERS a signal handler —
      * fn (array $signals, Closure $handler) — rather than being one: the
-     * handler must close over runner-owned state (the reporter, the live
-     * stream, the teardown guard).
+     * handler must close over runner-owned state (the reporter and the
+     * teardown guard).
      *
      * begin() and the pipeline are deliberately not exposed separately.
      * The trap must be registered between them: before begin() the

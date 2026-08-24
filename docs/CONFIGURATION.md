@@ -17,16 +17,17 @@ Which `APP_ENV` values the boot may run under.
 
 | Key                   | Default                    | Description                                                                                                                                             |
 | --------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `environment.allowed` | `['local', 'development']` | `php artisan dev` refuses to run when `APP_ENV` (read from the `.env` file) is not in this list. A missing `.env` or `APP_ENV` counts as a fresh local setup. |
+| `environment.allowed` | `['local', 'development']` | `app:setup` and `php artisan dev` both refuse to run when `APP_ENV` (read from the `.env` file) is not in this list. A missing `.env` or `APP_ENV` counts as a fresh local setup. |
 
 ## Server
 
-Which development server drives `php artisan dev`. Driver-specific settings live
-in their own sections: [Herd](#herd), [Artisan](#artisan), [Sail](#sail).
+Which development server `app:setup` starts, and `php artisan dev` then runs
+against. Driver-specific settings live in their own sections:
+[Herd](#herd), [Artisan](#artisan), [Sail](#sail).
 
 | Key              | Env var                 | Default             | Description                                                                                      |
 | ---------------- | ----------------------- | ------------------- | ------------------------------------------------------------------------------------------------ |
-| `server.default` | `BOOT_UP_SERVER`        | `null`              | `herd`, `sail` or `artisan`. `null` prompts on first run.                                        |
+| `server.default` | `BOOT_UP_SERVER`        | `null`              | `herd`, `sail` or `artisan`. `null` makes `app:setup` prompt on first run; `dev` then reuses what it chose. |
 | `server.prompt`  | `BOOT_UP_SERVER_PROMPT` | `true`              | Whether to prompt for a server when none is configured.                                          |
 | `server.drivers` | —                       | `[]`                | Extension point: add your own [`Contracts\Server`](EXTENDING.md#custom-servers) implementations. `herd`, `sail` and `artisan` are always available; an entry reusing one of those keys replaces that driver. A class that is not a `Server` is rejected when it is selected. |
 
@@ -150,6 +151,9 @@ and whether the application or another package overrides it, is covered in
 | `setup.open_browser`   | `BOOT_UP_OPEN_BROWSER`        | `true`   | Open the app in your browser when the setup completes.                                  |
 | `setup.auto_accept`    | `BOOT_UP_SETUP_AUTO_ACCEPT`   | `false`  | Skip the "What app:setup will do — continue?" prompt. `--yes` does the same per run.     |
 | `setup.steps`          | —                             | 17 steps | The full boot pipeline, in order — see [Step pipelines](#step-pipelines).                |
+
+`app:setup` is the only command that runs these. `php artisan dev` never boots:
+it checks that the boot has happened and says to run `app:setup` if it has not.
 
 ## Dev
 

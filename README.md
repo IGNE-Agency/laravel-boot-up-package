@@ -1,8 +1,8 @@
 # Laravel Boot-Up
 
-A development-only Laravel package that boots a project on any machine — even a
-blank one — with two commands, and cleanly shuts it down again. It builds on
-Laravel's own `php artisan dev` rather than replacing it.
+A development-only Laravel package that sets a project up on any machine — even
+a blank one — with one command, runs it with Laravel's own `php artisan dev`,
+and cleanly shuts it down again.
 
 > Requires PHP 8.3+, Laravel 13, macOS or Linux (native Windows fails fast with
 > a clear message — use WSL2). Development only.
@@ -20,18 +20,22 @@ this package has no business in production.
 
 ```bash
 composer install
-php artisan dev
+php artisan app:setup   # once, after a clone
+php artisan dev         # every day
 ```
 
-`dev` installs the tools you're missing, creates your `.env`, sets up the
+`app:setup` installs the tools you're missing, creates your `.env`, sets up the
 database, installs dependencies, runs migrations, builds assets, and serves the
-app via **Herd**, **Sail**, or **`php artisan serve`** — then hands the queue
-worker, the asset watcher and everything else to Laravel's own dev terminal,
-where each process gets its own searchable tab. `app:down` stops everything it
-started — and nothing it didn't.
+app via **Herd**, **Sail**, or **`php artisan serve`**. It ends by naming the
+processes `dev` will run.
 
-This is Laravel's `php artisan dev` with the boot in front of it, so your own
-processes join it exactly as they would in any Laravel application:
+`dev` is Laravel's own dev command: each process gets its own searchable tab,
+and boot-up only decides which processes this project needs. It starts in
+milliseconds, and says to run `app:setup` if the project is not ready.
+`app:down` stops everything boot-up started — and nothing it didn't.
+
+Your own processes join `dev` exactly as they would in any Laravel
+application:
 
 ```php
 use Illuminate\Foundation\DevCommands;
@@ -49,8 +53,9 @@ containers when that is where the project lives. See
 
 | Command                  | What it does                                                          |
 | ------------------------ | --------------------------------------------------------------------- |
-| `dev`                    | Boot everything the application needs, then run the dev processes.    |
-| `app:down`               | Stop tracked processes and the server `dev` started.                  |
+| `app:setup`              | Set up the application and start its development server.              |
+| `dev`                    | Run the dev processes this project needs.                             |
+| `app:down`               | Stop tracked processes and the server `app:setup` started.            |
 | `app:status`             | Show the active server and tracked processes.                         |
 | `app:deploy`             | Install, run project commands and migrate — without booting a server. |
 | `generate:deploy-script` | Export a paste-ready deployment script (Forge, fortrabbit).           |
@@ -58,7 +63,7 @@ containers when that is where the project lives. See
 | `generate:git-hooks`     | Install a tracked pre-commit hook running the pipeline's Pint check.  |
 
 Every flag is documented in [docs/COMMANDS.md](docs/COMMANDS.md) — and
-`php artisan list` / `php artisan dev --help` are always authoritative.
+`php artisan list` / `php artisan app:setup --help` are always authoritative.
 
 ## Documentation
 

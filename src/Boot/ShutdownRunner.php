@@ -17,7 +17,7 @@ use Igne\LaravelBootUp\Servers\StopServerPrompt;
 
 /**
  * The single teardown path, shared by app:down and the Ctrl-C trap on
- * the boot. Only ever considers the server the boot itself started, and
+ * app:setup. Only ever considers the server app:setup itself started, and
  * clears all state so a second invocation is a friendly no-op.
  */
 final class ShutdownRunner

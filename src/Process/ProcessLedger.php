@@ -9,8 +9,11 @@ use Igne\LaravelBootUp\Services\JsonStore;
 use Illuminate\Support\Collection;
 
 /**
- * Persisted ledger of background processes started by the package,
- * surviving the boundary between the dev command and app:down.
+ * Persisted ledger of background processes started by the package, surviving
+ * the boundary between the command that started them and app:down.
+ *
+ * Only detached processes are in here: the ones `php artisan dev` streams
+ * belong to the terminal UI, which starts, restarts and reaps them itself.
  */
 final class ProcessLedger
 {

@@ -1,45 +1,74 @@
 # Commands
 
 The authoritative reference is always the CLI itself — `php artisan list`
-shows every command, and `php artisan dev --help` (or any other
+shows every command, and `php artisan app:setup --help` (or any other
 command with `--help`) shows its full signature. This page mirrors those
 signatures with more context.
 
-## `dev`
+Two commands cover the daily loop: `app:setup` gets the project ready, `dev`
+runs it. Setting up is what you do after a clone; running is what you do every
+day, which is why they are separate.
 
-Boot everything the application needs, then run the dev processes. Prints the
-plan first, asks to continue, then works through it with a progress bar and a
-section divider per stage — and hands off to Laravel's dev terminal, where each
-process gets its own tab. Ctrl+C (or `q`) tears everything down.
+## `app:setup`
 
-This is Laravel's own `dev` command with the boot in front of it, so every
-option it defines works here too: `--tabs`, `--stream`, `--inline`,
-`--timestamps`, `--no-restart`, `--json` and the buffer sizes. `app:serve` still
-works as a deprecated alias.
+Set up the application and start its development server. Prints the plan first,
+asks to continue, then works through it with a progress bar and a section
+divider per stage. Ctrl+C tears down everything it started so far. It ends by
+naming `php artisan dev` and the processes `dev` will run.
 
 ```bash
-php artisan dev
+php artisan app:setup
 ```
 
 | Argument / option  | Description                                                                                                                           |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `server`           | The development server to use: `herd`, `sail`, `artisan`, or any driver registered in `boot-up.server.drivers`. Prompts when omitted. |
-| `--seed`           | Seed the database after migrating — always, even with nothing to migrate. (No `-s`: the framework claims it for `--stream`.)          |
+| `--seed` / `-s`    | Seed the database after migrating — always, even with nothing to migrate.                                                              |
 | `--fresh`          | Drop all tables and re-run every migration (asks first).                                                                              |
 | `--no-migrate`     | Skip running pending migrations. Wins over `--fresh` as the least destructive option.                                                 |
 | `--update` / `-u`  | Update dependencies instead of installing.                                                                                            |
-| `--without-queue`  | Do not start a queue worker.                                                                                                          |
 | `--without-assets` | Skip frontend dependencies and assets.                                                                                                |
-| `--detach` / `-d`  | Run the dev processes in the background instead of this terminal, with logs in `storage/logs/boot-up/`.                               |
 | `--yes` / `-y`     | Run without the confirmation prompt (config: `setup.auto_accept`).                                                                    |
+
+## `dev`
+
+Run the dev processes this project needs, in Laravel's dev terminal — one
+searchable tab per process. This *is* Laravel's own `dev` command, so every
+option it defines works here too: `--tabs`, `--stream`, `--inline`,
+`--timestamps`, `--no-restart`, `--json` and the buffer sizes, and so do its
+keys: `↑`/`↓` scroll, `tab` cycles tabs, `c` clears, `/` searches, `s` streams,
+`q` quits.
+
+boot-up adds only the process list: which of the built-in processes this project
+can use, and the server rewrite that runs them inside Sail's containers when
+that is where the project lives.
+
+Before handing off it checks that the project is set up — a `.env` with an
+`APP_KEY`, installed dependencies, a known server — and names `app:setup` if
+anything is missing. Those are filesystem reads, so the terminal appears
+immediately.
+
+```bash
+php artisan dev
+```
+
+| Argument / option  | Description                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `server`           | Override the server `app:setup` recorded: `herd`, `sail`, `artisan`, or any driver registered in `boot-up.server.drivers`.     |
+| `--without-queue`  | Do not run a queue worker.                                                                                                      |
+| `--without-assets` | Do not run an asset watcher.                                                                                                    |
+| `--detach` / `-d`  | Run the dev processes in the background instead of this terminal, with logs in `storage/logs/boot-up/`.                        |
+
+Quitting the terminal leaves the project set up and its server running — that is
+what `app:down` is for.
 
 The dev terminal needs Node 22.13 or newer. Below that, `--detach` runs the
 same processes without it.
 
 ## `app:down`
 
-Stop tracked processes and the server `php artisan dev` started — and nothing it
-didn't. After a failed Sail boot it also offers `sail down` to clear
+Stop tracked processes and the server `php artisan app:setup` started — and
+nothing it didn't. After a failed Sail boot it also offers `sail down` to clear
 leftover Docker resources (stopped containers, networks, half-pulled
 images).
 
@@ -63,7 +92,7 @@ php artisan app:status
 ## `app:deploy`
 
 Install dependencies, run project commands and migrate — without booting a
-server, running dev processes, or opening a browser. Like `dev`, it prints
+server, running dev processes, or opening a browser. Like `app:setup`, it prints
 the plan up front and tracks a progress bar as it runs.
 
 ```bash

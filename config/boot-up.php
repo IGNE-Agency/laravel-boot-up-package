@@ -25,8 +25,9 @@ return [
     |--------------------------------------------------------------------------
     | Environment guard
     |--------------------------------------------------------------------------
-    | php artisan dev refuses to run when APP_ENV (read from the .env file) is not
-    | in 'allowed'. A missing .env or APP_ENV counts as a fresh local setup.
+    | Both app:setup and php artisan dev refuse to run when APP_ENV (read from
+    | the .env file) is not in 'allowed'. A missing .env or APP_ENV counts as a
+    | fresh local setup.
     */
     'environment' => [
         'allowed' => ['local', 'development'],
@@ -150,8 +151,8 @@ return [
     | applies). The scheduler is opt-in: schedule:work on a project with
     | no scheduled tasks is pure noise.
     |
-    | Each of these runs as a dev process: `php artisan dev` streams them all
-    | in one terminal, and `php artisan dev --detach` runs them in the
+    | Each of these runs as a dev process: `php artisan dev` gives them a tab
+    | each in one terminal, and `php artisan dev --detach` runs them in the
     | background with logs in storage/logs/boot-up/.
     */
     'horizon' => [
@@ -189,8 +190,8 @@ return [
     |--------------------------------------------------------------------------
     | Shutdown behaviour
     |--------------------------------------------------------------------------
-    | Whether teardown (Ctrl+C on php artisan dev, app:down) asks before stopping
-    | the development server, and what the unattended answer is.
+    | Whether teardown (Ctrl+C during app:setup, or app:down) asks before
+    | stopping the development server, and what the unattended answer is.
     */
     'shutdown' => [
         'prompt_stop_server' => env('BOOT_UP_SHUTDOWN_PROMPT', true),
@@ -236,9 +237,10 @@ return [
     |--------------------------------------------------------------------------
     | php artisan dev
     |--------------------------------------------------------------------------
-    | The long-running processes are not steps -- they start after the setup,
-    | through Laravel's own dev command. boot-up decides which of them this
-    | project can use and rewrites each one for the server that serves it.
+    | The long-running processes are not steps: `php artisan dev` is Laravel's
+    | own dev command, and boot-up only decides which processes this project
+    | can use and rewrites each one for the server app:setup left serving it.
+    | Run app:setup first -- dev says so if the project is not ready.
     |
     | 'logs' keeps Laravel's log-tailing process, which needs laravel/pail.
     | Register your own processes from any service provider:
