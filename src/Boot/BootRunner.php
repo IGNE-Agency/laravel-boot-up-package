@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Boot;
 
 use Closure;
-use Igne\LaravelBootUp\Config\DevConfig;
+use Igne\LaravelBootUp\Config\SetupConfig;
 use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Process\ProcessReaper;
@@ -41,7 +41,7 @@ final class BootRunner
 
     public function __construct(
         private readonly ServerSelector $selector,
-        private readonly DevConfig $config,
+        private readonly SetupConfig $config,
         private readonly ShutdownRunner $shutdown,
         private readonly ActiveServerStore $store,
         private readonly BootProcessProbe $probe,

@@ -112,7 +112,7 @@ test('every leaf in the published config file is read by some config class', fun
 test('the published step lists are non-empty and hold only pipeline steps', function (): void {
     $published = publishedConfig();
 
-    foreach (['dev', 'deploy'] as $command) {
+    foreach (['setup', 'deploy'] as $command) {
         $steps = $published[$command]['steps'];
 
         expect($steps)->not->toBeEmpty();
@@ -126,13 +126,13 @@ test('the published step lists are non-empty and hold only pipeline steps', func
     }
 });
 
-test('dev and deploy auto_accept are independent keys', function (): void {
+test('setup and deploy auto_accept are independent keys', function (): void {
     $repository = new Repository(['boot-up' => [
-        'dev' => ['auto_accept' => true],
+        'setup' => ['auto_accept' => true],
         'deploy' => ['auto_accept' => false],
     ]]);
 
-    expect(Igne\LaravelBootUp\Config\DevConfig::fromRepository($repository)->autoAccept)->toBeTrue()
+    expect(Igne\LaravelBootUp\Config\SetupConfig::fromRepository($repository)->autoAccept)->toBeTrue()
         ->and(Igne\LaravelBootUp\Config\DeployConfig::fromRepository($repository)->autoAccept)->toBeFalse();
 });
 
@@ -155,7 +155,7 @@ test('the provider registers every config class exactly once', function (): void
 test('the deploy pipeline is a same-order subset of the boot pipeline', function (): void {
     $published = publishedConfig();
 
-    $boot = $published['dev']['steps'];
+    $boot = $published['setup']['steps'];
     $positions = array_map(
         fn (string $step): int|false => array_search($step, $boot, true),
         $published['deploy']['steps'],

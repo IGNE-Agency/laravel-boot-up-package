@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\ArtisanServeConfig;
 use Igne\LaravelBootUp\Config\DeployConfig;
-use Igne\LaravelBootUp\Config\DevConfig;
 use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Config\HerdConfig;
 use Igne\LaravelBootUp\Config\SailConfig;
+use Igne\LaravelBootUp\Config\SetupConfig;
 use Igne\LaravelBootUp\Config\ToolsConfig;
 use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Exceptions\ConfigException;
@@ -17,23 +17,23 @@ use Illuminate\Config\Repository;
  * Every message names the key it came from: a misconfiguration the user cannot
  * locate is barely better than one that fails silently.
  */
-function devConfigWith(mixed $steps): Repository
+function setupConfigWith(mixed $steps): Repository
 {
-    return new Repository(['boot-up' => ['dev' => ['steps' => $steps]]]);
+    return new Repository(['boot-up' => ['setup' => ['steps' => $steps]]]);
 }
 
 test('a step class that does not exist is rejected before the boot starts', function (): void {
-    expect(fn () => DevConfig::fromRepository(devConfigWith(['App\\Steps\\Nope'])))
-        ->toThrow(ConfigException::class, 'boot-up.dev.steps');
+    expect(fn () => SetupConfig::fromRepository(setupConfigWith(['App\\Steps\\Nope'])))
+        ->toThrow(ConfigException::class, 'boot-up.setup.steps');
 });
 
 test('a step class that is not a Step is rejected', function (): void {
-    expect(fn () => DevConfig::fromRepository(devConfigWith([stdClass::class])))
+    expect(fn () => SetupConfig::fromRepository(setupConfigWith([stdClass::class])))
         ->toThrow(ConfigException::class, 'Igne\\LaravelBootUp\\Contracts\\Step');
 });
 
 test('a step entry is validated without its variant argument getting in the way', function (): void {
-    expect(fn () => DevConfig::fromRepository(devConfigWith(['App\\Steps\\Nope:before'])))
+    expect(fn () => SetupConfig::fromRepository(setupConfigWith(['App\\Steps\\Nope:before'])))
         ->toThrow(ConfigException::class, 'App\\Steps\\Nope');
 });
 

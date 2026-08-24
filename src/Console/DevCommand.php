@@ -12,7 +12,7 @@ use Igne\LaravelBootUp\Concerns\AnnouncesRun;
 use Igne\LaravelBootUp\Concerns\ConfirmsPlan;
 use Igne\LaravelBootUp\Concerns\GuardsAgainstFailures;
 use Igne\LaravelBootUp\Concerns\RequiresUnix;
-use Igne\LaravelBootUp\Config\DevConfig;
+use Igne\LaravelBootUp\Config\SetupConfig;
 use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Data\VersionConstraint;
 use Igne\LaravelBootUp\Enums\Tool;
@@ -122,7 +122,7 @@ class DevCommand extends FrameworkDevCommand implements Isolatable
             return self::FAILURE;
         }
 
-        if (! $this->confirmPlan($plan, 'dev', $this->laravel->make(DevConfig::class)->autoAccept)) {
+        if (! $this->confirmPlan($plan, 'dev', $this->laravel->make(SetupConfig::class)->autoAccept)) {
             return $this->skip('Aborted — nothing was changed.');
         }
 

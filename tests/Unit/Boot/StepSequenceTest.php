@@ -19,7 +19,7 @@ use Igne\LaravelBootUp\Servers\Steps\StartServer;
  */
 function defaultBootSteps(): array
 {
-    return (require dirname(__DIR__, 3).'/config/boot-up.php')['dev']['steps'];
+    return (require dirname(__DIR__, 3).'/config/boot-up.php')['setup']['steps'];
 }
 
 test('assigns every default step to its stage, in order', function (): void {
@@ -172,7 +172,7 @@ test('the shipped steps carry their own labels', function (): void {
 
 test('no shipped step falls back to being named after its class', function (): void {
     $config = require dirname(__DIR__, 3).'/config/boot-up.php';
-    $steps = [...$config['dev']['steps'], ...$config['deploy']['steps']];
+    $steps = [...$config['setup']['steps'], ...$config['deploy']['steps']];
 
     $plan = StepSequence::for($steps, new BootOptions);
 

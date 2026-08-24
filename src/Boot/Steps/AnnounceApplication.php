@@ -9,7 +9,7 @@ use Igne\LaravelBootUp\Attributes\Group;
 use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
 use Igne\LaravelBootUp\Boot\Browser;
-use Igne\LaravelBootUp\Config\DevConfig;
+use Igne\LaravelBootUp\Config\SetupConfig;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Enums\BootStage;
@@ -21,7 +21,7 @@ use Igne\LaravelBootUp\Process\ProcessRunner;
 final class AnnounceApplication implements Step
 {
     public function __construct(
-        private readonly DevConfig $config,
+        private readonly SetupConfig $config,
         private readonly Browser $browser,
     ) {}
 

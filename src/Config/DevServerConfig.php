@@ -12,7 +12,7 @@ use Illuminate\Contracts\Config\Repository;
 
 /**
  * Which development server drives the boot. Named DevServerConfig to stay
- * unmistakable beside DevConfig (the dev command itself).
+ * unmistakable beside SetupConfig and DevConfig (the commands themselves).
  */
 final readonly class DevServerConfig
 {

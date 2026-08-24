@@ -36,7 +36,7 @@ final class RunDeployTasks implements DescribesProgress, Step
     public function handle(BootContext $context, Closure $next, string $phase = 'before'): mixed
     {
         $parsed = DeployPhase::tryFrom($phase)
-            ?? throw ConfigException::invalidEnumValue('boot-up.dev.steps', $phase, DeployPhase::class);
+            ?? throw ConfigException::invalidEnumValue('boot-up.setup.steps', $phase, DeployPhase::class);
 
         $this->runner->run($parsed, $context);
 

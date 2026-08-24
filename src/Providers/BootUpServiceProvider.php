@@ -20,6 +20,7 @@ use Igne\LaravelBootUp\Config\QueueConfig;
 use Igne\LaravelBootUp\Config\ReverbConfig;
 use Igne\LaravelBootUp\Config\SailConfig;
 use Igne\LaravelBootUp\Config\SchedulerConfig;
+use Igne\LaravelBootUp\Config\SetupConfig;
 use Igne\LaravelBootUp\Config\ShutdownConfig;
 use Igne\LaravelBootUp\Config\ToolsConfig;
 use Igne\LaravelBootUp\Console\DeployCommand;
@@ -68,6 +69,7 @@ final class BootUpServiceProvider extends ServiceProvider
         ReverbConfig::class,
         SailConfig::class,
         SchedulerConfig::class,
+        SetupConfig::class,
         ShutdownConfig::class,
         ToolsConfig::class,
     ];

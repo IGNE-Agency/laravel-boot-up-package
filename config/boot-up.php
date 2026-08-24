@@ -199,26 +199,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | php artisan dev
+    | php artisan app:setup
     |--------------------------------------------------------------------------
     | 'steps' is the boot pipeline: the sequential work that has to finish
     | before the application can run, in order. Insert your own Contracts\Step
-    | classes anywhere, remove steps you do not want, or reorder them. The
-    | long-running processes are not steps -- they start afterwards, through
-    | Laravel's own dev command.
+    | classes anywhere, remove steps you do not want, or reorder them.
     |
     | 'auto_accept' (or --yes) skips the confirmation prompt; 'open_browser'
-    | opens the served URL when the boot completes.
-    |
-    | 'logs' keeps Laravel's log-tailing process, which needs laravel/pail.
-    | Register your own processes from any service provider:
-    |
-    |     DevCommands::register('stripe listen --forward-to '.config('app.url'));
+    | opens the served URL when the setup completes.
     */
-    'dev' => [
+    'setup' => [
         'open_browser' => env('BOOT_UP_OPEN_BROWSER', true),
-        'auto_accept' => env('BOOT_UP_DEV_AUTO_ACCEPT', false),
-        'logs' => env('BOOT_UP_DEV_LOGS', true),
+        'auto_accept' => env('BOOT_UP_SETUP_AUTO_ACCEPT', false),
         'steps' => [
             EnsureEnvFile::class,
             EnsureLocalEnvironment::class,
@@ -238,6 +230,23 @@ return [
             BuildAssets::class,
             AnnounceApplication::class,
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | php artisan dev
+    |--------------------------------------------------------------------------
+    | The long-running processes are not steps -- they start after the setup,
+    | through Laravel's own dev command. boot-up decides which of them this
+    | project can use and rewrites each one for the server that serves it.
+    |
+    | 'logs' keeps Laravel's log-tailing process, which needs laravel/pail.
+    | Register your own processes from any service provider:
+    |
+    |     DevCommands::register('stripe listen --forward-to '.config('app.url'));
+    */
+    'dev' => [
+        'logs' => env('BOOT_UP_DEV_LOGS', true),
     ],
 
     /*

@@ -75,7 +75,7 @@ Full guide: [CUSTOM_COMMANDS.md](CUSTOM_COMMANDS.md) — example:
 ## Custom pipeline steps
 
 1. Implement `Igne\LaravelBootUp\Contracts\Step`.
-2. Insert the class anywhere in the published    `boot-up.dev.steps` / `boot-up.deploy.steps` arrays.
+2. Insert the class anywhere in the published    `boot-up.setup.steps` / `boot-up.deploy.steps` arrays.
 
 Print through the package's terminal for consistent styling: the global
 `terminal()` helper (no import needed — `terminal()->success('Done.')`) or the
