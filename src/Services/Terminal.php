@@ -29,9 +29,9 @@ use Symfony\Component\Console\Color;
  * be suspended before foreign output and redrawn after it.
  *
  * Semantics: success() is a green completed state, info() a plain activity
- * line, note() a dim skip/neutral/hint line. Block methods render as one
- * Prompts note each (one write chunk), except list(), which writes one line
- * per item so artisan tests can match individual bullets.
+ * line, note() a dim skip/neutral/hint line. Every block method renders as
+ * ONE Prompts note: a note pads a blank line after itself, so a block split
+ * across several would come out double-spaced.
  */
 final class Terminal
 {
@@ -133,15 +133,19 @@ final class Terminal
     }
 
     /**
-     * A bullet per item, written line-by-line.
+     * A bullet per item, with no title above them.
      *
      * @param  list<string>  $items
      */
     public function list(array $items): void
     {
-        foreach ($items as $item) {
-            $this->suspend(fn () => note("• {$item}"));
+        if ($items === []) {
+            return;
         }
+
+        $bullets = implode(PHP_EOL, array_map(static fn (string $item): string => "• {$item}", $items));
+
+        $this->suspend(fn () => note($bullets));
     }
 
     /**
@@ -174,8 +178,8 @@ final class Terminal
     /**
      * The one titled-block shape behind section(), summary() and
      * orderedList(): bold-cyan title, optional dim description, indented
-     * body, optional footer — rendered as ONE Prompts note so it stays a
-     * single write chunk.
+     * body, optional footer — rendered as ONE Prompts note, which is both a
+     * single write chunk and the only way the lines stay adjacent.
      *
      * @param  list<string>  $body
      */
@@ -190,7 +194,7 @@ final class Terminal
         $block->indent(2, fn (Lines $lines) => $lines->lines($body));
 
         if ($footer !== null) {
-            $block->lineWithBreak($footer);
+            $block->line($footer);
         }
 
         $this->suspend(fn () => note(implode(PHP_EOL, $block->toArray())));

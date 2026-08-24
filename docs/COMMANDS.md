@@ -7,14 +7,24 @@ signatures with more context.
 
 Two commands cover the daily loop: `app:setup` gets the project ready, `dev`
 runs it. Setting up is what you do after a clone; running is what you do every
-day, which is why they are separate.
+day, which is why they are separate — `app:setup` still ends in `dev`, so a
+fresh clone is one command from a running application.
 
 ## `app:setup`
 
-Set up the application and start its development server. Prints the plan first,
-asks to continue, then works through it with a progress bar and a section
-divider per stage. Ctrl+C tears down everything it started so far. It ends by
-naming `php artisan dev` and the processes `dev` will run.
+Set up the application, start its development server, and run it. Prints the
+plan first, asks to continue, then works through it with a progress bar and a
+section divider per stage. Ctrl+C tears down everything it started so far.
+
+When the boot is done it hands the terminal to `php artisan dev` — the same
+terminal UI, the same tabs — and stays behind it. Quit that terminal and it
+runs `app:down` for you, so the server and everything else the boot started is
+stopped again. The whole session is one command; nothing is left running that
+you did not ask for.
+
+Because the run does not end until you quit the dev terminal, this is a
+command for a person at a keyboard. Scripted, unattended work belongs to
+[`app:deploy`](#appdeploy), which never boots a server.
 
 ```bash
 php artisan app:setup
@@ -60,8 +70,9 @@ php artisan dev
 | `--without-assets` | Do not run an asset watcher.                                                                                                    |
 | `--detach` / `-d`  | Run the dev processes in the background instead of this terminal, with logs in `storage/logs/boot-up/`.                        |
 
-Quitting the terminal leaves the project set up and its server running — that is
-what `app:down` is for.
+Run on its own, quitting the terminal leaves the project set up and its server
+running — that is what `app:down` is for. A `dev` that `app:setup` started
+instead hands control back to it, and the teardown follows automatically.
 
 The dev terminal needs Node 22.13 or newer. Below that, `--detach` runs the
 same processes without it.

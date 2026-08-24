@@ -97,6 +97,34 @@ test('summary renders title, bullets and footer', function (): void {
     Prompt::assertStrippedOutputContains('All required dependencies are installed.');
 });
 
+test('a block runs its lines together, with no blank line between them', function (): void {
+    Prompt::fake();
+
+    (new Terminal)->summary('Dependencies ready', ['PHP 8.4.1', 'Node.js'], 'All required dependencies are installed.');
+
+    // Every Prompts note pads a blank line after itself, so a block written
+    // as several notes comes out double-spaced. One note keeps it a block.
+    Prompt::assertStrippedOutputContains(
+        " Dependencies ready\n   • PHP 8.4.1\n   • Node.js\n All required dependencies are installed.",
+    );
+});
+
+test('a list runs its bullets together too', function (): void {
+    Prompt::fake();
+
+    (new Terminal)->list(['Install dependencies', 'Run migrations']);
+
+    Prompt::assertStrippedOutputContains(" • Install dependencies\n • Run migrations");
+});
+
+test('an empty list writes nothing at all', function (): void {
+    Prompt::fake();
+
+    (new Terminal)->list([]);
+
+    Prompt::assertStrippedOutputDoesntContain('•');
+});
+
 test('orderedList renders a numbered list under a title', function (): void {
     Prompt::fake();
 

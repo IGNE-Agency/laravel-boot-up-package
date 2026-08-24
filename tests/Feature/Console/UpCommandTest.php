@@ -2,19 +2,26 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Boot\ProjectReadiness;
 use Igne\LaravelBootUp\Boot\Steps\AnnounceApplication;
+use Igne\LaravelBootUp\Config\EnvironmentConfig;
+use Igne\LaravelBootUp\Config\FrontendConfig;
+use Igne\LaravelBootUp\Console\DevCommand;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Database\Steps\RunPendingMigrations;
 use Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks;
+use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Enums\OperatingSystem;
 use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Igne\LaravelBootUp\Services\Platform;
 use Igne\LaravelBootUp\Tests\Feature\Boot\Fixtures\RecordingServer;
+use Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\CapturingDevCommand;
 use Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\ExplodingStep;
 use Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\FailingStep;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
@@ -50,6 +57,27 @@ beforeEach(function (): void {
     // processes to do and each test only fakes what it asks for.
     app()->instance(EnvFile::class, new EnvFile($this->workDir.'/.env', $this->workDir.'/.env.example'));
     config()->set('queue.default', 'sync');
+
+    // The boot now ends in the dev session, and a test has no terminal for
+    // the multiplexer: capture the handover instead of starting one.
+    $this->dev = new CapturingDevCommand;
+    app()->instance(DevCommand::class, $this->dev);
+
+    // The session dev takes over refuses to run against a project that is
+    // not set up. These tests run a two-step pipeline that never writes a
+    // .env, so stand the finished project up around it.
+    file_put_contents($this->workDir.'/.env', "APP_ENV=local\nAPP_KEY=base64:x\n");
+    mkdir($this->workDir.'/vendor', 0755, true);
+    file_put_contents($this->workDir.'/vendor/autoload.php', '<?php');
+
+    app()->instance(ProjectReadiness::class, new ProjectReadiness(
+        envFile: app(EnvFile::class),
+        packageJson: new PackageJson($this->workDir.'/package.json'),
+        frontendConfig: new FrontendConfig(assets: AssetMode::Watch),
+        environmentConfig: new EnvironmentConfig,
+        basePath: $this->workDir,
+        serverVars: [],
+    ));
 });
 
 afterEach(function (): void {
@@ -65,14 +93,18 @@ test('boots the artisan driver end to end and remembers what it set up', functio
     ProcessFaker::assertDidntRun('sh -c nohup*');
     expect($this->ledger->withLabel('artisan-serve'))->toBeEmpty();
 
-    $active = $this->store->current();
+    // The record is written for the dev session to read and cleared again by
+    // the teardown behind it, so the handover is the only place to see it.
+    $active = $this->dev->activeAtHandoff;
+
     expect($active)->not->toBeNull()
         ->and($active->key)->toBe('artisan')
         ->and($active->startedByUs)->toBeTrue()
-        ->and($active->setupPid)->toBe((int) getmypid());
+        ->and($active->setupPid)->toBe((int) getmypid())
+        ->and($this->store->current())->toBeNull();
 });
 
-test('names the dev command and the processes it will run', function (): void {
+test('starts the dev command and names the processes it will run', function (): void {
     ProcessFaker::fake();
     config()->set('queue.default', 'database');
 
@@ -82,10 +114,51 @@ test('names the dev command and the processes it will run', function (): void {
     Artisan::call('app:setup', ['server' => 'artisan']);
 
     expect(Artisan::output())
-        ->toContain('Next: php artisan dev')
+        ->toContain('Starting php artisan dev')
         ->toContain('• server')
         ->toContain('• queue')
-        ->toContain('Stop the server with: php artisan app:down');
+        ->toContain('Quit the dev terminal')
+        ->and($this->dev->handoffs)->toBe(1);
+});
+
+test('the boot runs straight into the dev session, and stops it all again when it quits', function (): void {
+    ProcessFaker::fake();
+
+    Artisan::call('app:setup', ['server' => 'artisan']);
+
+    expect($this->dev->handoffs)->toBe(1)
+        ->and(Artisan::output())->toContain('Stopping everything boot-up started...')
+        // Nothing is left behind for a php artisan app:down to find.
+        ->and($this->store->current())->toBeNull()
+        ->and($this->ledger->isEmpty())->toBeTrue();
+});
+
+test('the dev session runs the server the boot picked, without consulting the record', function (): void {
+    ProcessFaker::fake();
+    $this->store->clear();
+
+    $this->artisan('app:setup', ['server' => 'artisan'])->assertSuccessful();
+
+    expect(array_column($this->dev->handedOver, 'command'))
+        ->toContain('php artisan serve --host=127.0.0.1 --port=8000');
+});
+
+test('--without-assets carries into the dev session', function (): void {
+    ProcessFaker::fake();
+
+    Artisan::call('app:setup', ['server' => 'artisan', '--without-assets' => true]);
+
+    expect(Artisan::output())->toContain('Assets skipped (--without-assets).');
+});
+
+test('a dev session that ends badly fails the command, and is torn down anyway', function (): void {
+    ProcessFaker::fake();
+    $this->dev->exitCode = 1;
+
+    $this->artisan('app:setup', ['server' => 'artisan'])->assertFailed();
+
+    expect($this->dev->handoffs)->toBe(1)
+        ->and($this->store->current())->toBeNull();
 });
 
 test('says so when there is nothing for the dev command to stream', function (): void {
@@ -99,6 +172,11 @@ test('says so when there is nothing for the dev command to stream', function ():
     $this->artisan('app:setup', ['server' => 'double'])
         ->expectsOutputToContain('nothing for php artisan dev to stream')
         ->assertSuccessful();
+
+    // Nothing to hand over means nothing to tear down either: the server the
+    // boot started stays up, exactly as it would have before.
+    expect($this->dev->handoffs)->toBe(0)
+        ->and($this->store->current())->not->toBeNull();
 });
 
 test('does not start a second artisan serve when one is already tracked and alive', function (): void {
@@ -143,7 +221,7 @@ test('a failing step surfaces as a clean failure, not a stack trace', function (
     config()->set('boot-up.setup.steps', [FailingStep::class]);
 
     $this->artisan('app:setup', ['server' => 'artisan'])
-        ->doesntExpectOutputToContain('Next: php artisan dev')
+        ->doesntExpectOutputToContain('Starting php artisan dev')
         ->assertFailed();
 });
 

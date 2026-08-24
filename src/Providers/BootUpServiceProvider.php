@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Providers;
 
+use Igne\LaravelBootUp\Boot\DevSession;
 use Igne\LaravelBootUp\Boot\ProjectReadiness;
 use Igne\LaravelBootUp\Boot\ShutdownRunner;
 use Igne\LaravelBootUp\Config\ArtisanServeConfig;
@@ -90,6 +91,10 @@ final class BootUpServiceProvider extends ServiceProvider
 
         $this->app->singleton(PackageManagerSelector::class);
         $this->app->singleton(ShutdownRunner::class);
+
+        // Shared because the claim crosses a command boundary: app:setup
+        // writes it, `dev` reads it, both in the same artisan process.
+        $this->app->singleton(DevSession::class);
     }
 
     /**

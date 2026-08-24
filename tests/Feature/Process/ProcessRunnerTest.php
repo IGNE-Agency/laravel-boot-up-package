@@ -42,6 +42,20 @@ test('runSilently never throws on failure and returns the result', function (): 
     expect($result->successful())->toBeFalse()->and($result->exitCode())->toBe(127);
 });
 
+test('runInTerminal hands the command the terminal and returns its exit code', function (): void {
+    Process::fake(['*' => Process::result(exitCode: 3)]);
+
+    $exitCode = makeRunner($this->ledger, $this->workDir)
+        ->runInTerminal(CommandLine::make(['sh', '-c', 'npx multiplex'])->withTimeout(null));
+
+    expect($exitCode)->toBe(3);
+
+    // Nothing is tracked: the process belongs to this run's terminal, not to
+    // the ledger app:down reaps.
+    expect($this->ledger->isEmpty())->toBeTrue();
+    Process::assertRan(fn ($process): bool => $process->command === ['sh', '-c', 'npx multiplex']);
+});
+
 test('start spawns a detached nohup wrapper and records the pid in the ledger', function (): void {
     Process::fake(['*' => Process::result(output: "4242\n")]);
 

@@ -55,8 +55,9 @@ Octane's, for instance — untouched. For the rest it takes a package's
 registration over, because it is the only party that knows the command has to
 run inside Sail's containers.
 
-`app:setup` ends by listing the processes `dev` will run, in the order their
-tabs will appear — third-party registrations included.
+`app:setup` lists the processes `dev` will run, in the order their tabs will
+appear — third-party registrations included — and then hands the terminal to
+`dev` to run them.
 
 Under `php artisan dev --detach` every process starts detached instead, with a
 log file in `storage/logs/boot-up/`, visible to `app:status` and stoppable with

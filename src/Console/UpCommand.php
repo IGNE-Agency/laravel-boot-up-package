@@ -7,18 +7,26 @@ namespace Igne\LaravelBootUp\Console;
 use Closure;
 use Igne\LaravelBootUp\Boot\BootRunner;
 use Igne\LaravelBootUp\Boot\DevProcessRegistrar;
+use Igne\LaravelBootUp\Boot\DevSession;
 use Igne\LaravelBootUp\Config\SetupConfig;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\BootOptions;
 use Illuminate\Contracts\Console\Isolatable;
 
 /**
  * Gets the project to a state where `php artisan dev` can run: a server
- * serving it, dependencies installed, .env written, the database migrated.
+ * serving it, dependencies installed, .env written, the database migrated —
+ * and then runs it, because being set up and not running is not a state
+ * anyone wants to be left in.
  *
  * Everything that takes real work lives here rather than in `dev`, which
  * exists to hand a ready project to Laravel's terminal UI in milliseconds.
  * Run this once after a clone, and again whenever the project's shape
  * changes; `dev` is what gets run every day.
+ *
+ * The whole session belongs to this command: the boot, the dev terminal it
+ * hands over to, and the teardown when that terminal quits. What this run
+ * started, this run stops.
  */
 final class SetupCommand extends BootUpCommand implements Isolatable
 {
@@ -31,7 +39,7 @@ final class SetupCommand extends BootUpCommand implements Isolatable
         {--without-assets : Skip frontend dependencies and assets}
         {--y|yes : Run without the confirmation prompt}';
 
-    protected $description = 'Set up the application and start its development server';
+    protected $description = 'Set up the application, run it, and stop it again when you quit';
 
     private ?BootRunner $runner = null;
 
@@ -44,7 +52,7 @@ final class SetupCommand extends BootUpCommand implements Isolatable
         return true;
     }
 
-    public function handle(BootRunner $runner, DevProcessRegistrar $registrar, SetupConfig $config): int
+    public function handle(BootRunner $runner, DevProcessRegistrar $registrar, SetupConfig $config, DevSession $session): int
     {
         // Stored before anything can fail: onFailure() fires from
         // GuardsAgainstFailures OUTSIDE handle(), where re-resolving would
@@ -58,7 +66,7 @@ final class SetupCommand extends BootUpCommand implements Isolatable
             return self::FAILURE;
         }
 
-        if (! $this->confirmPlan($plan, 'app:setup', $config->autoAccept)) {
+        if (! $this->confirmPlan($plan, 'app:setup', $config->autoAccept, 'Then hand over to php artisan dev, and stop it all again when you quit.')) {
             return $this->skip('Aborted — nothing was changed.');
         }
 
@@ -70,11 +78,13 @@ final class SetupCommand extends BootUpCommand implements Isolatable
 
         if ($processes === []) {
             terminal()->note('This project has no dev processes to run, so there is nothing for php artisan dev to stream.');
-        } else {
-            terminal()->summary('Next: php artisan dev', $processes, 'Stop the server with: php artisan app:down');
+
+            return $this->done('The application is set up.');
         }
 
-        return $this->done('The application is set up.');
+        terminal()->summary('Starting php artisan dev', $processes, 'Quit the dev terminal and everything this setup started is stopped for you.');
+
+        return $this->runDevSession($context, $session);
     }
 
     protected function onFailure(): void
@@ -85,6 +95,51 @@ final class SetupCommand extends BootUpCommand implements Isolatable
     protected function failureHint(): void
     {
         terminal()->note('Background processes may still be running — clean up with: php artisan app:down');
+    }
+
+    /**
+     * Hand the rest of the run to `dev`, and take it back when the terminal
+     * quits.
+     *
+     * Claiming the session is what keeps this process alive behind the
+     * terminal UI; without it `dev` execs itself away and nobody is left to
+     * stop the server this boot started. app:down does that stopping — the
+     * same command with the same prompts, run for the user instead of by
+     * them — and it speaks for the ending, so there is no outro of our own
+     * on this path.
+     */
+    private function runDevSession(BootContext $context, DevSession $session): int
+    {
+        $session->claim();
+
+        $exitCode = $this->call('dev', $this->devArguments($context));
+
+        $this->call('app:down');
+
+        // dev's own code, not a fresh one: a session that ended badly should
+        // say so through the command that started it.
+        return $exitCode;
+    }
+
+    /**
+     * What the boot already settled, handed over rather than rediscovered:
+     * the server this run picked, and the assets it was told to leave alone.
+     *
+     * @return array<string, mixed>
+     */
+    private function devArguments(BootContext $context): array
+    {
+        $arguments = [];
+
+        if ($context->server !== null) {
+            $arguments['server'] = $context->server->key();
+        }
+
+        if ($this->option('without-assets')) {
+            $arguments['--without-assets'] = true;
+        }
+
+        return $arguments;
     }
 
     private function bootOptions(): BootOptions

@@ -17,6 +17,7 @@ use Illuminate\Process\PendingProcess;
  * Modes:
  *  - run():             synchronous, output streamed live, throws on failure
  *  - runSilently():     synchronous, output captured, never throws on failure
+ *  - runInTerminal():   synchronous, the child owns this terminal, returns its exit code
  *  - start():           detached background process, PID persisted to the ledger
  */
 final class ProcessRunner
@@ -27,6 +28,13 @@ final class ProcessRunner
      * the user about it, and a path they can copy has to match the real one.
      */
     public const string LOG_SUBDIRECTORY = 'logs/boot-up';
+
+    /**
+     * What a terminal handover reports when the process left no exit code of
+     * its own — a failure, because a run whose ending cannot be read is not
+     * a run that succeeded.
+     */
+    private const int UNKNOWN_EXIT_CODE = 1;
 
     public function __construct(
         private readonly Factory $processes,
@@ -49,6 +57,29 @@ final class ProcessRunner
     public function runSilently(CommandLine $command): ProcessResult
     {
         return $this->pending($command, $command->tokens)->run();
+    }
+
+    /**
+     * Hand this terminal to a command and wait for it.
+     *
+     * The child is given the TTY itself rather than a pair of pipes, so a
+     * full-screen UI owns the screen and its keys exactly as it would had it
+     * been typed at the prompt — and this process is still here afterwards
+     * to act on how it ended, which is the whole reason not to exec it.
+     */
+    public function runInTerminal(CommandLine $command): int
+    {
+        $pending = $this->pending($command, $command->tokens);
+
+        // No TTY means there is no screen to hand over — a piped or CI run.
+        // Streaming the output is the closest thing to being there.
+        $result = $pending->supportsTty()
+            ? $pending->tty()->run()
+            : $pending->run(null, function (string $type, string $buffer): void {
+                fwrite($type === 'err' ? STDERR : STDOUT, $buffer);
+            });
+
+        return $result->exitCode() ?? self::UNKNOWN_EXIT_CODE;
     }
 
     /**

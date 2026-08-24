@@ -6,14 +6,17 @@ namespace Igne\LaravelBootUp\Console;
 
 use Igne\LaravelBootUp\Boot\DetachedDevRunner;
 use Igne\LaravelBootUp\Boot\DevProcessRegistrar;
+use Igne\LaravelBootUp\Boot\DevSession;
 use Igne\LaravelBootUp\Boot\ProjectReadiness;
 use Igne\LaravelBootUp\Concerns\AnnouncesRun;
 use Igne\LaravelBootUp\Concerns\GuardsAgainstFailures;
 use Igne\LaravelBootUp\Concerns\RequiresUnix;
 use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\BootOptions;
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\VersionConstraint;
 use Igne\LaravelBootUp\Enums\Tool;
+use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\ServerSelector;
 use Igne\LaravelBootUp\Tools\ToolInspector;
 use Illuminate\Foundation\Console\DevCommand as FrameworkDevCommand;
@@ -40,6 +43,8 @@ use Symfony\Component\Console\Output\OutputInterface;
  *
  * Left open rather than final so tests can replace delegateToFramework() and
  * assert what was registered without starting a real terminal UI.
+ *
+ * @phpstan-import-type DevCommandArray from \Illuminate\Foundation\DevCommands
  */
 class DevCommand extends FrameworkDevCommand
 {
@@ -137,11 +142,40 @@ class DevCommand extends FrameworkDevCommand
      * Upstream ends in pcntl_exec, which replaces this process: the terminal
      * UI owns the terminal outright, with no PHP parent left in the process
      * group to intercept its keys or its Ctrl+C. That is what makes the
-     * visuals and the quit behaviour identical to plain `php artisan dev`.
+     * visuals and the quit behaviour identical to plain `php artisan dev` —
+     * and the one run that cannot afford it, the session app:setup claims,
+     * is handled in runViaMultiplex() below.
      */
     protected function delegateToFramework(NodePackageManager $packageManager): int
     {
         return parent::handle($packageManager);
+    }
+
+    /**
+     * The one thing a claimed session changes: the terminal UI runs as a
+     * child of this process rather than replacing it.
+     *
+     * app:setup claims the session because it has a server to stop once the
+     * terminal quits, and pcntl_exec would leave no PHP behind to stop it.
+     * Everything the user sees is the same command line upstream would have
+     * exec'd, handed the same terminal.
+     *
+     * @param  DevCommandArray[]  $devCommands
+     */
+    #[\Override]
+    protected function runViaMultiplex(array $devCommands, NodePackageManager $packageManager): int
+    {
+        if (! $this->laravel->make(DevSession::class)->isClaimed()) {
+            return parent::runViaMultiplex($devCommands, $packageManager);
+        }
+
+        $command = $packageManager->getExecCommand($this->buildMultiplexCommand($devCommands));
+
+        // Through a shell, not argv: getExecCommand() returns a quoted shell
+        // line, and one dev process per tab is quoted inside it.
+        return $this->laravel->make(ProcessRunner::class)->runInTerminal(
+            CommandLine::make(['sh', '-c', $command])->withTimeout(null),
+        );
     }
 
     protected function failureHint(): void

@@ -16,11 +16,13 @@ trait ConfirmsPlan
      * Show what the command is about to do and ask to continue. Returns false
      * only when the user actively declines; auto-accept (the boot-up config
      * flag or the --yes flag) and non-interactive contexts skip the prompt.
+     *
+     * $footer names anything the plan lines cannot: what happens once the
+     * steps are done and the command carries on.
      */
-    protected function confirmPlan(StepSequence $plan, string $command, bool $autoAccept): bool
+    protected function confirmPlan(StepSequence $plan, string $command, bool $autoAccept, ?string $footer = null): bool
     {
-        terminal()->section("What {$command} will do");
-        terminal()->list($plan->summary());
+        terminal()->summary("What {$command} will do", $plan->summary(), $footer);
 
         if ($autoAccept || (bool) $this->option('yes')) {
             return true;

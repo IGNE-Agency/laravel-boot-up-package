@@ -2,7 +2,7 @@
 
 A development-only Laravel package that sets a project up on any machine — even
 a blank one — with one command, runs it with Laravel's own `php artisan dev`,
-and cleanly shuts it down again.
+and cleanly shuts it down again when you quit.
 
 > Requires PHP 8.3+, Laravel 13, macOS or Linux (native Windows fails fast with
 > a clear message — use WSL2). Development only.
@@ -20,19 +20,21 @@ this package has no business in production.
 
 ```bash
 composer install
-php artisan app:setup   # once, after a clone
+php artisan app:setup   # once, after a clone — and it keeps going into dev
 php artisan dev         # every day
 ```
 
 `app:setup` installs the tools you're missing, creates your `.env`, sets up the
 database, installs dependencies, runs migrations, builds assets, and serves the
-app via **Herd**, **Sail**, or **`php artisan serve`**. It ends by naming the
-processes `dev` will run.
+app via **Herd**, **Sail**, or **`php artisan serve`**. Then it runs
+`php artisan dev` for you, and when you quit that terminal it stops everything
+it started — the whole session in one command.
 
 `dev` is Laravel's own dev command: each process gets its own searchable tab,
 and boot-up only decides which processes this project needs. It starts in
-milliseconds, and says to run `app:setup` if the project is not ready.
-`app:down` stops everything boot-up started — and nothing it didn't.
+milliseconds, and says to run `app:setup` if the project is not ready. Run on
+its own it leaves the server up when you quit; `app:down` stops everything
+boot-up started — and nothing it didn't.
 
 Your own processes join `dev` exactly as they would in any Laravel
 application:
@@ -53,7 +55,7 @@ containers when that is where the project lives. See
 
 | Command                  | What it does                                                          |
 | ------------------------ | --------------------------------------------------------------------- |
-| `app:setup`              | Set up the application and start its development server.              |
+| `app:setup`              | Set up the application, run it, and stop it again when you quit.      |
 | `dev`                    | Run the dev processes this project needs.                             |
 | `app:down`               | Stop tracked processes and the server `app:setup` started.            |
 | `app:status`             | Show the active server and tracked processes.                         |

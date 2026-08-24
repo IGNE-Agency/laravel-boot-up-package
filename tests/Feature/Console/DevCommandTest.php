@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Boot\DevSession;
 use Igne\LaravelBootUp\Boot\ProjectReadiness;
 use Igne\LaravelBootUp\Config\EnvironmentConfig;
 use Igne\LaravelBootUp\Config\FrontendConfig;
@@ -22,6 +23,8 @@ use Illuminate\Contracts\Console\Isolatable;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\NodePackageManager;
+use Symfony\Component\Console\Input\ArrayInput;
 
 beforeEach(function (): void {
     $this->workDir = sys_get_temp_dir().'/boot-up-dev-cmd-'.bin2hex(random_bytes(4));
@@ -216,6 +219,41 @@ test('says so instead of starting an empty terminal when every process is gated 
         ->assertSuccessful();
 
     expect($this->command->handoffs)->toBe(0);
+});
+
+test('a session app:setup claimed runs the terminal UI as a child, not in place of this process', function (): void {
+    ProcessFaker::fake();
+
+    // Claiming is what app:setup does before handing over. Without it this
+    // path ends in pcntl_exec, which would replace the test runner itself —
+    // which is exactly why only the claimed path can be exercised here.
+    app(DevSession::class)->claim();
+
+    $dev = Artisan::all()['dev'];
+
+    $exitCode = (function () use ($dev): int {
+        // The command is invoked directly rather than through artisan: an
+        // unclaimed run would exec the terminal UI over this test process.
+        $this->input = new ArrayInput([], $dev->getDefinition());
+
+        return $this->runViaMultiplex(
+            [['name' => 'server', 'command' => 'php artisan serve', 'color' => 'blue', 'priority' => 0]],
+            new NodePackageManager,
+        );
+    })->call($dev);
+
+    expect($exitCode)->toBe(0);
+
+    // Through a shell, so the quoting getExecCommand() produced survives, and
+    // with no timeout, because a dev session runs as long as the user works.
+    ProcessFaker::assertRan('sh -c *@laravel/multiplex*');
+    Process::assertRan(fn ($process): bool => $process->timeout === null);
+});
+
+test('every command shares one dev session, which is how the claim crosses the boundary', function (): void {
+    app(DevSession::class)->claim();
+
+    expect(app(DevSession::class)->isClaimed())->toBeTrue();
 });
 
 test('php artisan dev resolves to boot-up\'s command, not the framework\'s', function (): void {
