@@ -132,7 +132,7 @@ class DevCommand extends FrameworkDevCommand implements Isolatable
         // can the gates decide which processes this project actually needs.
         $registrar->apply($context);
 
-        if (! $options->follow) {
+        if ($this->option('detach')) {
             $started = $this->laravel->make(DetachedDevRunner::class)->run();
 
             return $this->done($started === 0
@@ -142,16 +142,7 @@ class DevCommand extends FrameworkDevCommand implements Isolatable
 
         $this->warnWhenNodeCannotRunTheTerminal();
 
-        // Ctrl+C belongs to the dev processes from here on. The boot-time trap
-        // stands down so the multiplexer can shut its children down in order,
-        // and teardown runs below once it has exited.
-        $runner->handOff();
-
-        $exitCode = $this->delegateToFramework($packageManager);
-
-        $runner->tearDown();
-
-        return $exitCode;
+        return $this->delegateToFramework($packageManager);
     }
 
     /**
@@ -201,17 +192,7 @@ class DevCommand extends FrameworkDevCommand implements Isolatable
             withQueue: ! $this->option('without-queue'),
             withAssets: ! $this->option('without-assets'),
             fresh: (bool) $this->option('fresh'),
-            follow: ! $this->option('detach') && $this->stdoutIsInteractive(),
         );
-    }
-
-    /**
-     * Piped or redirected stdout (CI, scripts) cannot host a terminal UI, so
-     * the processes run detached there instead.
-     */
-    protected function stdoutIsInteractive(): bool
-    {
-        return \defined('STDOUT') && \function_exists('stream_isatty') && @stream_isatty(STDOUT);
     }
 
     private function warnWhenInvokedByItsOldName(): void

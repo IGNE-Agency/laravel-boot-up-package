@@ -10,21 +10,20 @@ use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Process\ProcessReaper;
-use Igne\LaravelBootUp\Process\ProcessRunner;
 
 /**
  * Serves through `php artisan serve`.
  *
- * In the foreground it runs as the [server] dev process, so the multiplexer
- * owns its output and restarts it if it dies. A detached boot has no
- * multiplexer to run it, so it starts a tracked background process instead.
+ * The serve command is a dev process, not something the setup starts: the
+ * multiplexer owns its output and restarts it if it dies, and a detached run
+ * starts it from the registry like any other. So there is nothing to do here
+ * beyond saying which command runs it.
  */
 final class ArtisanServer implements ProvidesDevProcess, Server
 {
     private const string LABEL = 'artisan-serve';
 
     public function __construct(
-        private readonly ProcessRunner $runner,
         private readonly ProcessReaper $reaper,
         private readonly ArtisanServeConfig $config,
     ) {}
@@ -41,38 +40,19 @@ final class ArtisanServer implements ProvidesDevProcess, Server
 
     public function start(BootContext $context): void
     {
-        if ($this->isRunning()) {
-            terminal()->note('php artisan serve is already running.');
-
-            return;
-        }
-
-        // A foreground boot runs the server as a dev process instead, which
-        // starts once the pipeline is done. Migrations and the rest of the
-        // boot never needed the HTTP server to be up.
-        if ($context->options->follow) {
-            terminal()->note('php artisan serve starts with the dev processes.');
-
-            return;
-        }
-
-        $record = $this->runner->start($this->serveCommand(), self::LABEL);
-
-        terminal()->success("php artisan serve started (PID {$record->pid}).");
+        terminal()->note($this->isRunning()
+            ? 'php artisan serve is already running.'
+            : 'php artisan serve runs with the dev processes.');
     }
 
     /**
-     * Runs as the [server] process when this boot stays in the foreground.
-     * A detached run has already started the tracked process in start(),
-     * and an application that was serving before this boot keeps that one.
+     * Runs as the [server] process, exactly as it does under plain
+     * `php artisan dev`. Null only when a tracked serve is already alive --
+     * one a detached run started, or one that outlived its terminal.
      */
     public function devProcess(BootContext $context): ?CommandLine
     {
-        if (! $context->options->follow || $this->isRunning()) {
-            return null;
-        }
-
-        return $this->serveCommand();
+        return $this->isRunning() ? null : $this->serveCommand();
     }
 
     private function serveCommand(): CommandLine

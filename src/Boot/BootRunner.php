@@ -17,12 +17,13 @@ use LogicException;
 /**
  * The boot lifecycle in one place: prepare() guards and plans, run()
  * executes the sealed begin → trap → pipeline → finish sequence and hands
- * back the context, tearDown() settles everything the boot started, and
- * fail() settles the progress bar when the command's failure funnel fires.
- * DevCommand maps flags, runs the confirm gate, and delegates here.
+ * back the context, and fail() settles the progress bar when the command's
+ * failure funnel fires. The command maps flags, runs the confirm gate, and
+ * delegates here.
  *
- * What runs AFTER the boot is not this class's business: the dev processes
- * belong to Laravel's dev command, and app:deploy has none.
+ * Teardown belongs to the interrupt path and to app:down. A boot that
+ * completes leaves the server it started running -- that is the point of
+ * running it.
  */
 final class BootRunner
 {
@@ -31,13 +32,6 @@ final class BootRunner
     private ?StepSequence $plan = null;
 
     private bool $tearingDown = false;
-
-    /**
-     * Set once the dev processes own the terminal: from then on Ctrl+C is
-     * theirs to handle, and teardown happens when they exit rather than in
-     * the signal handler.
-     */
-    private bool $handedOff = false;
 
     public function __construct(
         private readonly ServerSelector $selector,
@@ -48,7 +42,6 @@ final class BootRunner
         private readonly ProcessReaper $reaper,
         private readonly Pipeline $pipeline,
         private readonly StageReporter $reporter,
-        private readonly DevProcessRegistrar $registrar,
     ) {}
 
     /**
@@ -74,7 +67,6 @@ final class BootRunner
             $this->config->steps,
             $options,
             $this->context->server?->label(),
-            $this->registrar->preview($this->context),
         );
     }
 
@@ -104,13 +96,6 @@ final class BootRunner
         $pipes = $this->reporter->begin($plan);
 
         $trapUsing([SIGINT, SIGTERM], function (): void {
-            // Once the dev processes are running, the multiplexer handles
-            // Ctrl+C and shuts its children down in order; tearing down from
-            // here would race it and print prompts over a live UI.
-            if ($this->handedOff) {
-                return;
-            }
-
             // A second signal while teardown is in flight would re-enter
             // here and exit(0) before the first pass finishes its cleanup.
             if ($this->tearingDown) {
@@ -129,26 +114,6 @@ final class BootRunner
         $this->reporter->finish();
 
         return $context;
-    }
-
-    /**
-     * Hand Ctrl+C to the dev processes. Called once the boot is done and
-     * before the terminal UI takes over the foreground.
-     */
-    public function handOff(): void
-    {
-        $this->handedOff = true;
-    }
-
-    /**
-     * Settle everything the boot started. Idempotent, and a friendly no-op
-     * when app:down from another terminal already did the work.
-     */
-    public function tearDown(): void
-    {
-        $this->tearingDown = true;
-
-        $this->shutdown->run();
     }
 
     /**

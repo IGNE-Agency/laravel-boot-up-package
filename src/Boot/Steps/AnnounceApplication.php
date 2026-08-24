@@ -13,7 +13,6 @@ use Igne\LaravelBootUp\Config\SetupConfig;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Enums\BootStage;
-use Igne\LaravelBootUp\Process\ProcessRunner;
 
 #[Stage(BootStage::Announce)]
 #[Group('announce')]
@@ -35,13 +34,8 @@ final class AnnounceApplication implements Step
 
         terminal()->success("{$context->server->label()} is serving the application at {$url}");
 
-        // Pointing at the log directory would mislead when the dev processes
-        // are about to take over this terminal instead of writing log files.
-        $context->options->follow
-            ? terminal()->note('The dev processes start below — press q or Ctrl+C to stop everything.')
-            : terminal()->note('Background process logs live in storage/'.ProcessRunner::LOG_SUBDIRECTORY.'/.');
-
-        terminal()->note('Stop everything with: php artisan app:down');
+        terminal()->note('Run `php artisan dev` to start the dev processes.');
+        terminal()->note('Stop the server with: php artisan app:down');
 
         if ($this->config->openBrowser) {
             $this->browser->open($url);

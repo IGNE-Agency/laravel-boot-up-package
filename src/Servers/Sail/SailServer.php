@@ -132,13 +132,11 @@ final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDe
 
     /**
      * The containers are already up by the time the dev processes start, so
-     * the [server] process follows their logs rather than starting anything.
+     * the [server] process tails their logs rather than starting anything.
      */
-    public function devProcess(BootContext $context): ?CommandLine
+    public function devProcess(BootContext $context): CommandLine
     {
-        return $context->options->follow
-            ? CommandLine::make(['./vendor/bin/sail', 'logs', '--follow'])->withTimeout(null)
-            : null;
+        return CommandLine::make(['./vendor/bin/sail', 'logs', '--follow'])->withTimeout(null);
     }
 
     public function isRunning(): bool

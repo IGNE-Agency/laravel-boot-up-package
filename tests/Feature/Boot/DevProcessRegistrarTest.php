@@ -85,10 +85,10 @@ function devRegistrar(
     );
 }
 
-function devContext(?Server $server = null, bool $withQueue = true, bool $withAssets = true, bool $follow = true): BootContext
+function devContext(?Server $server = null, bool $withQueue = true, bool $withAssets = true): BootContext
 {
     return new BootContext(
-        new BootOptions(withQueue: $withQueue, withAssets: $withAssets, follow: $follow),
+        new BootOptions(withQueue: $withQueue, withAssets: $withAssets),
         $server,
     );
 }

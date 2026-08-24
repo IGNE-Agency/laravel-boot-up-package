@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Boot\Steps\AnnounceApplication;
+use Igne\LaravelBootUp\Console\DevCommand;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
+use Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\CapturingDevCommand;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -42,25 +44,28 @@ beforeEach(function (): void {
     // processes to do and each test only fakes what it asks for.
     app()->instance(EnvFile::class, new EnvFile($this->workDir.'/.env', $this->workDir.'/.env.example'));
     config()->set('queue.default', 'sync');
+
+    // Every success path now reaches the handoff, and the handoff launches a
+    // real terminal UI over npx. Capture it instead.
+    $this->command = new CapturingDevCommand;
+    app()->instance(DevCommand::class, $this->command);
 });
 
 afterEach(function (): void {
     exec('rm -rf '.escapeshellarg($this->workDir));
 });
 
-test('boots the artisan driver end to end: tracked artisan serve + persisted state', function (): void {
-    ProcessFaker::fake([
-        'sh -c nohup php artisan serve*' => Process::result('12345'),
-    ]);
+test('boots the artisan driver end to end: persisted state, serve handed to the dev processes', function (): void {
+    ProcessFaker::fake();
 
     $this->artisan('dev', ['server' => 'artisan'])->assertSuccessful();
 
-    ProcessFaker::assertRan('sh -c nohup php artisan serve*');
-
-    $records = $this->ledger->withLabel('artisan-serve');
-    expect($records)->toHaveCount(1)
-        ->and($records->first()->pid)->toBe(12345)
-        ->and($records->first()->command)->toBe('php artisan serve --host=127.0.0.1 --port=8000');
+    // Nothing is spawned behind the boot any more: the serve command is a
+    // dev process, so it arrives at the handoff instead.
+    ProcessFaker::assertDidntRun('sh -c nohup*');
+    expect($this->ledger->withLabel('artisan-serve'))->toBeEmpty()
+        ->and(array_column($this->command->handedOver, 'command'))
+        ->toContain('php artisan serve --host=127.0.0.1 --port=8000');
 
     $active = $this->store->current();
     expect($active)->not->toBeNull()
@@ -108,11 +113,12 @@ test('a stale active-server record from a dead process does not block a new serv
 });
 
 test('a failing step surfaces as a clean failure, not a stack trace', function (): void {
-    ProcessFaker::fake([
-        'sh -c nohup php artisan serve*' => Process::result(output: '', exitCode: 1),
-    ]);
+    ProcessFaker::fake();
+    config()->set('boot-up.setup.steps', [Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\FailingStep::class]);
 
     $this->artisan('dev', ['server' => 'artisan'])->assertFailed();
+
+    expect($this->command->handoffs)->toBe(0);
 });
 
 test('rejects an unknown server argument with a clean, actionable failure', function (): void {
@@ -197,7 +203,7 @@ test('the --yes flag skips the confirmation prompt', function (): void {
     // --yes did not skip it.
     $this->artisan('dev', ['server' => 'artisan', '--yes' => true])->assertSuccessful();
 
-    ProcessFaker::assertRan('sh -c nohup php artisan serve*');
+    expect($this->command->handoffs)->toBe(1);
 });
 
 test('renders a stage divider when the pipeline enters a stage', function (): void {
@@ -220,15 +226,14 @@ test('a later stage gets its own divider', function (): void {
         ->assertSuccessful();
 });
 
-test('the progress bar runs and the boot ends with an outro', function (): void {
-    ProcessFaker::fake([
-        'sh -c nohup php artisan serve*' => Process::result('12345'),
-    ]);
+test('the progress bar runs before the handoff', function (): void {
+    ProcessFaker::fake();
 
     $this->artisan('dev', ['server' => 'artisan'])
         ->expectsOutputToContain('Boot progress')
-        ->expectsOutputToContain('Application ready.')
         ->assertSuccessful();
+
+    expect($this->command->handoffs)->toBe(1);
 });
 
 test('a custom step class gets the custom steps divider', function (): void {
@@ -292,21 +297,19 @@ test('dead ledger entries are pruned when a new serve boots', function (): void 
     expect($this->ledger->withLabel('queue-worker'))->toBeEmpty();
 });
 
-test('the dev processes start in the background when there is no terminal to run them in', function (): void {
-    // The test runner's stdout is a pipe, so follow resolves to false --
-    // exactly the CI/scripted case the detached path exists for.
-    ProcessFaker::fake([
-        'sh -c nohup php artisan serve*' => Process::result('12345'),
-        'sh -c nohup php artisan queue:work*' => Process::result('12346'),
-    ]);
+test('a stdout that is not a terminal still hands off, rather than silently detaching', function (): void {
+    // The test runner's stdout is a pipe. dev used to read that as "no
+    // terminal to stream into" and quietly start everything in the
+    // background, so the terminal UI never appeared and nothing said why.
+    // Non-TTY is upstream's business: it renders inline.
+    ProcessFaker::fake();
     config()->set('queue.default', 'database');
 
-    $this->artisan('dev', ['server' => 'artisan'])
-        ->expectsOutputToContain('[queue] running in the background (PID 12346).')
-        ->assertSuccessful();
+    $this->artisan('dev', ['server' => 'artisan'])->assertSuccessful();
 
-    ProcessFaker::assertRan('sh -c nohup php artisan queue:work database*');
-    expect($this->ledger->withLabel('queue'))->toHaveCount(1);
+    expect($this->command->handoffs)->toBe(1);
+    ProcessFaker::assertDidntRun('sh -c nohup*');
+    expect($this->ledger->all())->toBeEmpty();
 });
 
 test('--detach runs the dev processes in the background', function (): void {
@@ -340,17 +343,14 @@ test('the old app:serve name still works and says it is going away', function ()
         ->assertSuccessful();
 });
 
-test('a foreground boot hands the dev processes to the framework, then tears down', function (): void {
+test('a foreground boot hands the dev processes to the framework', function (): void {
     ProcessFaker::fake();
     config()->set('queue.default', 'database');
     config()->set('boot-up.shutdown.prompt_stop_server', false);
 
-    $command = new Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\CapturingDevCommand;
-    app()->instance(Igne\LaravelBootUp\Console\DevCommand::class, $command);
+    $command = $this->command;
 
-    $this->artisan('dev', ['server' => 'artisan'])
-        ->expectsOutputToContain('Shutdown complete.')
-        ->assertSuccessful();
+    $this->artisan('dev', ['server' => 'artisan'])->assertSuccessful();
 
     expect($command->handoffs)->toBe(1)
         ->and(array_column($command->handedOver, 'name'))->toBe(['server', 'queue'])
@@ -359,21 +359,24 @@ test('a foreground boot hands the dev processes to the framework, then tears dow
             'php artisan queue:work database',
         ]);
 
-    // The server runs as a dev process now, so nothing was launched behind it.
+    // The server runs as a dev process now, so nothing was launched behind it,
+    // and nothing tears down: quitting the terminal UI leaves the project set
+    // up, which is what app:down is for.
     ProcessFaker::assertDidntRun('sh -c nohup*');
+    expect($this->store->current())->not->toBeNull();
 });
 
 test('php artisan dev resolves to boot-up\'s command, not the framework\'s', function (): void {
     $resolved = Illuminate\Support\Facades\Artisan::all()['dev'];
 
-    expect($resolved)->toBeInstanceOf(Igne\LaravelBootUp\Console\DevCommand::class)
+    expect($resolved)->toBeInstanceOf(DevCommand::class)
         ->and($resolved)->toBeInstanceOf(Illuminate\Foundation\Console\DevCommand::class)
         ->and($resolved->getDescription())->toContain('Boot everything the application needs');
 });
 
 test('the framework binding resolves to the same command', function (): void {
     expect(app(Illuminate\Foundation\Console\DevCommand::class))
-        ->toBeInstanceOf(Igne\LaravelBootUp\Console\DevCommand::class);
+        ->toBeInstanceOf(DevCommand::class);
 });
 
 test('dev keeps every option the framework defines and adds boot-up\'s', function (): void {

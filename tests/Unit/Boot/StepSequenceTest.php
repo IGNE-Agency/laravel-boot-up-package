@@ -39,8 +39,8 @@ test('assigns every default step to its stage, in order', function (): void {
         ]);
 });
 
-test('the default pipeline summarizes into eleven readable lines', function (): void {
-    $plan = StepSequence::for(defaultBootSteps(), new BootOptions, 'Herd', ['server', 'queue', 'vite']);
+test('the default pipeline summarizes into ten readable lines', function (): void {
+    $plan = StepSequence::for(defaultBootSteps(), new BootOptions, 'Herd');
 
     expect($plan->summary())->toBe([
         'Prepare the project (.env file, local environment, application key)',
@@ -54,7 +54,6 @@ test('the default pipeline summarizes into eleven readable lines', function (): 
         'Finalize the application',
         'Build frontend assets',
         'Announce the application URL',
-        'Run the dev processes in this terminal: server, queue, vite',
     ]);
 });
 
@@ -122,24 +121,6 @@ test('without a server label the server line stays generic', function (): void {
     $plan = StepSequence::for([StartServer::class], new BootOptions);
 
     expect($plan->summary())->toBe(['Start the development server']);
-});
-
-test('the dev processes are named on their own summary line', function (): void {
-    $plan = StepSequence::for(defaultBootSteps(), new BootOptions, null, ['server', 'queue', 'stripe']);
-
-    expect($plan->summary())->toContain('Run the dev processes in this terminal: server, queue, stripe');
-});
-
-test('a detached run says where the dev processes go instead', function (): void {
-    $plan = StepSequence::for(defaultBootSteps(), new BootOptions(follow: false), null, ['queue', 'vite']);
-
-    expect($plan->summary())->toContain('Run the dev processes in the background: queue, vite');
-});
-
-test('a boot with no dev processes carries no line for them', function (): void {
-    $plan = StepSequence::for(defaultBootSteps(), new BootOptions);
-
-    expect($plan->summary())->not->toContain('Run the dev processes in this terminal: ');
 });
 
 test('a step names itself through its Label attribute', function (): void {

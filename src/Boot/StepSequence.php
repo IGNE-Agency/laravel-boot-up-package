@@ -30,20 +30,17 @@ final readonly class StepSequence
 {
     /**
      * @param  list<StepDescriptor>  $steps
-     * @param  list<string>  $devProcesses
      */
     private function __construct(
         public array $steps,
         private BootOptions $options,
         private ?string $serverLabel,
-        private array $devProcesses,
     ) {}
 
     /**
      * @param  list<string>  $configuredSteps
-     * @param  list<string>  $devProcesses  names of the dev processes that will run after the boot
      */
-    public static function for(array $configuredSteps, BootOptions $options, ?string $serverLabel = null, array $devProcesses = []): self
+    public static function for(array $configuredSteps, BootOptions $options, ?string $serverLabel = null): self
     {
         $steps = [];
         $stage = null;
@@ -66,7 +63,7 @@ final readonly class StepSequence
             );
         }
 
-        return new self($steps, $options, $serverLabel, $devProcesses);
+        return new self($steps, $options, $serverLabel);
     }
 
     public function count(): int
@@ -109,27 +106,7 @@ final readonly class StepSequence
             }
         }
 
-        // Not a step: the dev processes start after the pipeline, from the
-        // registry rather than from the configured list.
-        $devLine = $this->devLine();
-
-        return $devLine === null ? $lines : [...$lines, $devLine];
-    }
-
-    /**
-     * What happens once the boot finishes and the processes take over.
-     */
-    private function devLine(): ?string
-    {
-        if ($this->devProcesses === []) {
-            return null;
-        }
-
-        $list = implode(', ', $this->devProcesses);
-
-        return $this->options->follow
-            ? "Run the dev processes in this terminal: {$list}"
-            : "Run the dev processes in the background: {$list}";
+        return $lines;
     }
 
     /**
