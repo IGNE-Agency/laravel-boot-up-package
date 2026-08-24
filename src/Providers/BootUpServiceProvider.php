@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Providers;
 
+use Igne\LaravelBootUp\Boot\Browser;
+use Igne\LaravelBootUp\Boot\DeferredBrowser;
 use Igne\LaravelBootUp\Boot\DevSession;
 use Igne\LaravelBootUp\Boot\ProjectReadiness;
 use Igne\LaravelBootUp\Boot\ShutdownRunner;
@@ -30,6 +32,7 @@ use Igne\LaravelBootUp\Console\DeployScriptCommand;
 use Igne\LaravelBootUp\Console\DevCommand;
 use Igne\LaravelBootUp\Console\DownCommand;
 use Igne\LaravelBootUp\Console\GenerateGitHooksCommand;
+use Igne\LaravelBootUp\Console\OpenBrowserCommand;
 use Igne\LaravelBootUp\Console\PipelineCommand;
 use Igne\LaravelBootUp\Console\StatusCommand;
 use Igne\LaravelBootUp\Console\UpCommand;
@@ -38,6 +41,7 @@ use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Environment\ShellProfile;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
+use Igne\LaravelBootUp\Frontend\ViteHotFile;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
@@ -51,6 +55,7 @@ use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Services\Terminal;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Foundation\Console\DevCommand as FrameworkDevCommand;
+use Illuminate\Foundation\Vite;
 use Illuminate\Process\Factory;
 use Illuminate\Support\ServiceProvider;
 
@@ -204,6 +209,23 @@ final class BootUpServiceProvider extends ServiceProvider
             $app->basePath('package.json'),
         ));
 
+        // Asked of the framework rather than assumed: an application that
+        // moved the marker with Vite::useHotFile() moved the signal too.
+        $this->app->singleton(ViteHotFile::class, fn (Application $app) => new ViteHotFile(
+            $app->make(Vite::class)->hotFile(),
+        ));
+
+        // Bound rather than auto-wired for the artisan path: the deferred
+        // browser re-invokes this project's own artisan, and a path guessed
+        // from the working directory is a path that breaks in a subshell.
+        $this->app->singleton(DeferredBrowser::class, fn (Application $app) => new DeferredBrowser(
+            runner: $app->make(ProcessRunner::class),
+            browser: $app->make(Browser::class),
+            hotFile: $app->make(ViteHotFile::class),
+            config: $app->make(SetupConfig::class),
+            artisanPath: $app->basePath('artisan'),
+        ));
+
         $this->app->singleton(ComposerJson::class, fn (Application $app) => new ComposerJson(
             $app->basePath('composer.json'),
         ));
@@ -235,6 +257,7 @@ final class BootUpServiceProvider extends ServiceProvider
             GenerateGitHooksCommand::class,
             DownCommand::class,
             StatusCommand::class,
+            OpenBrowserCommand::class,
         ]);
     }
 }

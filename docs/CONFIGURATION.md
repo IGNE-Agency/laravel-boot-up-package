@@ -149,11 +149,13 @@ and whether the application or another package overrides it, is covered in
 The section is named for the work, not the command: `app:up` runs these steps
 and then hands over to `php artisan dev`.
 
-| Key                    | Env var                       | Default  | Description                                                                             |
-| ---------------------- | ----------------------------- | -------- | --------------------------------------------------------------------------------------- |
-| `setup.open_browser`   | `BOOT_UP_OPEN_BROWSER`        | `true`   | Open the app in your browser when the setup completes.                                  |
-| `setup.auto_accept`    | `BOOT_UP_SETUP_AUTO_ACCEPT`   | `false`  | Skip the "What app:up will do — continue?" prompt. `--yes` does the same per run.     |
-| `setup.steps`          | —                             | 17 steps | The full boot pipeline, in order — see [Step pipelines](#step-pipelines).                |
+| Key                                  | Env var                            | Default  | Description                                                                                                                       |
+| ------------------------------------ | ---------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `setup.open_browser`                 | `BOOT_UP_OPEN_BROWSER`             | `true`   | Open the app in your browser once it can render — see [The browser](COMMANDS.md#the-browser).                                     |
+| `setup.browser.wait_timeout_seconds` | `BOOT_UP_BROWSER_WAIT_TIMEOUT`     | `60`     | How long to wait for that. After it the browser opens anyway; `0` opens immediately, without waiting.                             |
+| `setup.browser.poll_interval_ms`     | `BOOT_UP_BROWSER_POLL_INTERVAL_MS` | `500`    | How often the wait looks. Minimum 50.                                                                                             |
+| `setup.auto_accept`                  | `BOOT_UP_SETUP_AUTO_ACCEPT`        | `false`  | Skip the "What app:up will do — continue?" prompt. `--yes` does the same per run.                                                 |
+| `setup.steps`                        | —                                  | 17 steps | The full boot pipeline, in order — see [Step pipelines](#step-pipelines).                                                         |
 
 `app:up` is the only command that runs these. `php artisan dev` never boots:
 it checks that the boot has happened and says to run `app:up` if it has not.

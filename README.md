@@ -27,8 +27,9 @@ php artisan dev      # every day
 `app:up` installs the tools you're missing, creates your `.env`, sets up the
 database, installs dependencies, runs migrations, builds assets, and serves the
 app via **Herd**, **Sail**, or **`php artisan serve`**. Then it runs
-`php artisan dev` for you, and when you quit that terminal it stops everything
-it started — the whole session in one command.
+`php artisan dev` for you, opens the app in your browser once it can actually
+render it, and when you quit that terminal it stops everything it started — the
+whole session in one command.
 
 `dev` is Laravel's own dev command: each process gets its own searchable tab,
 and boot-up only decides which processes this project needs. It starts in

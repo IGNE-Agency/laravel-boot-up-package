@@ -9,6 +9,7 @@ use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Enums\BuiltInProcess;
+use Igne\LaravelBootUp\Frontend\ViteHotFile;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
@@ -36,6 +37,7 @@ final class ShutdownRunner
         private readonly ActiveServerStore $store,
         private readonly ServerSelector $selector,
         private readonly StopServerPrompt $prompt,
+        private readonly ViteHotFile $hotFile,
     ) {}
 
     public function run(): void
@@ -100,14 +102,8 @@ final class ShutdownRunner
      */
     private function cleanUpStaleHotFile(bool $hadAssetWatcher): void
     {
-        if (! $hadAssetWatcher) {
-            return;
-        }
-
-        $hot = base_path('public/hot');
-
-        if (is_file($hot)) {
-            @unlink($hot);
+        if ($hadAssetWatcher) {
+            $this->hotFile->remove();
         }
     }
 

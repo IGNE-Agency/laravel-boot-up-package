@@ -209,11 +209,29 @@ return [
     | The key is 'setup' because setting the project up is what these steps
     | do; app:up runs them and then hands over to php artisan dev.
     |
-    | 'auto_accept' (or --yes) skips the confirmation prompt; 'open_browser'
-    | opens the served URL when the setup completes.
+    | 'auto_accept' (or --yes) skips the confirmation prompt.
+    |
+    | 'open_browser' opens the served URL -- but not the moment the pipeline
+    | ends: `php artisan dev` is what starts `php artisan serve` under the
+    | artisan driver, and in watch mode there is no built manifest until Vite
+    | is serving, so a browser opened at that point lands on a refused
+    | connection or a Vite exception. app:up therefore schedules the open in a
+    | tracked background process (storage/logs/boot-up/browser.log) that waits
+    | for the URL to answer and, when this run brings its own Vite watcher,
+    | for public/hot to appear. Quitting the dev terminal cancels an open that
+    | has not happened yet.
+    |
+    | 'browser.wait_timeout_seconds' bounds that wait -- after it the browser
+    | opens anyway, on the grounds that a page needing a reload beats a window
+    | that never appears; 0 opens immediately, without waiting.
+    | 'browser.poll_interval_ms' is how often it looks.
     */
     'setup' => [
         'open_browser' => env('BOOT_UP_OPEN_BROWSER', true),
+        'browser' => [
+            'wait_timeout_seconds' => env('BOOT_UP_BROWSER_WAIT_TIMEOUT', 60),
+            'poll_interval_ms' => env('BOOT_UP_BROWSER_POLL_INTERVAL_MS', 500),
+        ],
         'auto_accept' => env('BOOT_UP_SETUP_AUTO_ACCEPT', false),
         'steps' => [
             EnsureEnvFile::class,

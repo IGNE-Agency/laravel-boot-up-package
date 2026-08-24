@@ -40,6 +40,27 @@ php artisan app:up
 | `--without-assets` | Skip frontend dependencies and assets.                                                                                                |
 | `--yes` / `-y`     | Run without the confirmation prompt (config: `setup.auto_accept`).                                                                    |
 
+### The browser
+
+The URL is announced as soon as the server is serving it, but the browser opens
+later — once the page can actually be rendered. `php artisan dev` is what starts
+the Vite watcher and, under the artisan driver, `php artisan serve` itself, so a
+browser opened when the boot ends would land on a refused connection or a Vite
+manifest exception.
+
+So `app:up` schedules the open instead: a tracked background process waits for
+the URL to answer and, when this run brings its own Vite watcher, for Vite to
+write `public/hot`. It shows up in `app:status` as `browser` while it waits and
+logs its outcome to `storage/logs/boot-up/browser.log`. Quit the dev terminal
+before it happens and the teardown cancels it — no tab onto an application that
+is already gone.
+
+After `setup.browser.wait_timeout_seconds` it opens the URL anyway and says why:
+a page that needs one reload beats a window that never appears. Turn the whole
+thing off with `setup.open_browser`, or set the timeout to `0` to open
+immediately, without waiting. The command doing the waiting is `app:open-browser`,
+hidden because it is `app:up`'s own machinery.
+
 ## `dev`
 
 Run the dev processes this project needs, in Laravel's dev terminal — one

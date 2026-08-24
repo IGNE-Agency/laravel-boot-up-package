@@ -7,6 +7,7 @@ use Igne\LaravelBootUp\Config\DevServerConfig;
 use Igne\LaravelBootUp\Config\ShutdownConfig;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Frontend\ViteHotFile;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
@@ -49,6 +50,7 @@ function shutdownRunner(ProcessLedger $ledger, ActiveServerStore $store, bool $p
         $store,
         new ServerSelector(app(), $drivers, activeServerStore()),
         new StopServerPrompt($shutdown),
+        app(ViteHotFile::class),
     );
 }
 
@@ -106,19 +108,13 @@ test('removes a stale public/hot when a tracked asset watcher is torn down', fun
     // The watcher is already gone, so reap settles it and clears the ledger.
     ProcessFaker::fake(['kill -0 2000' => Process::result(exitCode: 1)]);
 
-    $public = base_path('public');
-    $createdPublic = ! is_dir($public);
-    $createdPublic && mkdir($public, 0755, true);
-    file_put_contents($public.'/hot', 'https://vite.example.test:5173');
+    $hot = $this->workDir.'/hot';
+    file_put_contents($hot, 'https://vite.example.test:5173');
+    app()->instance(ViteHotFile::class, new ViteHotFile($hot));
 
-    try {
-        shutdownRunner($this->ledger, $this->store, promptStop: false, stopDefault: true)->run();
+    shutdownRunner($this->ledger, $this->store, promptStop: false, stopDefault: true)->run();
 
-        expect(is_file($public.'/hot'))->toBeFalse();
-    } finally {
-        @unlink($public.'/hot');
-        $createdPublic && @rmdir($public);
-    }
+    expect(is_file($hot))->toBeFalse();
 });
 
 test('does not signal a recycled pid that started after the record', function (): void {
@@ -156,6 +152,7 @@ test('keeps the ledger entry when a process cannot be stopped', function (): voi
         $this->store,
         new ServerSelector(app(), new DevServerConfig(drivers: ['double' => RecordingServer::class]), activeServerStore()),
         new StopServerPrompt(new ShutdownConfig(promptStopServer: false, stopServerByDefault: true)),
+        app(ViteHotFile::class),
     ))->run();
 
     expect($this->ledger->all())->toHaveCount(1);

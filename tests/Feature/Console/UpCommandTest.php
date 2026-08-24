@@ -15,6 +15,7 @@ use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Enums\OperatingSystem;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Frontend\PackageJson;
+use Igne\LaravelBootUp\Frontend\ViteHotFile;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
@@ -378,6 +379,91 @@ test('dead ledger entries are pruned when a new setup runs', function (): void {
     $this->artisan('app:up', ['server' => 'artisan'])->assertSuccessful();
 
     expect($this->ledger->withLabel('queue-worker'))->toBeEmpty();
+});
+
+/**
+ * The browser paths, which the rest of this file switches off in beforeEach.
+ * A waiter that has already opened the browser is gone by teardown, so its
+ * pid is faked dead — otherwise the reaper sits out its grace periods.
+ */
+function fakeBrowserWaiter(): void
+{
+    ProcessFaker::fake([
+        'sh -c nohup*' => Process::result(output: "4242\n"),
+        'kill -0 4242' => Process::result(exitCode: 1),
+    ]);
+}
+
+/**
+ * A project the asset watcher will actually run in: a dev script to run, and
+ * the node_modules the dev session refuses to start without.
+ */
+function giveProjectAnAssetWatcher(string $workDir): void
+{
+    file_put_contents($workDir.'/package.json', json_encode(['scripts' => ['dev' => 'vite']]));
+    mkdir($workDir.'/node_modules', 0755, true);
+
+    app()->instance(PackageJson::class, new PackageJson($workDir.'/package.json'));
+}
+
+test('schedules the browser instead of opening one the page cannot fill yet', function (): void {
+    // The regression: under the artisan driver, php artisan serve is itself a
+    // dev process, so at this point nothing is listening on the announced URL.
+    config()->set('boot-up.setup.open_browser', true);
+    fakeBrowserWaiter();
+
+    $this->artisan('app:up', ['server' => 'artisan'])->assertSuccessful();
+
+    ProcessFaker::assertDidntRun('open http*');
+    ProcessFaker::assertRan('sh -c nohup*app:open-browser http://127.0.0.1:8000*');
+});
+
+test('tells the browser to wait for Vite only when a watcher will run', function (): void {
+    config()->set('boot-up.setup.open_browser', true);
+    giveProjectAnAssetWatcher($this->workDir);
+    fakeBrowserWaiter();
+
+    $this->artisan('app:up', ['server' => 'artisan'])->assertSuccessful();
+
+    ProcessFaker::assertRan('sh -c nohup*app:open-browser*--vite*');
+});
+
+test('waits without the Vite flag when this run has no asset watcher', function (): void {
+    // The baseline project has no package.json, so nothing will write a hot
+    // file and waiting for one would burn the whole timeout.
+    config()->set('boot-up.setup.open_browser', true);
+    fakeBrowserWaiter();
+
+    $this->artisan('app:up', ['server' => 'artisan'])->assertSuccessful();
+
+    ProcessFaker::assertRan('sh -c nohup*app:open-browser*');
+    ProcessFaker::assertDidntRun('*--vite*');
+});
+
+test('a hot file left behind by a killed watcher is cleared before the browser waits', function (): void {
+    config()->set('boot-up.setup.open_browser', true);
+    giveProjectAnAssetWatcher($this->workDir);
+    app()->instance(ViteHotFile::class, new ViteHotFile($hot = $this->workDir.'/hot'));
+    file_put_contents($hot, 'http://[::1]:5173');
+    fakeBrowserWaiter();
+
+    $this->artisan('app:up', ['server' => 'artisan'])->assertSuccessful();
+
+    // Otherwise it reads as "Vite is serving" the moment the waiter looks,
+    // and the page loads assets from a dev server that is gone.
+    expect(is_file($hot))->toBeFalse();
+});
+
+test('a browser that cannot be scheduled does not fail the boot', function (): void {
+    config()->set('boot-up.setup.open_browser', true);
+    // No pid echoed back, so ProcessRunner::start() throws.
+    ProcessFaker::fake(['sh -c nohup*' => Process::result(output: '')]);
+
+    $this->artisan('app:up', ['server' => 'artisan'])
+        ->expectsOutputToContain('Could not schedule the browser')
+        ->assertSuccessful();
+
+    expect($this->dev->handoffs)->toBe(1);
 });
 
 test('--seed keeps its short flag, matching app:deploy', function (): void {

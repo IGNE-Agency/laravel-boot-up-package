@@ -93,8 +93,13 @@ final class ProcessRunner
 
         // nohup exec()s the command, so the echoed PID belongs to the real
         // process — and it survives this PHP process exiting after boot.
+        //
+        // stdin comes from /dev/null because nohup only ignores SIGHUP: it
+        // does not detach the controlling terminal, so without this every
+        // background process inherits the boot's TTY on stdin and is one
+        // read away from stopping itself.
         $wrapper = sprintf(
-            'nohup %s >> %s 2>&1 & echo $!',
+            'nohup %s < /dev/null >> %s 2>&1 & echo $!',
             $command->toString(),
             escapeshellarg($logFile),
         );

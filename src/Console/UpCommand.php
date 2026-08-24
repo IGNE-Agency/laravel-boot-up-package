@@ -6,6 +6,7 @@ namespace Igne\LaravelBootUp\Console;
 
 use Closure;
 use Igne\LaravelBootUp\Boot\BootRunner;
+use Igne\LaravelBootUp\Boot\DeferredBrowser;
 use Igne\LaravelBootUp\Boot\DevProcessRegistrar;
 use Igne\LaravelBootUp\Boot\DevSession;
 use Igne\LaravelBootUp\Config\SetupConfig;
@@ -52,7 +53,7 @@ final class UpCommand extends BootUpCommand implements Isolatable
         return true;
     }
 
-    public function handle(BootRunner $runner, DevProcessRegistrar $registrar, SetupConfig $config, DevSession $session): int
+    public function handle(BootRunner $runner, DevProcessRegistrar $registrar, SetupConfig $config, DevSession $session, DeferredBrowser $browser): int
     {
         // Stored before anything can fail: onFailure() fires from
         // GuardsAgainstFailures OUTSIDE handle(), where re-resolving would
@@ -75,6 +76,13 @@ final class UpCommand extends BootUpCommand implements Isolatable
         // Only now are .env, composer.json and package.json final, so only
         // now can the gates say what dev will actually run.
         $processes = $registrar->preview($context);
+
+        // These names are a prediction: `dev` re-derives the same set from the
+        // same gates over the same project a moment from now. That is what the
+        // browser waits on, so the wait stays out of the dev command entirely
+        // — and were the two ever to disagree, the wait times out and the
+        // browser opens anyway.
+        $browser->open($context, $processes);
 
         if ($processes === []) {
             terminal()->note('This project has no dev processes to run, so there is nothing for php artisan dev to stream.');
