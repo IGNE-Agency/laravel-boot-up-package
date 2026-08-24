@@ -174,7 +174,7 @@ test('clears the active-server state and warns even when stopping the server thr
     Prompt::assertStrippedOutputContains('Could not stop Double Server');
 });
 
-test('stops only the server app:setup started', function (): void {
+test('stops only the server app:up started', function (): void {
     Prompt::fake();
     ProcessFaker::fake();
     $this->store->remember(activeDouble(startedByUs: true));
@@ -285,7 +285,7 @@ test('declining the residual cleanup keeps the leftovers in place', function ():
         ->and($this->store->current())->toBeNull();
 });
 
-test('never offers residual cleanup for a server app:setup did not start', function (): void {
+test('never offers residual cleanup for a server app:up did not start', function (): void {
     Prompt::fake();
     ProcessFaker::fake();
     app()->instance(ResidualServer::class, $residual = new ResidualServer);

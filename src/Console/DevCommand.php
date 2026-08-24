@@ -34,7 +34,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  * possible before the terminal UI appears: a handful of filesystem reads to
  * confirm the project is set up, the server it was set up with, and the gates
  * that decide which processes to register. Everything that takes real work
- * belongs to app:setup, which this command points at when the project is not
+ * belongs to app:up, which this command points at when the project is not
  * ready.
  *
  * Extending rather than replacing is the whole point: the terminal UI, its
@@ -64,7 +64,7 @@ class DevCommand extends FrameworkDevCommand
         // the definition it builds.
         parent::__construct();
 
-        $this->addArgument('server', InputArgument::OPTIONAL, 'Override the server app:setup recorded (herd, sail, artisan, or any driver registered in boot-up.server.drivers)');
+        $this->addArgument('server', InputArgument::OPTIONAL, 'Override the server app:up recorded (herd, sail, artisan, or any driver registered in boot-up.server.drivers)');
 
         $this->addOption('without-queue', null, InputOption::VALUE_NONE, 'Do not run a queue worker');
         $this->addOption('without-assets', null, InputOption::VALUE_NONE, 'Do not run an asset watcher');
@@ -143,7 +143,7 @@ class DevCommand extends FrameworkDevCommand
      * UI owns the terminal outright, with no PHP parent left in the process
      * group to intercept its keys or its Ctrl+C. That is what makes the
      * visuals and the quit behaviour identical to plain `php artisan dev` —
-     * and the one run that cannot afford it, the session app:setup claims,
+     * and the one run that cannot afford it, the session app:up claims,
      * is handled in runViaMultiplex() below.
      */
     protected function delegateToFramework(NodePackageManager $packageManager): int
@@ -155,7 +155,7 @@ class DevCommand extends FrameworkDevCommand
      * The one thing a claimed session changes: the terminal UI runs as a
      * child of this process rather than replacing it.
      *
-     * app:setup claims the session because it has a server to stop once the
+     * app:up claims the session because it has a server to stop once the
      * terminal quits, and pcntl_exec would leave no PHP behind to stop it.
      * Everything the user sees is the same command line upstream would have
      * exec'd, handed the same terminal.
@@ -180,7 +180,7 @@ class DevCommand extends FrameworkDevCommand
 
     protected function failureHint(): void
     {
-        terminal()->note('Set the project up with: php artisan app:setup');
+        terminal()->note('Set the project up with: php artisan app:up');
     }
 
     /**
@@ -194,7 +194,7 @@ class DevCommand extends FrameworkDevCommand
         terminal()->summary(
             'This project is not ready to run its dev processes',
             $problems,
-            'Set it up with: php artisan app:setup',
+            'Set it up with: php artisan app:up',
         );
 
         return self::FAILURE;

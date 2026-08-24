@@ -20,11 +20,11 @@ this package has no business in production.
 
 ```bash
 composer install
-php artisan app:setup   # once, after a clone — and it keeps going into dev
-php artisan dev         # every day
+php artisan app:up   # once, after a clone — and it keeps going into dev
+php artisan dev      # every day
 ```
 
-`app:setup` installs the tools you're missing, creates your `.env`, sets up the
+`app:up` installs the tools you're missing, creates your `.env`, sets up the
 database, installs dependencies, runs migrations, builds assets, and serves the
 app via **Herd**, **Sail**, or **`php artisan serve`**. Then it runs
 `php artisan dev` for you, and when you quit that terminal it stops everything
@@ -32,7 +32,7 @@ it started — the whole session in one command.
 
 `dev` is Laravel's own dev command: each process gets its own searchable tab,
 and boot-up only decides which processes this project needs. It starts in
-milliseconds, and says to run `app:setup` if the project is not ready. Run on
+milliseconds, and says to run `app:up` if the project is not ready. Run on
 its own it leaves the server up when you quit; `app:down` stops everything
 boot-up started — and nothing it didn't.
 
@@ -55,9 +55,9 @@ containers when that is where the project lives. See
 
 | Command                  | What it does                                                          |
 | ------------------------ | --------------------------------------------------------------------- |
-| `app:setup`              | Set up the application, run it, and stop it again when you quit.      |
+| `app:up`                 | Set up the application, run it, and stop it again when you quit.      |
 | `dev`                    | Run the dev processes this project needs.                             |
-| `app:down`               | Stop tracked processes and the server `app:setup` started.            |
+| `app:down`               | Stop tracked processes and the server `app:up` started.               |
 | `app:status`             | Show the active server and tracked processes.                         |
 | `app:deploy`             | Install, run project commands and migrate — without booting a server. |
 | `generate:deploy-script` | Export a paste-ready deployment script (Forge, fortrabbit).           |
@@ -65,7 +65,7 @@ containers when that is where the project lives. See
 | `generate:git-hooks`     | Install a tracked pre-commit hook running the pipeline's Pint check.  |
 
 Every flag is documented in [docs/COMMANDS.md](docs/COMMANDS.md) — and
-`php artisan list` / `php artisan app:setup --help` are always authoritative.
+`php artisan list` / `php artisan app:up --help` are always authoritative.
 
 ## Documentation
 

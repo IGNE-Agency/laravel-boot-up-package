@@ -10,7 +10,7 @@ use Igne\LaravelBootUp\Data\CommandLine;
 /**
  * Capability: the server runs as one of the dev processes, in a tab beside
  * the queue worker and the asset watcher. Servers without this contract are
- * external to the run — Herd serves through its own nginx, and app:setup
+ * external to the run — Herd serves through its own nginx, and app:up
  * leaves it serving — so `php artisan dev` shows no [server] tab for them.
  */
 interface ProvidesDevProcess

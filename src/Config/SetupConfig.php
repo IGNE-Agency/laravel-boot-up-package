@@ -9,7 +9,7 @@ use Igne\LaravelBootUp\Contracts\Step;
 use Illuminate\Contracts\Config\Repository;
 
 /**
- * What `php artisan app:setup` does: the pipeline that gets a project ready
+ * What `php artisan app:up` does: the pipeline that gets a project ready
  * to run, and how it asks before doing it.
  */
 final readonly class SetupConfig

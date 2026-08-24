@@ -1,16 +1,16 @@
 # Commands
 
 The authoritative reference is always the CLI itself — `php artisan list`
-shows every command, and `php artisan app:setup --help` (or any other
+shows every command, and `php artisan app:up --help` (or any other
 command with `--help`) shows its full signature. This page mirrors those
 signatures with more context.
 
-Two commands cover the daily loop: `app:setup` gets the project ready, `dev`
+Two commands cover the daily loop: `app:up` gets the project ready, `dev`
 runs it. Setting up is what you do after a clone; running is what you do every
-day, which is why they are separate — `app:setup` still ends in `dev`, so a
+day, which is why they are separate — `app:up` still ends in `dev`, so a
 fresh clone is one command from a running application.
 
-## `app:setup`
+## `app:up`
 
 Set up the application, start its development server, and run it. Prints the
 plan first, asks to continue, then works through it with a progress bar and a
@@ -27,7 +27,7 @@ command for a person at a keyboard. Scripted, unattended work belongs to
 [`app:deploy`](#appdeploy), which never boots a server.
 
 ```bash
-php artisan app:setup
+php artisan app:up
 ```
 
 | Argument / option  | Description                                                                                                                           |
@@ -55,7 +55,7 @@ can use, and the server rewrite that runs them inside Sail's containers when
 that is where the project lives.
 
 Before handing off it checks that the project is set up — a `.env` with an
-`APP_KEY`, installed dependencies, a known server — and names `app:setup` if
+`APP_KEY`, installed dependencies, a known server — and names `app:up` if
 anything is missing. Those are filesystem reads, so the terminal appears
 immediately.
 
@@ -65,13 +65,13 @@ php artisan dev
 
 | Argument / option  | Description                                                                                                                    |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| `server`           | Override the server `app:setup` recorded: `herd`, `sail`, `artisan`, or any driver registered in `boot-up.server.drivers`.     |
+| `server`           | Override the server `app:up` recorded: `herd`, `sail`, `artisan`, or any driver registered in `boot-up.server.drivers`.     |
 | `--without-queue`  | Do not run a queue worker.                                                                                                      |
 | `--without-assets` | Do not run an asset watcher.                                                                                                    |
 | `--detach` / `-d`  | Run the dev processes in the background instead of this terminal, with logs in `storage/logs/boot-up/`.                        |
 
 Run on its own, quitting the terminal leaves the project set up and its server
-running — that is what `app:down` is for. A `dev` that `app:setup` started
+running — that is what `app:down` is for. A `dev` that `app:up` started
 instead hands control back to it, and the teardown follows automatically.
 
 The dev terminal needs Node 22.13 or newer. Below that, `--detach` runs the
@@ -79,7 +79,7 @@ same processes without it.
 
 ## `app:down`
 
-Stop tracked processes and the server `php artisan app:setup` started — and
+Stop tracked processes and the server `php artisan app:up` started — and
 nothing it didn't. After a failed Sail boot it also offers `sail down` to clear
 leftover Docker resources (stopped containers, networks, half-pulled
 images).
@@ -104,7 +104,7 @@ php artisan app:status
 ## `app:deploy`
 
 Install dependencies, run project commands and migrate — without booting a
-server, running dev processes, or opening a browser. Like `app:setup`, it prints
+server, running dev processes, or opening a browser. Like `app:up`, it prints
 the plan up front and tracks a progress bar as it runs.
 
 ```bash

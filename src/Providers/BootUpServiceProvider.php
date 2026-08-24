@@ -31,8 +31,8 @@ use Igne\LaravelBootUp\Console\DevCommand;
 use Igne\LaravelBootUp\Console\DownCommand;
 use Igne\LaravelBootUp\Console\GenerateGitHooksCommand;
 use Igne\LaravelBootUp\Console\PipelineCommand;
-use Igne\LaravelBootUp\Console\SetupCommand;
 use Igne\LaravelBootUp\Console\StatusCommand;
+use Igne\LaravelBootUp\Console\UpCommand;
 use Igne\LaravelBootUp\Deploy\Composer;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Environment\ShellProfile;
@@ -92,7 +92,7 @@ final class BootUpServiceProvider extends ServiceProvider
         $this->app->singleton(PackageManagerSelector::class);
         $this->app->singleton(ShutdownRunner::class);
 
-        // Shared because the claim crosses a command boundary: app:setup
+        // Shared because the claim crosses a command boundary: app:up
         // writes it, `dev` reads it, both in the same artisan process.
         $this->app->singleton(DevSession::class);
     }
@@ -228,7 +228,7 @@ final class BootUpServiceProvider extends ServiceProvider
         ], 'boot-up-config');
 
         $this->commands([
-            SetupCommand::class,
+            UpCommand::class,
             DeployCommand::class,
             DeployScriptCommand::class,
             PipelineCommand::class,

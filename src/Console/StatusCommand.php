@@ -73,10 +73,10 @@ final class StatusCommand extends BootUpCommand
         // at most one assertion per write.
         terminal()->info("Server: {$name}");
         terminal()->info($active->startedByUs
-            ? 'The server was started by php artisan app:setup.'
-            : 'The server was already running before php artisan app:setup ran.');
+            ? 'The server was started by php artisan app:up.'
+            : 'The server was already running before php artisan app:up ran.');
         terminal()->info($probe->isServing($active->setupPid)
-            ? "php artisan app:setup is still running (pid {$active->setupPid})."
-            : "The php artisan app:setup that started it (pid {$active->setupPid}) has finished.");
+            ? "php artisan app:up is still running (pid {$active->setupPid})."
+            : "The php artisan app:up that started it (pid {$active->setupPid}) has finished.");
     }
 }

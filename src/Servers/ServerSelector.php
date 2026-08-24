@@ -47,7 +47,7 @@ final class ServerSelector
 
     /**
      * The server this project is already set up with, resolved without ever
-     * prompting: an explicit argument, then the record app:setup persisted,
+     * prompting: an explicit argument, then the record app:up persisted,
      * then the configured default.
      *
      * Null means nothing on this machine says which server serves this
@@ -66,7 +66,7 @@ final class ServerSelector
             try {
                 return $this->driver($key);
             } catch (Throwable) {
-                terminal()->warning("The recorded server [{$key}] is not a known driver — run php artisan app:setup to choose one.");
+                terminal()->warning("The recorded server [{$key}] is not a known driver — run php artisan app:up to choose one.");
             }
         }
 

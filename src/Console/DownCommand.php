@@ -11,7 +11,7 @@ final class DownCommand extends BootUpCommand implements Isolatable
 {
     protected $signature = 'app:down';
 
-    protected $description = 'Stop tracked background processes and the server that php artisan app:setup started';
+    protected $description = 'Stop tracked background processes and the server that php artisan app:up started';
 
     /**
      * Teardown signals processes and reads the process table, so it needs a

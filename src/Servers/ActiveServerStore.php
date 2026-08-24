@@ -10,7 +10,7 @@ use Igne\LaravelBootUp\Services\JsonStore;
 /**
  * Persists the active-server record as atomic JSON in
  * storage/framework/boot-up, so the three commands that need it agree:
- * app:setup writes it, `dev` and app:status read it, app:down clears it.
+ * app:up writes it, `dev` and app:status read it, app:down clears it.
  */
 final class ActiveServerStore
 {

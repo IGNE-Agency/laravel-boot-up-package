@@ -8,9 +8,9 @@ namespace Igne\LaravelBootUp\Data;
  * The persisted record of the server this project is set up with, written
  * before the driver starts so shutdown always knows what to clean up.
  *
- * It outlives the run that wrote it: app:setup leaves the server running,
+ * It outlives the run that wrote it: app:up leaves the server running,
  * `dev` reads the record to know which driver serves the project, and
- * app:down clears it. $setupPid is the app:setup that wrote it — live only
+ * app:down clears it. $setupPid is the app:up run that wrote it — live only
  * while that command is still working, which is how a second one is kept out.
  */
 final readonly class ActiveServerRecord

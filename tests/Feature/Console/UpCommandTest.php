@@ -87,7 +87,7 @@ afterEach(function (): void {
 test('boots the artisan driver end to end and remembers what it set up', function (): void {
     ProcessFaker::fake();
 
-    $this->artisan('app:setup', ['server' => 'artisan'])->assertSuccessful();
+    $this->artisan('app:up', ['server' => 'artisan'])->assertSuccessful();
 
     // The serve command is a dev process, so setup starts nothing behind it.
     ProcessFaker::assertDidntRun('sh -c nohup*');
@@ -111,7 +111,7 @@ test('starts the dev command and names the processes it will run', function (): 
     // Artisan::call() rather than $this->artisan(): the whole block is one
     // write, and an artisan output expectation consumes a write for exactly
     // one of its substrings.
-    Artisan::call('app:setup', ['server' => 'artisan']);
+    Artisan::call('app:up', ['server' => 'artisan']);
 
     expect(Artisan::output())
         ->toContain('Starting php artisan dev')
@@ -124,7 +124,7 @@ test('starts the dev command and names the processes it will run', function (): 
 test('the boot runs straight into the dev session, and stops it all again when it quits', function (): void {
     ProcessFaker::fake();
 
-    Artisan::call('app:setup', ['server' => 'artisan']);
+    Artisan::call('app:up', ['server' => 'artisan']);
 
     expect($this->dev->handoffs)->toBe(1)
         ->and(Artisan::output())->toContain('Stopping everything boot-up started...')
@@ -137,7 +137,7 @@ test('the dev session runs the server the boot picked, without consulting the re
     ProcessFaker::fake();
     $this->store->clear();
 
-    $this->artisan('app:setup', ['server' => 'artisan'])->assertSuccessful();
+    $this->artisan('app:up', ['server' => 'artisan'])->assertSuccessful();
 
     expect(array_column($this->dev->handedOver, 'command'))
         ->toContain('php artisan serve --host=127.0.0.1 --port=8000');
@@ -146,7 +146,7 @@ test('the dev session runs the server the boot picked, without consulting the re
 test('--without-assets carries into the dev session', function (): void {
     ProcessFaker::fake();
 
-    Artisan::call('app:setup', ['server' => 'artisan', '--without-assets' => true]);
+    Artisan::call('app:up', ['server' => 'artisan', '--without-assets' => true]);
 
     expect(Artisan::output())->toContain('Assets skipped (--without-assets).');
 });
@@ -155,7 +155,7 @@ test('a dev session that ends badly fails the command, and is torn down anyway',
     ProcessFaker::fake();
     $this->dev->exitCode = 1;
 
-    $this->artisan('app:setup', ['server' => 'artisan'])->assertFailed();
+    $this->artisan('app:up', ['server' => 'artisan'])->assertFailed();
 
     expect($this->dev->handoffs)->toBe(1)
         ->and($this->store->current())->toBeNull();
@@ -169,7 +169,7 @@ test('says so when there is nothing for the dev command to stream', function ():
     config()->set('boot-up.dev.logs', false);
     config()->set('boot-up.frontend.assets', 'skip');
 
-    $this->artisan('app:setup', ['server' => 'double'])
+    $this->artisan('app:up', ['server' => 'double'])
         ->expectsOutputToContain('nothing for php artisan dev to stream')
         ->assertSuccessful();
 
@@ -188,7 +188,7 @@ test('does not start a second artisan serve when one is already tracked and aliv
     // Seed a live artisan-serve record; the driver must self-skip.
     $this->ledger->record(new ProcessRecord(12345, 'artisan-serve', 'php artisan serve', date(DATE_ATOM)));
 
-    $this->artisan('app:setup', ['server' => 'artisan'])->assertSuccessful();
+    $this->artisan('app:up', ['server' => 'artisan'])->assertSuccessful();
 
     ProcessFaker::assertDidntRun('sh -c nohup*');
     expect($this->ledger->withLabel('artisan-serve'))->toHaveCount(1);
@@ -196,12 +196,12 @@ test('does not start a second artisan serve when one is already tracked and aliv
 
 test('aborts when another setup is already serving this project', function (): void {
     ProcessFaker::fake([
-        'ps -p 99999*' => Process::result('php artisan app:setup laravel'),
+        'ps -p 99999*' => Process::result('php artisan app:up laravel'),
     ]);
 
     $this->store->remember(new ActiveServerRecord('artisan', true, 99999, date(DATE_ATOM)));
 
-    $this->artisan('app:setup', ['server' => 'artisan'])->assertFailed();
+    $this->artisan('app:up', ['server' => 'artisan'])->assertFailed();
 
     ProcessFaker::assertDidntRun('sh -c nohup*');
 });
@@ -213,14 +213,14 @@ test('a stale active-server record from a dead process does not block a new setu
 
     $this->store->remember(new ActiveServerRecord('artisan', true, 99999, date(DATE_ATOM)));
 
-    $this->artisan('app:setup', ['server' => 'artisan'])->assertSuccessful();
+    $this->artisan('app:up', ['server' => 'artisan'])->assertSuccessful();
 });
 
 test('a failing step surfaces as a clean failure, not a stack trace', function (): void {
     ProcessFaker::fake();
     config()->set('boot-up.setup.steps', [FailingStep::class]);
 
-    $this->artisan('app:setup', ['server' => 'artisan'])
+    $this->artisan('app:up', ['server' => 'artisan'])
         ->doesntExpectOutputToContain('Starting php artisan dev')
         ->assertFailed();
 });
@@ -228,7 +228,7 @@ test('a failing step surfaces as a clean failure, not a stack trace', function (
 test('rejects an unknown server argument with a clean, actionable failure', function (): void {
     ProcessFaker::fake();
 
-    $this->artisan('app:setup', ['server' => 'nginx'])
+    $this->artisan('app:up', ['server' => 'nginx'])
         ->expectsOutputToContain('Unknown development server [nginx]')
         ->assertFailed();
 });
@@ -237,7 +237,7 @@ test('fails fast on native Windows', function (): void {
     ProcessFaker::fake();
     app()->instance(Platform::class, new Platform(OperatingSystem::Windows));
 
-    $this->artisan('app:setup', ['server' => 'artisan'])
+    $this->artisan('app:up', ['server' => 'artisan'])
         ->expectsOutputToContain('not supported on native Windows')
         ->assertFailed();
 
@@ -248,7 +248,7 @@ test('an unexpected exception fails cleanly with an app:down hint', function ():
     ProcessFaker::fake();
     config()->set('boot-up.setup.steps', [ExplodingStep::class]);
 
-    $this->artisan('app:setup', ['server' => 'artisan'])
+    $this->artisan('app:up', ['server' => 'artisan'])
         ->expectsOutputToContain('Unexpected error: something exploded')
         ->expectsOutputToContain('php artisan app:down')
         ->assertFailed();
@@ -258,7 +258,7 @@ test('a known mid-boot failure also shows the app:down hint', function (): void 
     ProcessFaker::fake();
     config()->set('boot-up.setup.steps', [FailingStep::class]);
 
-    $this->artisan('app:setup', ['server' => 'artisan'])
+    $this->artisan('app:up', ['server' => 'artisan'])
         ->expectsOutputToContain('php artisan app:down')
         ->assertFailed();
 });
@@ -266,15 +266,15 @@ test('a known mid-boot failure also shows the app:down hint', function (): void 
 test('prints the execution plan before booting', function (): void {
     ProcessFaker::fake();
 
-    $this->artisan('app:setup', ['server' => 'artisan'])
-        ->expectsOutputToContain('What app:setup will do')
+    $this->artisan('app:up', ['server' => 'artisan'])
+        ->expectsOutputToContain('What app:up will do')
         ->assertSuccessful();
 });
 
 test('the plan names the selected server', function (): void {
     ProcessFaker::fake();
 
-    $this->artisan('app:setup', ['server' => 'artisan'])
+    $this->artisan('app:up', ['server' => 'artisan'])
         ->expectsOutputToContain('development server')
         ->assertSuccessful();
 });
@@ -283,7 +283,7 @@ test('asks to continue and aborts without changing anything when declined', func
     config()->set('boot-up.setup.auto_accept', false);
     ProcessFaker::fake();
 
-    $this->artisan('app:setup', ['server' => 'artisan'])
+    $this->artisan('app:up', ['server' => 'artisan'])
         ->expectsConfirmation('Continue?', 'no')
         ->expectsOutputToContain('Aborted — nothing was changed.')
         ->assertSuccessful();
@@ -299,13 +299,13 @@ test('the --yes flag skips the confirmation prompt', function (): void {
 
     // No expectsConfirmation: the run would fail on an unhandled prompt if
     // --yes did not skip it.
-    $this->artisan('app:setup', ['server' => 'artisan', '--yes' => true])->assertSuccessful();
+    $this->artisan('app:up', ['server' => 'artisan', '--yes' => true])->assertSuccessful();
 });
 
 test('renders a stage divider when the pipeline enters a stage', function (): void {
     ProcessFaker::fake();
 
-    $this->artisan('app:setup', ['server' => 'artisan'])
+    $this->artisan('app:up', ['server' => 'artisan'])
         ->expectsOutputToContain('Start server')
         ->assertSuccessful();
 });
@@ -313,7 +313,7 @@ test('renders a stage divider when the pipeline enters a stage', function (): vo
 test('a later stage gets its own divider', function (): void {
     ProcessFaker::fake();
 
-    $this->artisan('app:setup', ['server' => 'artisan'])
+    $this->artisan('app:up', ['server' => 'artisan'])
         ->expectsOutputToContain('Announce the application')
         ->assertSuccessful();
 });
@@ -321,7 +321,7 @@ test('a later stage gets its own divider', function (): void {
 test('the progress bar runs while the pipeline does', function (): void {
     ProcessFaker::fake();
 
-    $this->artisan('app:setup', ['server' => 'artisan'])
+    $this->artisan('app:up', ['server' => 'artisan'])
         ->expectsOutputToContain('Boot progress')
         ->assertSuccessful();
 });
@@ -330,7 +330,7 @@ test('a custom step class gets the custom steps divider', function (): void {
     ProcessFaker::fake();
     config()->set('boot-up.setup.steps', [ExplodingStep::class]);
 
-    $this->artisan('app:setup', ['server' => 'artisan'])
+    $this->artisan('app:up', ['server' => 'artisan'])
         ->expectsOutputToContain('Custom steps')
         ->assertFailed();
 });
@@ -339,7 +339,7 @@ test('a Class:variant entry still resolves with its variant argument', function 
     ProcessFaker::fake();
     config()->set('boot-up.setup.steps', [RunDeployTasks::class.':before']);
 
-    $this->artisan('app:setup', ['server' => 'artisan'])->assertSuccessful();
+    $this->artisan('app:up', ['server' => 'artisan'])->assertSuccessful();
 });
 
 test('--no-migrate hides the migrations plan line', function (): void {
@@ -350,7 +350,7 @@ test('--no-migrate hides the migrations plan line', function (): void {
         AnnounceApplication::class,
     ]);
 
-    $this->artisan('app:setup', ['server' => 'artisan', '--no-migrate' => true])
+    $this->artisan('app:up', ['server' => 'artisan', '--no-migrate' => true])
         ->doesntExpectOutputToContain('Run pending migrations')
         ->assertSuccessful();
 });
@@ -363,7 +363,7 @@ test('the migrations plan line shows without --no-migrate', function (): void {
         AnnounceApplication::class,
     ]);
 
-    $this->artisan('app:setup', ['server' => 'artisan'])
+    $this->artisan('app:up', ['server' => 'artisan'])
         ->expectsOutputToContain('Run pending migrations')
         ->assertSuccessful();
 });
@@ -375,13 +375,13 @@ test('dead ledger entries are pruned when a new setup runs', function (): void {
 
     $this->ledger->record(new ProcessRecord(4444, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM)));
 
-    $this->artisan('app:setup', ['server' => 'artisan'])->assertSuccessful();
+    $this->artisan('app:up', ['server' => 'artisan'])->assertSuccessful();
 
     expect($this->ledger->withLabel('queue-worker'))->toBeEmpty();
 });
 
 test('--seed keeps its short flag, matching app:deploy', function (): void {
-    $definition = Artisan::all()['app:setup']->getDefinition();
+    $definition = Artisan::all()['app:up']->getDefinition();
 
     expect($definition->getOption('seed')->getShortcut())->toBe('s')
         ->and($definition->getOption('update')->getShortcut())->toBe('u')

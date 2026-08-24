@@ -26,7 +26,7 @@ final class CapturingDevCommand extends DevCommand
 
     /**
      * What the active-server record said while the session was running —
-     * the only moment a caller can see it, since a session app:setup owns
+     * the only moment a caller can see it, since a session app:up owns
      * clears the record as soon as this returns.
      */
     public ?ActiveServerRecord $activeAtHandoff = null;

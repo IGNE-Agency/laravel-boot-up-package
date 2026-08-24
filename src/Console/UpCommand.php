@@ -28,9 +28,9 @@ use Illuminate\Contracts\Console\Isolatable;
  * hands over to, and the teardown when that terminal quits. What this run
  * started, this run stops.
  */
-final class SetupCommand extends BootUpCommand implements Isolatable
+final class UpCommand extends BootUpCommand implements Isolatable
 {
-    protected $signature = 'app:setup
+    protected $signature = 'app:up
         {server? : The development server to use (herd, sail, artisan, or any driver registered in boot-up.server.drivers)}
         {--s|seed : Seed the database after migrating}
         {--no-migrate : Skip running pending migrations}
@@ -66,7 +66,7 @@ final class SetupCommand extends BootUpCommand implements Isolatable
             return self::FAILURE;
         }
 
-        if (! $this->confirmPlan($plan, 'app:setup', $config->autoAccept, 'Then hand over to php artisan dev, and stop it all again when you quit.')) {
+        if (! $this->confirmPlan($plan, 'app:up', $config->autoAccept, 'Then hand over to php artisan dev, and stop it all again when you quit.')) {
             return $this->skip('Aborted — nothing was changed.');
         }
 

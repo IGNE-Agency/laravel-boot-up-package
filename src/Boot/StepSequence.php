@@ -23,7 +23,7 @@ use ReflectionClass;
 /**
  * What the configured boot pipeline is about to do: each entry parsed and
  * assigned a stage plus a progress label, and a concise options-aware
- * summary for the "What app:setup will do" block. Only BootOptions gate
+ * summary for the "What app:up will do" block. Only BootOptions gate
  * summary lines — config/context skip logic stays inside the steps.
  */
 final readonly class StepSequence

@@ -16,7 +16,7 @@ use Igne\LaravelBootUp\Frontend\PackageJson;
  *
  * Filesystem reads and one $_SERVER lookup, nothing more: `php artisan dev`
  * has to reach the terminal UI in milliseconds, and anything that takes real
- * work to answer is app:setup's job. What this catches is the project that
+ * work to answer is app:up's job. What this catches is the project that
  * was never set up, so the user is told to set it up rather than watching
  * every tab crash-loop.
  */

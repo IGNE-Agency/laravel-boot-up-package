@@ -25,7 +25,7 @@ return [
     |--------------------------------------------------------------------------
     | Environment guard
     |--------------------------------------------------------------------------
-    | Both app:setup and php artisan dev refuse to run when APP_ENV (read from
+    | Both app:up and php artisan dev refuse to run when APP_ENV (read from
     | the .env file) is not in 'allowed'. A missing .env or APP_ENV counts as a
     | fresh local setup.
     */
@@ -190,7 +190,7 @@ return [
     |--------------------------------------------------------------------------
     | Shutdown behaviour
     |--------------------------------------------------------------------------
-    | Whether teardown (Ctrl+C during app:setup, or app:down) asks before
+    | Whether teardown (Ctrl+C during app:up, or app:down) asks before
     | stopping the development server, and what the unattended answer is.
     */
     'shutdown' => [
@@ -200,11 +200,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | php artisan app:setup
+    | php artisan app:up — the setup it runs
     |--------------------------------------------------------------------------
     | 'steps' is the boot pipeline: the sequential work that has to finish
     | before the application can run, in order. Insert your own Contracts\Step
     | classes anywhere, remove steps you do not want, or reorder them.
+    |
+    | The key is 'setup' because setting the project up is what these steps
+    | do; app:up runs them and then hands over to php artisan dev.
     |
     | 'auto_accept' (or --yes) skips the confirmation prompt; 'open_browser'
     | opens the served URL when the setup completes.
@@ -239,8 +242,8 @@ return [
     |--------------------------------------------------------------------------
     | The long-running processes are not steps: `php artisan dev` is Laravel's
     | own dev command, and boot-up only decides which processes this project
-    | can use and rewrites each one for the server app:setup left serving it.
-    | Run app:setup first -- dev says so if the project is not ready.
+    | can use and rewrites each one for the server app:up left serving it.
+    | Run app:up first -- dev says so if the project is not ready.
     |
     | 'logs' keeps Laravel's log-tailing process, which needs laravel/pail.
     | Register your own processes from any service provider:

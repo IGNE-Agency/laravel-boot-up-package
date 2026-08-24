@@ -56,7 +56,7 @@ $this->app->singleton(
 );
 ```
 
-That's it. `app:setup` and `app:deploy` resolve the binding lazily — no binding
+That's it. `app:up` and `app:deploy` resolve the binding lazily — no binding
 means no project commands, no error.
 
 ## Command types

@@ -41,7 +41,7 @@ beforeEach(function (): void {
         logDirectory: $this->workDir.'/logs',
     ));
 
-    // A project app:setup already finished with: a .env, installed Composer
+    // A project app:up already finished with: a .env, installed Composer
     // dependencies, and a recorded server. Individual tests take pieces away.
     file_put_contents($this->workDir.'/.env', "APP_ENV=local\nAPP_KEY=base64:x\n");
     file_put_contents($this->workDir.'/vendor/autoload.php', '<?php');
@@ -111,7 +111,7 @@ test('a setup step that would explode never runs, because dev does not boot', fu
     expect($this->command->handoffs)->toBe(1);
 });
 
-test('uses the server app:setup recorded', function (): void {
+test('uses the server app:up recorded', function (): void {
     ProcessFaker::fake();
 
     $this->artisan('dev')->assertSuccessful();
@@ -139,7 +139,7 @@ test('rejects an unknown server argument with a clean, actionable failure', func
     expect($this->command->handoffs)->toBe(0);
 });
 
-test('names app:setup when no server is set up for this project', function (): void {
+test('names app:up when no server is set up for this project', function (): void {
     ProcessFaker::fake();
     $this->store->clear();
 
@@ -147,11 +147,11 @@ test('names app:setup when no server is set up for this project', function (): v
 
     expect(Artisan::output())
         ->toContain('No development server is set up for this project.')
-        ->toContain('php artisan app:setup')
+        ->toContain('php artisan app:up')
         ->and($this->command->handoffs)->toBe(0);
 });
 
-test('names app:setup, and every reason, when the project is not set up', function (): void {
+test('names app:up, and every reason, when the project is not set up', function (): void {
     ProcessFaker::fake();
     unlink($this->workDir.'/vendor/autoload.php');
     file_put_contents($this->workDir.'/.env', "APP_ENV=production\n");
@@ -163,7 +163,7 @@ test('names app:setup, and every reason, when the project is not set up', functi
         ->toContain('APP_ENV is [production]')
         ->toContain('APP_KEY is not set in .env.')
         ->toContain('Composer dependencies are not installed.')
-        ->toContain('Set it up with: php artisan app:setup')
+        ->toContain('Set it up with: php artisan app:up')
         ->and($this->command->handoffs)->toBe(0);
 });
 
@@ -221,10 +221,10 @@ test('says so instead of starting an empty terminal when every process is gated 
     expect($this->command->handoffs)->toBe(0);
 });
 
-test('a session app:setup claimed runs the terminal UI as a child, not in place of this process', function (): void {
+test('a session app:up claimed runs the terminal UI as a child, not in place of this process', function (): void {
     ProcessFaker::fake();
 
-    // Claiming is what app:setup does before handing over. Without it this
+    // Claiming is what app:up does before handing over. Without it this
     // path ends in pcntl_exec, which would replace the test runner itself —
     // which is exactly why only the claimed path can be exercised here.
     app(DevSession::class)->claim();
@@ -280,7 +280,7 @@ test('dev keeps every option the framework defines and adds only its own', funct
         ->and($definition->hasOption('without-queue'))->toBeTrue()
         ->and($definition->hasOption('without-assets'))->toBeTrue()
         ->and($definition->hasArgument('server'))->toBeTrue()
-        // The boot's flags moved to app:setup with the boot.
+        // The boot's flags moved to app:up with the boot.
         ->and($definition->hasOption('seed'))->toBeFalse()
         ->and($definition->hasOption('no-migrate'))->toBeFalse()
         ->and($definition->hasOption('fresh'))->toBeFalse()

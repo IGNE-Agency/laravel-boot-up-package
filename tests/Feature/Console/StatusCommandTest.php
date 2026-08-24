@@ -44,7 +44,7 @@ test('reports that nothing is running on a clean project', function (): void {
 
 test('shows the active server, its serve pid state, and every tracked process', function (): void {
     ProcessFaker::fake([
-        'ps -p 99999*' => Process::result('php artisan app:setup laravel'),
+        'ps -p 99999*' => Process::result('php artisan app:up laravel'),
         'kill -0 4242' => Process::result(),
         'ps -p 4242*' => Process::result('php artisan queue:work database'),
         'kill -0 5555' => Process::result(exitCode: 1),
@@ -56,8 +56,8 @@ test('shows the active server, its serve pid state, and every tracked process', 
 
     $this->artisan('app:status')
         ->expectsOutputToContain('Laravel (php artisan serve) at http://127.0.0.1:8000')
-        ->expectsOutputToContain('The server was started by php artisan app:setup.')
-        ->expectsOutputToContain('php artisan app:setup is still running (pid 99999).')
+        ->expectsOutputToContain('The server was started by php artisan app:up.')
+        ->expectsOutputToContain('php artisan app:up is still running (pid 99999).')
         ->expectsOutputToContain('queue-worker (pid 4242): running — logs: storage/logs/boot-up/queue-worker.log')
         ->expectsOutputToContain('assets-watch (pid 5555): dead — logs: storage/logs/boot-up/assets-watch.log')
         ->expectsOutputToContain('php artisan app:down')
@@ -72,8 +72,8 @@ test('a dead serve pid is reported, not hidden', function (): void {
     $this->store->remember(new ActiveServerRecord('artisan', false, 99999, date(DATE_ATOM)));
 
     $this->artisan('app:status')
-        ->expectsOutputToContain('The server was already running before php artisan app:setup ran.')
-        ->expectsOutputToContain('The php artisan app:setup that started it (pid 99999) has finished.')
+        ->expectsOutputToContain('The server was already running before php artisan app:up ran.')
+        ->expectsOutputToContain('The php artisan app:up that started it (pid 99999) has finished.')
         ->assertSuccessful();
 });
 

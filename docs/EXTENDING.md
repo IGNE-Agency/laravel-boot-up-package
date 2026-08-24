@@ -55,7 +55,7 @@ Octane's, for instance — untouched. For the rest it takes a package's
 registration over, because it is the only party that knows the command has to
 run inside Sail's containers.
 
-`app:setup` lists the processes `dev` will run, in the order their tabs will
+`app:up` lists the processes `dev` will run, in the order their tabs will
 appear — third-party registrations included — and then hands the terminal to
 `dev` to run them.
 
@@ -66,7 +66,7 @@ log file in `storage/logs/boot-up/`, visible to `app:status` and stoppable with
 ## Project commands
 
 Generators and warmers that run across four deploy phases (`beforeDeploy`,
-`beforeMigrations`, `afterMigrations`, `afterDeploy`) during `app:setup` /
+`beforeMigrations`, `afterMigrations`, `afterDeploy`) during `app:up` /
 `app:deploy` and get embedded in exported deployment scripts.
 
 1. Implement `Igne\LaravelBootUp\Contracts\ProvidesDeployTasks` (all four

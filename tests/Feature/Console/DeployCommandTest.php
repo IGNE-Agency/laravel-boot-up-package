@@ -41,7 +41,7 @@ test('runs the deploy pipeline without booting a server', function (): void {
     expect($this->store->current())->toBeNull();
 });
 
-test('shows the execution plan and a progress bar like app:setup', function (): void {
+test('shows the execution plan and a progress bar like app:up', function (): void {
     ProcessFaker::fake([
         'php artisan storage:link' => Process::result('The links have been created.'),
     ]);

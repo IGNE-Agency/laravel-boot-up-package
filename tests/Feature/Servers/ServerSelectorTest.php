@@ -105,7 +105,7 @@ test('driver throws for unknown keys', function (): void {
         ->toThrow(ServerException::class, 'caddy');
 });
 
-test('remembered resolves the driver app:setup recorded', function (): void {
+test('remembered resolves the driver app:up recorded', function (): void {
     $selector = serverSelector(store: rememberedServer('sail'));
 
     expect($selector->remembered(null))->toBeInstanceOf(SailServer::class);
