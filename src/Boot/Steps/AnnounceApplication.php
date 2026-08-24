@@ -34,9 +34,6 @@ final class AnnounceApplication implements Step
 
         terminal()->success("{$context->server->label()} is serving the application at {$url}");
 
-        terminal()->note('Run `php artisan dev` to start the dev processes.');
-        terminal()->note('Stop the server with: php artisan app:down');
-
         if ($this->config->openBrowser) {
             $this->browser->open($url);
         }

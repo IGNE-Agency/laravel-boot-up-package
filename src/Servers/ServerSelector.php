@@ -9,6 +9,7 @@ use Igne\LaravelBootUp\Config\DevServerConfig;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Exceptions\ServerException;
 use Illuminate\Contracts\Container\Container;
+use Throwable;
 
 /**
  * Picks the server driver for this run: explicit argument, then the
@@ -21,6 +22,7 @@ final class ServerSelector
     public function __construct(
         private readonly Container $container,
         private readonly DevServerConfig $config,
+        private readonly ActiveServerStore $store,
     ) {}
 
     public function select(?string $argument): Server
@@ -41,6 +43,34 @@ final class ServerSelector
             label: 'Which development server should serve the application?',
             options: $this->options(),
         ));
+    }
+
+    /**
+     * The server this project is already set up with, resolved without ever
+     * prompting: an explicit argument, then the record app:setup persisted,
+     * then the configured default.
+     *
+     * Null means nothing on this machine says which server serves this
+     * project. The caller reports that rather than guessing — falling back to
+     * `artisan` would bind a port for a project Herd already serves.
+     */
+    public function remembered(?string $argument): ?Server
+    {
+        if ($argument !== null) {
+            return $this->driver(strtolower($argument));
+        }
+
+        $key = $this->store->current()?->key;
+
+        if ($key !== null) {
+            try {
+                return $this->driver($key);
+            } catch (Throwable) {
+                terminal()->warning("The recorded server [{$key}] is not a known driver — run php artisan app:setup to choose one.");
+            }
+        }
+
+        return $this->config->default === null ? null : $this->driver($this->config->default);
     }
 
     public function driver(string $key): Server

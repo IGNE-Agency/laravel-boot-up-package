@@ -60,7 +60,7 @@
     }
   },
   "scripts": {
-    "analyse": "phpstan analyse",
+    "analyse": "phpstan analyse --memory-limit=512M",
     "test": "pest",
     "test-coverage": "pest --coverage"
   },

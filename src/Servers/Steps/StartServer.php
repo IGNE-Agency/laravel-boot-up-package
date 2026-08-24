@@ -42,7 +42,7 @@ final class StartServer implements Step
         $this->store->remember(new ActiveServerRecord(
             key: $server->key(),
             startedByUs: ! $wasRunning,
-            servePid: (int) getmypid(),
+            setupPid: (int) getmypid(),
             startedAt: date(DATE_ATOM),
         ));
 

@@ -78,7 +78,7 @@ test('persists the active-server record before the driver starts', function (): 
         ->and($server->observedAtStart)->not->toBeNull()
         ->and($server->observedAtStart->key)->toBe('double')
         ->and($server->observedAtStart->startedByUs)->toBeTrue()
-        ->and($server->observedAtStart->servePid)->toBe((int) getmypid())
+        ->and($server->observedAtStart->setupPid)->toBe((int) getmypid())
         ->and($result)->toBe($context);
     Prompt::assertStrippedOutputContains('Double Server is running.');
 });

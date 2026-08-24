@@ -16,28 +16,28 @@ use Igne\LaravelBootUp\Tools\ToolRegistry;
  * need to fail over a key it never reads.
  */
 test('a driver class that is not a Server is rejected when it is selected', function (): void {
-    $selector = new ServerSelector(app(), new DevServerConfig(drivers: ['broken' => stdClass::class]));
+    $selector = new ServerSelector(app(), new DevServerConfig(drivers: ['broken' => stdClass::class]), activeServerStore());
 
     expect(fn () => $selector->driver('broken'))
         ->toThrow(ConfigException::class, 'boot-up.server.drivers.broken');
 });
 
 test('a driver class that does not exist is rejected when it is selected', function (): void {
-    $selector = new ServerSelector(app(), new DevServerConfig(drivers: ['ghost' => 'App\\Servers\\Ghost']));
+    $selector = new ServerSelector(app(), new DevServerConfig(drivers: ['ghost' => 'App\\Servers\\Ghost']), activeServerStore());
 
     expect(fn () => $selector->driver('ghost'))
         ->toThrow(ConfigException::class, 'App\\Servers\\Ghost');
 });
 
 test('an unknown driver key still reports the key, not a class', function (): void {
-    $selector = new ServerSelector(app(), new DevServerConfig);
+    $selector = new ServerSelector(app(), new DevServerConfig, activeServerStore());
 
     expect(fn () => $selector->driver('nginx'))
         ->toThrow(ServerException::class, 'nginx');
 });
 
 test('the built-in drivers resolve without a published config', function (): void {
-    $selector = new ServerSelector(app(), new DevServerConfig);
+    $selector = new ServerSelector(app(), new DevServerConfig, activeServerStore());
 
     expect($selector->driver('herd')->key())->toBe('herd')
         ->and($selector->driver('sail')->key())->toBe('sail')

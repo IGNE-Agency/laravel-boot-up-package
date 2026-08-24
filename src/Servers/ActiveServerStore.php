@@ -36,7 +36,7 @@ final class ActiveServerStore
             return null;
         }
 
-        if (! isset($decoded['key'], $decoded['started_by_us'], $decoded['serve_pid'], $decoded['started_at'])) {
+        if (! isset($decoded['key'], $decoded['started_by_us'], $decoded['setup_pid'], $decoded['started_at'])) {
             $this->store->quarantine();
 
             return null;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Providers;
 
+use Igne\LaravelBootUp\Boot\ProjectReadiness;
 use Igne\LaravelBootUp\Boot\ShutdownRunner;
 use Igne\LaravelBootUp\Config\ArtisanServeConfig;
 use Igne\LaravelBootUp\Config\DatabaseConfig;
@@ -29,6 +30,7 @@ use Igne\LaravelBootUp\Console\DevCommand;
 use Igne\LaravelBootUp\Console\DownCommand;
 use Igne\LaravelBootUp\Console\GenerateGitHooksCommand;
 use Igne\LaravelBootUp\Console\PipelineCommand;
+use Igne\LaravelBootUp\Console\SetupCommand;
 use Igne\LaravelBootUp\Console\StatusCommand;
 use Igne\LaravelBootUp\Deploy\Composer;
 use Igne\LaravelBootUp\Environment\EnvFile;
@@ -200,6 +202,14 @@ final class BootUpServiceProvider extends ServiceProvider
         $this->app->singleton(ComposerJson::class, fn (Application $app) => new ComposerJson(
             $app->basePath('composer.json'),
         ));
+
+        $this->app->singleton(ProjectReadiness::class, fn (Application $app) => new ProjectReadiness(
+            envFile: $app->make(EnvFile::class),
+            packageJson: $app->make(PackageJson::class),
+            frontendConfig: $app->make(FrontendConfig::class),
+            environmentConfig: $app->make(EnvironmentConfig::class),
+            basePath: $app->basePath(),
+        ));
     }
 
     public function boot(): void
@@ -218,6 +228,7 @@ final class BootUpServiceProvider extends ServiceProvider
             // no way to know about the app:serve alias until the command is
             // built. Both routes land on the same singleton.
             DevCommand::class,
+            SetupCommand::class,
             DeployCommand::class,
             DeployScriptCommand::class,
             PipelineCommand::class,

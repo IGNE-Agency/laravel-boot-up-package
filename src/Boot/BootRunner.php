@@ -131,10 +131,10 @@ final class BootRunner
     {
         $active = $this->store->current();
 
-        if ($active === null || $active->servePid === getmypid()) {
+        if ($active === null || $active->setupPid === getmypid()) {
             return false;
         }
 
-        return $this->probe->isServing($active->servePid);
+        return $this->probe->isServing($active->setupPid);
     }
 }

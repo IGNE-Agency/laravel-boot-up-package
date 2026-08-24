@@ -19,7 +19,7 @@ test('remember and current round-trip the record', function (): void {
     $this->store->remember(new ActiveServerRecord(
         key: 'herd',
         startedByUs: true,
-        servePid: 1234,
+        setupPid: 1234,
         startedAt: '2026-07-10T10:00:00+00:00',
     ));
 
@@ -28,7 +28,7 @@ test('remember and current round-trip the record', function (): void {
     expect($current)->not->toBeNull()
         ->and($current->key)->toBe('herd')
         ->and($current->startedByUs)->toBeTrue()
-        ->and($current->servePid)->toBe(1234)
+        ->and($current->setupPid)->toBe(1234)
         ->and($current->startedAt)->toBe('2026-07-10T10:00:00+00:00')
         ->and(is_file($this->path))->toBeTrue()
         ->and(is_file($this->path.'.tmp'))->toBeFalse();

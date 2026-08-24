@@ -47,7 +47,7 @@ function shutdownRunner(ProcessLedger $ledger, ActiveServerStore $store, bool $p
         $ledger,
         new ProcessReaper(app(Factory::class), $ledger, new Poller),
         $store,
-        new ServerSelector(app(), $drivers),
+        new ServerSelector(app(), $drivers, activeServerStore()),
         new StopServerPrompt($shutdown),
     );
 }
@@ -154,7 +154,7 @@ test('keeps the ledger entry when a process cannot be stopped', function (): voi
         $this->ledger,
         new ProcessReaper(app(Factory::class), $this->ledger, new Poller, termGraceSeconds: 0, killGraceSeconds: 0),
         $this->store,
-        new ServerSelector(app(), new DevServerConfig(drivers: ['double' => RecordingServer::class])),
+        new ServerSelector(app(), new DevServerConfig(drivers: ['double' => RecordingServer::class]), activeServerStore()),
         new StopServerPrompt(new ShutdownConfig(promptStopServer: false, stopServerByDefault: true)),
     ))->run();
 
@@ -174,7 +174,7 @@ test('clears the active-server state and warns even when stopping the server thr
     Prompt::assertStrippedOutputContains('Could not stop Double Server');
 });
 
-test('stops only the server app:serve started', function (): void {
+test('stops only the server app:setup started', function (): void {
     Prompt::fake();
     ProcessFaker::fake();
     $this->store->remember(activeDouble(startedByUs: true));
@@ -285,7 +285,7 @@ test('declining the residual cleanup keeps the leftovers in place', function ():
         ->and($this->store->current())->toBeNull();
 });
 
-test('never offers residual cleanup for a server app:serve did not start', function (): void {
+test('never offers residual cleanup for a server app:setup did not start', function (): void {
     Prompt::fake();
     ProcessFaker::fake();
     app()->instance(ResidualServer::class, $residual = new ResidualServer);

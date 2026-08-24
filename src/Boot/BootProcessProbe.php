@@ -8,11 +8,13 @@ use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 
 /**
- * Answers whether a recorded pid is still a live boot process — a dead pid
- * or one recycled by an unrelated command both count as "not serving".
+ * Answers whether a recorded pid is still a live app:setup — a dead pid or
+ * one recycled by an unrelated command both count as "not serving".
  *
- * Both names are matched: `dev` is the command, `app:serve` its deprecated
- * alias, and a boot started under the old name still owns the project.
+ * app:setup is what writes the active-server record and what a second
+ * instance has to be kept out of. `dev` never writes one: it streams a
+ * project that is already set up, and two of those clash on ports, visibly,
+ * the way plain `php artisan dev` does.
  */
 final class BootProcessProbe
 {
@@ -24,6 +26,6 @@ final class BootProcessProbe
             CommandLine::make(['ps', '-p', (string) $pid, '-o', 'command=']),
         )->output());
 
-        return str_contains($command, 'artisan dev') || str_contains($command, 'app:serve');
+        return str_contains($command, 'app:setup');
     }
 }
