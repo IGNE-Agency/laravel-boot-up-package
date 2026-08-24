@@ -4,21 +4,20 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
-use Closure;
-use Igne\LaravelBootUp\Boot\BootRunner;
 use Igne\LaravelBootUp\Boot\DetachedDevRunner;
 use Igne\LaravelBootUp\Boot\DevProcessRegistrar;
+use Igne\LaravelBootUp\Boot\ProjectReadiness;
 use Igne\LaravelBootUp\Concerns\AnnouncesRun;
-use Igne\LaravelBootUp\Concerns\ConfirmsPlan;
 use Igne\LaravelBootUp\Concerns\GuardsAgainstFailures;
 use Igne\LaravelBootUp\Concerns\RequiresUnix;
-use Igne\LaravelBootUp\Config\SetupConfig;
+use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Data\VersionConstraint;
 use Igne\LaravelBootUp\Enums\Tool;
+use Igne\LaravelBootUp\Servers\ServerSelector;
 use Igne\LaravelBootUp\Tools\ToolInspector;
-use Illuminate\Contracts\Console\Isolatable;
 use Illuminate\Foundation\Console\DevCommand as FrameworkDevCommand;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Support\NodePackageManager;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -26,35 +25,32 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * Boots the application, then hands its dev processes to Laravel's own dev
- * command.
+ * Runs Laravel's dev command over the processes this project actually needs.
+ *
+ * This is the command that gets run every day, so it does as little as
+ * possible before the terminal UI appears: a handful of filesystem reads to
+ * confirm the project is set up, the server it was set up with, and the gates
+ * that decide which processes to register. Everything that takes real work
+ * belongs to app:setup, which this command points at when the project is not
+ * ready.
  *
  * Extending rather than replacing is the whole point: the terminal UI, its
  * tabs and stream modes, the crash restarts and every flag upstream adds
- * arrive here for free. boot-up contributes what the framework has no opinion
- * about — getting the project to a state where those processes can run at all.
+ * arrive here for free. boot-up contributes only the process list.
  *
  * Left open rather than final so tests can replace delegateToFramework() and
- * assert what the boot registered without starting a real terminal UI.
+ * assert what was registered without starting a real terminal UI.
  */
-class DevCommand extends FrameworkDevCommand implements Isolatable
+class DevCommand extends FrameworkDevCommand
 {
     use AnnouncesRun;
-    use ConfirmsPlan;
     use GuardsAgainstFailures;
     use RequiresUnix;
 
     /** The multiplex terminal will not start below this. */
     private const string MULTIPLEX_NODE = '>=22.13';
 
-    /** app:serve was renamed to dev; the old name keeps working for a release. */
-    protected $aliases = ['app:serve'];
-
-    protected $description = 'Boot everything the application needs, then run the dev processes';
-
-    private ?BootRunner $runner = null;
-
-    private string $invokedAs = 'dev';
+    protected $description = 'Run the dev processes this project needs';
 
     public function __construct()
     {
@@ -63,19 +59,17 @@ class DevCommand extends FrameworkDevCommand implements Isolatable
         // the definition it builds.
         parent::__construct();
 
-        $this->addArgument('server', InputArgument::OPTIONAL, 'The development server to use (herd, sail, artisan, or any driver registered in boot-up.server.drivers)');
+        $this->addArgument('server', InputArgument::OPTIONAL, 'Override the server app:setup recorded (herd, sail, artisan, or any driver registered in boot-up.server.drivers)');
 
-        // --seed gives up its -s shortcut: upstream claims it for --stream.
-        $this->addOption('seed', null, InputOption::VALUE_NONE, 'Seed the database after migrating');
-        $this->addOption('no-migrate', null, InputOption::VALUE_NONE, 'Skip running pending migrations');
-        $this->addOption('fresh', null, InputOption::VALUE_NONE, 'Drop all tables and re-run every migration (asks first)');
-        $this->addOption('update', 'u', InputOption::VALUE_NONE, 'Update dependencies instead of installing');
         $this->addOption('without-queue', null, InputOption::VALUE_NONE, 'Do not run a queue worker');
-        $this->addOption('without-assets', null, InputOption::VALUE_NONE, 'Skip frontend dependencies and assets');
+        $this->addOption('without-assets', null, InputOption::VALUE_NONE, 'Do not run an asset watcher');
         $this->addOption('detach', 'd', InputOption::VALUE_NONE, 'Run the dev processes in the background instead of this terminal');
-        $this->addOption('yes', 'y', InputOption::VALUE_NONE, 'Run without the confirmation prompt');
     }
 
+    /**
+     * Windows would route upstream's handle() to runViaConcurrently(), and the
+     * commands boot-up registers are Unix shell lines regardless.
+     */
     protected function requiresUnix(): bool
     {
         return true;
@@ -84,14 +78,12 @@ class DevCommand extends FrameworkDevCommand implements Isolatable
     #[\Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $this->invokedAs = $input->getFirstArgument() ?? 'dev';
-
         if (! $this->runsOnThisPlatform()) {
             return self::FAILURE;
         }
 
-        // parent::execute() keeps the Isolatable mutex, ManuallyFailedException
-        // handling and container method-injection of handle().
+        // parent::execute() keeps ManuallyFailedException handling and
+        // container method-injection of handle().
         return $this->guardAgainstFailures(fn (): int => parent::execute($input, $output));
     }
 
@@ -106,38 +98,31 @@ class DevCommand extends FrameworkDevCommand implements Isolatable
             return self::FAILURE;
         }
 
-        // Stored before anything can fail: onFailure() fires from
-        // GuardsAgainstFailures OUTSIDE handle(), where re-resolving would
-        // produce a fresh runner with a fresh, unbound reporter.
-        $this->runner = $runner = $this->laravel->make(BootRunner::class);
-        $registrar = $this->laravel->make(DevProcessRegistrar::class);
-
-        $this->warnWhenInvokedByItsOldName();
-
         $options = $this->devOptions();
+
+        $problems = $this->laravel->make(ProjectReadiness::class)->problems($options);
+
+        if ($problems !== []) {
+            return $this->notReady($problems);
+        }
+
         $server = $this->argument('server');
-        $plan = $runner->prepare($options, \is_string($server) ? $server : null);
+        $server = $this->laravel->make(ServerSelector::class)->remembered(\is_string($server) ? $server : null);
 
-        if ($plan === null) {
-            return self::FAILURE;
+        if ($server === null) {
+            return $this->notReady(['No development server is set up for this project.']);
         }
 
-        if (! $this->confirmPlan($plan, 'dev', $this->laravel->make(SetupConfig::class)->autoAccept)) {
-            return $this->skip('Aborted — nothing was changed.');
+        $this->laravel->make(DevProcessRegistrar::class)->apply(new BootContext($options, $server));
+
+        if (DevCommands::commands() === []) {
+            return $this->skip('Nothing to run — every dev process is gated off for this project.');
         }
-
-        $context = $runner->run(fn (array $signals, Closure $handler) => $this->trap($signals, $handler));
-
-        // Only now are .env, composer.json and package.json final, so only now
-        // can the gates decide which processes this project actually needs.
-        $registrar->apply($context);
 
         if ($this->option('detach')) {
-            $started = $this->laravel->make(DetachedDevRunner::class)->run();
+            $this->laravel->make(DetachedDevRunner::class)->run();
 
-            return $this->done($started === 0
-                ? 'Application ready.'
-                : 'Application ready — the dev processes run in the background.');
+            return $this->done('The dev processes run in the background — stop them with: php artisan app:down');
         }
 
         $this->warnWhenNodeCannotRunTheTerminal();
@@ -148,58 +133,45 @@ class DevCommand extends FrameworkDevCommand implements Isolatable
     /**
      * The handoff to upstream, and the seam tests replace to assert what was
      * registered without starting a terminal UI.
+     *
+     * Upstream ends in pcntl_exec, which replaces this process: the terminal
+     * UI owns the terminal outright, with no PHP parent left in the process
+     * group to intercept its keys or its Ctrl+C. That is what makes the
+     * visuals and the quit behaviour identical to plain `php artisan dev`.
      */
     protected function delegateToFramework(NodePackageManager $packageManager): int
     {
         return parent::handle($packageManager);
     }
 
-    /**
-     * Upstream ends this method with pcntl_exec, which replaces the PHP
-     * process and would take boot-up's teardown with it: no stop-server
-     * prompt, no cleared active-server record, no residual-state offer. The
-     * command it builds is reused verbatim — only the process replacement is
-     * dropped, so control comes back here when the terminal UI exits.
-     *
-     * runViaConcurrently() needs no such override; it already uses passthru.
-     *
-     * @param  array<int, array<string, mixed>>  $devCommands
-     */
-    #[\Override]
-    protected function runViaMultiplex(array $devCommands, NodePackageManager $packageManager): int
-    {
-        passthru($packageManager->getExecCommand($this->buildMultiplexCommand($devCommands)), $exitCode);
-
-        return $exitCode;
-    }
-
-    protected function onFailure(): void
-    {
-        $this->runner?->fail();
-    }
-
     protected function failureHint(): void
     {
-        terminal()->note('Background processes may still be running — clean up with: php artisan app:down');
+        terminal()->note('Set the project up with: php artisan app:setup');
+    }
+
+    /**
+     * Nothing was started, so there is nothing to clean up — only something
+     * to do next.
+     *
+     * @param  list<string>  $problems
+     */
+    private function notReady(array $problems): int
+    {
+        terminal()->summary(
+            'This project is not ready to run its dev processes',
+            $problems,
+            'Set it up with: php artisan app:setup',
+        );
+
+        return self::FAILURE;
     }
 
     private function devOptions(): BootOptions
     {
         return new BootOptions(
-            seed: (bool) $this->option('seed'),
-            migrate: ! $this->option('no-migrate'),
-            update: (bool) $this->option('update'),
             withQueue: ! $this->option('without-queue'),
             withAssets: ! $this->option('without-assets'),
-            fresh: (bool) $this->option('fresh'),
         );
-    }
-
-    private function warnWhenInvokedByItsOldName(): void
-    {
-        if ($this->invokedAs === 'app:serve') {
-            terminal()->warning('app:serve is now `php artisan dev` — the old name still works but will be removed.');
-        }
     }
 
     /**

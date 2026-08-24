@@ -36,9 +36,10 @@ use Illuminate\Foundation\DevCommands;
  * rewrites each command for the server that booted, so under Sail they run in
  * the container rather than on the host.
  *
- * It runs after the boot pipeline, once .env, composer.json and package.json
- * are final: a first boot creates .env, and gates that read it would otherwise
- * decide against a file that did not exist yet.
+ * Every gate reads the project as it is on disk right now, which is why `dev`
+ * refuses to run against a project app:setup has not finished: gates reading a
+ * .env that does not exist yet would decide against processes the project
+ * needs.
  */
 final class DevProcessRegistrar
 {

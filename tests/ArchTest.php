@@ -26,12 +26,7 @@ arch('every class is final except the shared exception and command bases')
 
 arch('no raw process primitives anywhere — the ProcessRunner is the only OS seam')
     ->expect('Igne\LaravelBootUp')
-    ->not->toUse(['exec', 'shell_exec', 'passthru', 'system', 'proc_open', 'popen', 'pcntl_exec'])
-    // DevCommand hands the terminal to the command Laravel builds. It has to
-    // inherit the foreground, which is what passthru is for -- and the reason
-    // it overrides the parent at all is that upstream reaches for pcntl_exec,
-    // replacing this process and taking boot-up's teardown with it.
-    ->ignoring('Igne\LaravelBootUp\Console\DevCommand');
+    ->not->toUse(['exec', 'shell_exec', 'passthru', 'system', 'proc_open', 'popen', 'pcntl_exec']);
 
 arch('nothing depends on Symfony Process directly')
     ->expect('Igne\LaravelBootUp')

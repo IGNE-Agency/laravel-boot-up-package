@@ -223,11 +223,6 @@ final class BootUpServiceProvider extends ServiceProvider
         ], 'boot-up-config');
 
         $this->commands([
-            // Registered by class as well as through the framework's binding:
-            // Artisan resolves `dev` lazily from a class-string map, which has
-            // no way to know about the app:serve alias until the command is
-            // built. Both routes land on the same singleton.
-            DevCommand::class,
             SetupCommand::class,
             DeployCommand::class,
             DeployScriptCommand::class,
