@@ -37,7 +37,8 @@ searchable tab per process. This *is* Laravel's own `dev` command, so every
 option it defines works here too: `--tabs`, `--stream`, `--inline`,
 `--timestamps`, `--no-restart`, `--json` and the buffer sizes, and so do its
 keys: `↑`/`↓` scroll, `tab` cycles tabs, `c` clears, `/` searches, `s` streams,
-`q` quits.
+`r` restarts the current process, `q` quits. `php artisan dev:list` shows the
+registered processes without starting them.
 
 boot-up adds only the process list: which of the built-in processes this project
 can use, and the server rewrite that runs them inside Sail's containers when
