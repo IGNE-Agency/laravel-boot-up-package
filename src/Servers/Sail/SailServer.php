@@ -10,11 +10,14 @@ use Igne\LaravelBootUp\Contracts\HasResidualState;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\ProvidesDevProcess;
 use Igne\LaravelBootUp\Contracts\RequiresTools;
+use Igne\LaravelBootUp\Contracts\ReservesPorts;
 use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\CommandRewrites;
+use Igne\LaravelBootUp\Data\PortConflict;
+use Igne\LaravelBootUp\Data\ReservedPort;
 use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Exceptions\ServerException;
@@ -22,7 +25,7 @@ use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 
-final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDevProcess, RequiresTools, RewritesCommands, Server
+final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDevProcess, RequiresTools, ReservesPorts, RewritesCommands, Server
 {
     use ReadsProcessFailureOutput;
 
@@ -34,6 +37,7 @@ final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDe
         private readonly Repository $laravelConfig,
         private readonly EnvFile $envFile,
         private readonly SailUpFailureDetector $detector,
+        private readonly SailPorts $ports,
         private readonly SailConfig $config,
     ) {}
 
@@ -69,6 +73,21 @@ final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDe
         return false;
     }
 
+    /**
+     * Reading the compose config goes through sail, which refuses to run
+     * without a daemon — so the daemon comes up here rather than in start().
+     * ensureRunning() checks before it acts, so start() calling it again
+     * costs one `docker info`.
+     *
+     * @return list<ReservedPort>
+     */
+    public function reservedPorts(): array
+    {
+        $this->docker->ensureRunning();
+
+        return $this->ports->published();
+    }
+
     public function start(BootContext $context): void
     {
         $this->docker->ensureRunning();
@@ -101,15 +120,26 @@ final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDe
     }
 
     /**
-     * A failed `sail up` has two recoverable shapes: an unreachable registry
-     * (environmental — explain instead of dumping raw compose errors) and an
-     * application image an earlier failed boot never built (compose tries to
-     * pull `sail-x.y/app` from a registry that does not have it; a --build
-     * retry is the actual fix).
+     * A failed `sail up` has three shapes worth explaining: a taken host port,
+     * an unreachable registry (environmental — explain instead of dumping raw
+     * compose errors) and an application image an earlier failed boot never
+     * built (compose tries to pull `sail-x.y/app` from a registry that does not
+     * have it; a --build retry is the actual fix).
+     *
+     * The port check comes first because it is unambiguous, and because a
+     * --build retry would only fail the same way.
      */
     private function recoverFromFailedUp(ProcessFailedException $exception): void
     {
         $output = $this->outputOf($exception);
+
+        $conflicts = $this->detector->isPortConflict($output) ? $this->conflictsIn($output) : [];
+
+        // A port conflict whose port compose did not name leaves nothing to
+        // explain, so the raw failure is still the most informative thing.
+        if ($conflicts !== []) {
+            throw ServerException::portsUnavailable($this->label(), $conflicts);
+        }
 
         if ($this->detector->isRegistryUnreachable($output)) {
             throw ServerException::dockerRegistryUnreachable();
@@ -128,6 +158,31 @@ final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDe
                 ? ServerException::dockerRegistryUnreachable()
                 : $retry;
         }
+    }
+
+    /**
+     * Match the ports compose named against the ones it meant to publish, so
+     * the remedy can name the variable that moves each. Ports the compose
+     * config no longer explains still get reported, just more vaguely.
+     *
+     * @return list<PortConflict>
+     */
+    private function conflictsIn(string $output): array
+    {
+        $reserved = [];
+
+        foreach ($this->ports->published() as $port) {
+            $reserved[$port->port] = $port;
+        }
+
+        return array_map(
+            fn (int $port): PortConflict => new PortConflict($reserved[$port] ?? new ReservedPort(
+                port: $port,
+                purpose: 'a container',
+                fix: 'publish it on a different host port in your compose file',
+            )),
+            $this->detector->portsIn($output),
+        );
     }
 
     /**

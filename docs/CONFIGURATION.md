@@ -8,37 +8,38 @@ php artisan vendor:publish --tag=boot-up-config
 
 Everything below lives in `config/boot-up.php`. Most values also read an
 environment variable, so you can tweak per machine via `.env` without
-publishing. Each section below maps to exactly one top-level config key —
-and to exactly one config class inside the package.
+publishing. Each section below maps to exactly one top-level config key — and to
+exactly one config class inside the package.
 
 ## Environment
 
 Which `APP_ENV` values the boot may run under.
 
-| Key                   | Default                    | Description                                                                                                                                             |
-| --------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Key                   | Default                    | Description                                                                                                                                                                    |
+| --------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `environment.allowed` | `['local', 'development']` | `app:up` and `php artisan dev` both refuse to run when `APP_ENV` (read from the `.env` file) is not in this list. A missing `.env` or `APP_ENV` counts as a fresh local setup. |
 
 ## Server
 
 Which development server `app:up` starts, and `php artisan dev` then runs
-against. Driver-specific settings live in their own sections:
-[Herd](#herd), [Artisan](#artisan), [Sail](#sail).
+against. Driver-specific settings live in their own sections: [Herd](#herd),
+[Artisan](#artisan), [Sail](#sail).
 
-| Key              | Env var                 | Default             | Description                                                                                      |
-| ---------------- | ----------------------- | ------------------- | ------------------------------------------------------------------------------------------------ |
-| `server.default` | `BOOT_UP_SERVER`        | `null`              | `herd`, `sail` or `artisan`. `null` makes `app:up` prompt on first run; `dev` then reuses what it chose. |
-| `server.prompt`  | `BOOT_UP_SERVER_PROMPT` | `true`              | Whether to prompt for a server when none is configured.                                          |
-| `server.drivers` | —                       | `[]`                | Extension point: add your own [`Contracts\Server`](EXTENDING.md#custom-servers) implementations. `herd`, `sail` and `artisan` are always available; an entry reusing one of those keys replaces that driver. A class that is not a `Server` is rejected when it is selected. |
+| Key                  | Env var                      | Default | Description                                                                                                                                                                                                                                                                                                |
+| -------------------- | ---------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `server.default`     | `BOOT_UP_SERVER`             | `null`  | `herd`, `sail` or `artisan`. `null` makes `app:up` prompt on first run; `dev` then reuses what it chose.                                                                                                                                                                                                   |
+| `server.prompt`      | `BOOT_UP_SERVER_PROMPT`      | `true`  | Whether to prompt for a server when none is configured.                                                                                                                                                                                                                                                    |
+| `server.drivers`     | —                            | `[]`    | Extension point: add your own [`Contracts\Server`](EXTENDING.md#custom-servers) implementations. `herd`, `sail` and `artisan` are always available; an entry reusing one of those keys replaces that driver. A class that is not a `Server` is rejected when it is selected.                               |
+| `server.check_ports` | `BOOT_UP_SERVER_CHECK_PORTS` | `true`  | Prove the host ports a driver publishes are free before starting it, so a clash is a sentence naming the port and what holds it instead of a raw Docker error and half-created containers. Host-side forwards (Sail's `FORWARD_*`) are offered a free port in your `.env`; see [Ports](COMMANDS.md#ports). |
 
 ## Herd
 
-| Key                           | Env var                        | Default | Description                                                                                                                                                                              |
-| ----------------------------- | ------------------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `herd.site`                   | `BOOT_UP_HERD_SITE`            | `null`  | Fixed Herd site name (served at `https://{name}.test`). `null` prompts on first link, defaulting to the project folder name.                                                             |
+| Key                           | Env var                        | Default | Description                                                                                                                                                                           |
+| ----------------------------- | ------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `herd.site`                   | `BOOT_UP_HERD_SITE`            | `null`  | Fixed Herd site name (served at `https://{name}.test`). `null` prompts on first link, defaulting to the project folder name.                                                          |
 | `herd.health.attempts`        | `BOOT_UP_HERD_HEALTH_ATTEMPTS` | `10`    | How many times the boot probes the Herd-served site before failing. It waits for Nginx to actually answer; a running Herd is never restarted, only a down one, once, at the midpoint. |
-| `herd.health.delay_ms`        | `BOOT_UP_HERD_HEALTH_DELAY_MS` | `500`   | Delay between reachability checks.                                                                                                                                                       |
-| `herd.health.timeout_seconds` | `BOOT_UP_HERD_HEALTH_TIMEOUT`  | `5`     | Per-request timeout for each reachability check.                                                                                                                                         |
+| `herd.health.delay_ms`        | `BOOT_UP_HERD_HEALTH_DELAY_MS` | `500`   | Delay between reachability checks.                                                                                                                                                    |
+| `herd.health.timeout_seconds` | `BOOT_UP_HERD_HEALTH_TIMEOUT`  | `5`     | Per-request timeout for each reachability check.                                                                                                                                      |
 
 ## Artisan
 
@@ -79,16 +80,16 @@ Settings for the `php artisan serve` driver.
 
 ## Frontend
 
-| Key                        | Env var                   | Default    | Description                                                                      |
-| -------------------------- | ------------------------- | ---------- | -------------------------------------------------------------------------------- |
-| `frontend.package_manager` | `BOOT_UP_PACKAGE_MANAGER` | unset      | `bun`, `yarn`, `npm` or `pnpm` — see the selection chain below.                  |
-| `frontend.assets`          | `BOOT_UP_ASSETS`          | `watch`    | `watch`, `build` or `skip`. `watch` runs the watcher as a dev process.           |
+| Key                        | Env var                   | Default | Description                                                            |
+| -------------------------- | ------------------------- | ------- | ---------------------------------------------------------------------- |
+| `frontend.package_manager` | `BOOT_UP_PACKAGE_MANAGER` | unset   | `bun`, `yarn`, `npm` or `pnpm` — see the selection chain below.        |
+| `frontend.assets`          | `BOOT_UP_ASSETS`          | `watch` | `watch`, `build` or `skip`. `watch` runs the watcher as a dev process. |
 
 The package manager is selected by the strongest signal available, in order:
 
-1. A `please-use-{manager}` sentinel in `package.json`'s `engines` (always
-   wins — it's the project pinning itself; a warning names the conflict when
-   it overrides an explicit config value).
+1. A `please-use-{manager}` sentinel in `package.json`'s `engines` (always wins
+   — it's the project pinning itself; a warning names the conflict when it
+   overrides an explicit config value).
 2. The `frontend.package_manager` config value / `BOOT_UP_PACKAGE_MANAGER`.
 3. The lockfile on disk (`bun.lock`, `yarn.lock`, `package-lock.json`,
    `pnpm-lock.yaml`), announced with a dim note.
@@ -100,42 +101,42 @@ These all run as dev processes: `php artisan dev` gives each one a tab in
 Laravel's dev terminal, and `php artisan dev --detach` runs them in the
 background with logs in `storage/logs/boot-up/`.
 
-The keys below decide whether a process runs at all. Which command it runs,
-and whether the application or another package overrides it, is covered in
+The keys below decide whether a process runs at all. Which command it runs, and
+whether the application or another package overrides it, is covered in
 [Dev processes](EXTENDING.md#dev-processes).
 
 ### Queue
 
-| Key             | Env var                | Default    | Description                                                        |
-| --------------- | ---------------------- | ---------- | ------------------------------------------------------------------ |
-| `queue.enabled` | `BOOT_UP_QUEUE`        | `true`     | Start a queue worker (only when `QUEUE_CONNECTION` is not `sync`). |
-| `queue.flags`   | —                      | `[]`       | Extra `queue:work` options, e.g. `['--tries' => 3]`.               |
+| Key             | Env var         | Default | Description                                                        |
+| --------------- | --------------- | ------- | ------------------------------------------------------------------ |
+| `queue.enabled` | `BOOT_UP_QUEUE` | `true`  | Start a queue worker (only when `QUEUE_CONNECTION` is not `sync`). |
+| `queue.flags`   | —               | `[]`    | Extra `queue:work` options, e.g. `['--tries' => 3]`.               |
 
 ### Horizon
 
-| Key               | Env var                  | Default    | Description                                                                    |
-| ----------------- | ------------------------ | ---------- | ------------------------------------------------------------------------------ |
-| `horizon.enabled` | `BOOT_UP_HORIZON`        | `true`     | Start Horizon when `laravel/horizon` is installed (replaces the queue worker). |
+| Key               | Env var           | Default | Description                                                                    |
+| ----------------- | ----------------- | ------- | ------------------------------------------------------------------------------ |
+| `horizon.enabled` | `BOOT_UP_HORIZON` | `true`  | Start Horizon when `laravel/horizon` is installed (replaces the queue worker). |
 
 ### Reverb
 
-| Key              | Env var                 | Default    | Description                                      |
-| ---------------- | ----------------------- | ---------- | ------------------------------------------------ |
-| `reverb.enabled` | `BOOT_UP_REVERB`        | `true`     | Start Reverb when `laravel/reverb` is installed. |
+| Key              | Env var          | Default | Description                                      |
+| ---------------- | ---------------- | ------- | ------------------------------------------------ |
+| `reverb.enabled` | `BOOT_UP_REVERB` | `true`  | Start Reverb when `laravel/reverb` is installed. |
 
 ### Scheduler
 
-| Key                 | Env var                    | Default    | Description                             |
-| ------------------- | -------------------------- | ---------- | --------------------------------------- |
-| `scheduler.enabled` | `BOOT_UP_SCHEDULER`        | `false`    | Start `schedule:work`. Opt-in.          |
+| Key                 | Env var             | Default | Description                    |
+| ------------------- | ------------------- | ------- | ------------------------------ |
+| `scheduler.enabled` | `BOOT_UP_SCHEDULER` | `false` | Start `schedule:work`. Opt-in. |
 
 ## Process
 
-| Key                              | Env var                    | Default | Description                                                                                                          |
-| -------------------------------- | -------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
-| `process.term_grace_seconds`     | `BOOT_UP_TERM_GRACE`       | `5`     | How long a process may take to honour `TERM` before it gets `KILL`. `0` signals and moves on.                        |
-| `process.kill_grace_seconds`     | `BOOT_UP_KILL_GRACE`       | `2`     | How long it may take to disappear after `KILL`. One that survives both stays in the ledger with a warning.           |
-| `process.install_timeout_seconds`| `BOOT_UP_INSTALL_TIMEOUT`  | `1800`  | Ceiling for installing Composer or frontend dependencies, which takes minutes on a slow network or a large project.  |
+| Key                               | Env var                   | Default | Description                                                                                                         |
+| --------------------------------- | ------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
+| `process.term_grace_seconds`      | `BOOT_UP_TERM_GRACE`      | `5`     | How long a process may take to honour `TERM` before it gets `KILL`. `0` signals and moves on.                       |
+| `process.kill_grace_seconds`      | `BOOT_UP_KILL_GRACE`      | `2`     | How long it may take to disappear after `KILL`. One that survives both stays in the ledger with a warning.          |
+| `process.install_timeout_seconds` | `BOOT_UP_INSTALL_TIMEOUT` | `1800`  | Ceiling for installing Composer or frontend dependencies, which takes minutes on a slow network or a large project. |
 
 ## Shutdown
 
@@ -149,22 +150,22 @@ and whether the application or another package overrides it, is covered in
 The section is named for the work, not the command: `app:up` runs these steps
 and then hands over to `php artisan dev`.
 
-| Key                                  | Env var                            | Default  | Description                                                                                                                       |
-| ------------------------------------ | ---------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `setup.open_browser`                 | `BOOT_UP_OPEN_BROWSER`             | `true`   | Open the app in your browser once it can render — see [The browser](COMMANDS.md#the-browser).                                     |
-| `setup.browser.wait_timeout_seconds` | `BOOT_UP_BROWSER_WAIT_TIMEOUT`     | `60`     | How long to wait for that. After it the browser opens anyway; `0` opens immediately, without waiting.                             |
-| `setup.browser.poll_interval_ms`     | `BOOT_UP_BROWSER_POLL_INTERVAL_MS` | `500`    | How often the wait looks. Minimum 50.                                                                                             |
-| `setup.auto_accept`                  | `BOOT_UP_SETUP_AUTO_ACCEPT`        | `false`  | Skip the "What app:up will do — continue?" prompt. `--yes` does the same per run.                                                 |
-| `setup.steps`                        | —                                  | 17 steps | The full boot pipeline, in order — see [Step pipelines](#step-pipelines).                                                         |
+| Key                                  | Env var                            | Default  | Description                                                                                           |
+| ------------------------------------ | ---------------------------------- | -------- | ----------------------------------------------------------------------------------------------------- |
+| `setup.open_browser`                 | `BOOT_UP_OPEN_BROWSER`             | `true`   | Open the app in your browser once it can render — see [The browser](COMMANDS.md#the-browser).         |
+| `setup.browser.wait_timeout_seconds` | `BOOT_UP_BROWSER_WAIT_TIMEOUT`     | `60`     | How long to wait for that. After it the browser opens anyway; `0` opens immediately, without waiting. |
+| `setup.browser.poll_interval_ms`     | `BOOT_UP_BROWSER_POLL_INTERVAL_MS` | `500`    | How often the wait looks. Minimum 50.                                                                 |
+| `setup.auto_accept`                  | `BOOT_UP_SETUP_AUTO_ACCEPT`        | `false`  | Skip the "What app:up will do — continue?" prompt. `--yes` does the same per run.                     |
+| `setup.steps`                        | —                                  | 17 steps | The full boot pipeline, in order — see [Step pipelines](#step-pipelines).                             |
 
-`app:up` is the only command that runs these. `php artisan dev` never boots:
-it checks that the boot has happened and says to run `app:up` if it has not.
+`app:up` is the only command that runs these. `php artisan dev` never boots: it
+checks that the boot has happened and says to run `app:up` if it has not.
 
 ## Dev
 
-| Key         | Env var              | Default | Description                                                                          |
-| ----------- | -------------------- | ------- | ------------------------------------------------------------------------------------ |
-| `dev.logs`  | `BOOT_UP_DEV_LOGS`   | `true`  | Keep Laravel's `logs` process, which tails the log with Pail. Dropped without Pail.  |
+| Key        | Env var            | Default | Description                                                                         |
+| ---------- | ------------------ | ------- | ----------------------------------------------------------------------------------- |
+| `dev.logs` | `BOOT_UP_DEV_LOGS` | `true`  | Keep Laravel's `logs` process, which tails the log with Pail. Dropped without Pail. |
 
 ## Deploy
 
@@ -219,12 +220,12 @@ ignored for good.
 
 ## Step pipelines
 
-The boot pipeline (`setup.steps`) and the `app:deploy` pipeline
-(`deploy.steps`) are plain arrays of step classes in the published config.
-Reorder them, remove steps you don't want, or insert your own
+The boot pipeline (`setup.steps`) and the `app:deploy` pipeline (`deploy.steps`)
+are plain arrays of step classes in the published config. Reorder them, remove
+steps you don't want, or insert your own
 [`Contracts\Step`](EXTENDING.md#custom-pipeline-steps) classes anywhere.
 
-Steps do the sequential work that has to finish before the application can
-run: the `.env`, the tools, the server, the database, migrations, the asset
-build. The long-running processes are not steps — they start after the
-pipeline, from Laravel's registry.
+Steps do the sequential work that has to finish before the application can run:
+the `.env`, the tools, the server, the database, migrations, the asset build.
+The long-running processes are not steps — they start after the pipeline, from
+Laravel's registry.

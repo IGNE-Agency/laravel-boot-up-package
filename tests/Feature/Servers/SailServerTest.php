@@ -15,6 +15,7 @@ use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\Sail\Docker;
 use Igne\LaravelBootUp\Servers\Sail\Sail;
 use Igne\LaravelBootUp\Servers\Sail\SailAliasInstaller;
+use Igne\LaravelBootUp\Servers\Sail\SailPorts;
 use Igne\LaravelBootUp\Servers\Sail\SailServer;
 use Igne\LaravelBootUp\Servers\Sail\SailUpFailureDetector;
 use Igne\LaravelBootUp\Services\Platform;
@@ -51,10 +52,11 @@ function sailServer(
     );
 
     $config = new SailConfig(readyTimeoutSeconds: $readyTimeout, dockerStartTimeoutSeconds: $dockerTimeout);
+    $sail = new Sail($runner);
 
     return new SailServer(
         docker: new Docker($runner, new Poller, new Platform(OperatingSystem::Darwin), $config),
-        sail: new Sail($runner),
+        sail: $sail,
         aliasInstaller: $alias ?? new SailAliasInstaller(
             new ShellProfile($workDir.'/no-home', '/bin/zsh'),
             new SailConfig(manageAlias: false),
@@ -63,6 +65,7 @@ function sailServer(
         laravelConfig: app('config'),
         envFile: new EnvFile($workDir.'/app/.env', $workDir.'/app/.env.example'),
         detector: new SailUpFailureDetector,
+        ports: new SailPorts($runner, $sail),
         config: $config,
     );
 }
@@ -146,6 +149,44 @@ test('an unreachable registry throws guidance instead of retrying a build', func
         ->toThrow(ServerException::class, 'Docker could not reach its image registry');
 
     ProcessFaker::assertDidntRun('*--build*');
+});
+
+test('a taken host port surfaces as guidance, not a raw daemon error', function (): void {
+    touch($this->basePath.'/compose.yaml');
+    ProcessFaker::fake([
+        './vendor/bin/sail up -d' => Process::result(
+            exitCode: 1,
+            errorOutput: 'Error response from daemon: ports are not available: exposing port TCP 0.0.0.0:3306 '
+                .'-> 127.0.0.1:0: listen tcp 0.0.0.0:3306: bind: address already in use',
+        ),
+        // The compose config still resolves, so the remedy can name the
+        // variable that moves the port.
+        './vendor/bin/sail config --format json' => Process::result(output: (string) json_encode([
+            'services' => ['mysql' => ['ports' => [
+                ['mode' => 'ingress', 'target' => 3306, 'published' => '3306', 'protocol' => 'tcp'],
+            ]]],
+        ])),
+    ]);
+
+    expect(fn () => sailServer($this->workDir)->start(new BootContext(new BootOptions)))
+        ->toThrow(ServerException::class, '3306 (mysql)');
+
+    // A --build retry would only fail the same way.
+    ProcessFaker::assertDidntRun('*--build*');
+});
+
+test('a port clash whose config cannot be read still explains itself', function (): void {
+    touch($this->basePath.'/compose.yaml');
+    ProcessFaker::fake([
+        './vendor/bin/sail up -d' => Process::result(
+            exitCode: 1,
+            errorOutput: 'Bind for 0.0.0.0:80 failed: port is already allocated',
+        ),
+        './vendor/bin/sail config --format json' => Process::result(exitCode: 1),
+    ]);
+
+    expect(fn () => sailServer($this->workDir)->start(new BootContext(new BootOptions)))
+        ->toThrow(ServerException::class, '80 (a container)');
 });
 
 test('an unknown up failure bubbles as a process failure', function (): void {

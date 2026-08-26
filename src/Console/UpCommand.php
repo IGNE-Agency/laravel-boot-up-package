@@ -158,6 +158,7 @@ final class UpCommand extends BootUpCommand implements Isolatable
             update: (bool) $this->option('update'),
             withAssets: ! $this->option('without-assets'),
             fresh: (bool) $this->option('fresh'),
+            autoAccept: (bool) $this->option('yes'),
         );
     }
 }

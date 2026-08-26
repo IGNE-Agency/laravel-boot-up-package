@@ -52,6 +52,11 @@ beforeEach(function (): void {
     config()->set('boot-up.setup.open_browser', false);
     config()->set('boot-up.setup.auto_accept', true);
 
+    // The artisan driver reserves its serve port for real. A machine with
+    // something already on 8000 would fail every test in this file for a
+    // reason none of them is about, so the check is opt-in per test.
+    config()->set('boot-up.server.check_ports', false);
+
     // Testbench's skeleton ships a .env with QUEUE_CONNECTION=database, and
     // the .env is what a queue worker would actually run on. Point at the test's
     // own directory instead, so the baseline project has nothing for the dev
@@ -253,6 +258,34 @@ test('an unexpected exception fails cleanly with an app:down hint', function ():
         ->expectsOutputToContain('Unexpected error: something exploded')
         ->expectsOutputToContain('php artisan app:down')
         ->assertFailed();
+});
+
+test('a taken server port fails with guidance rather than a bind crash', function (): void {
+    ProcessFaker::fake();
+    config()->set('boot-up.server.check_ports', true);
+
+    // A port that is genuinely bound for the length of this test, so the
+    // probe has something real to find.
+    $socket = stream_socket_server('tcp://0.0.0.0:0');
+    $name = (string) stream_socket_get_name($socket, false);
+    $port = (int) substr($name, (int) strrpos($name, ':') + 1);
+    config()->set('boot-up.artisan.port', $port);
+
+    // Artisan::call() rather than $this->artisan(): the guidance block is one
+    // write, and an artisan output expectation consumes a write for exactly
+    // one of its substrings.
+    $exitCode = Artisan::call('app:up', ['server' => 'artisan']);
+    $output = Artisan::output();
+
+    fclose($socket);
+
+    expect($exitCode)->toBe(1)
+        ->and($output)->toContain("{$port} (php artisan serve)")
+        ->and($output)->toContain('change boot-up.artisan.port')
+        ->and($output)->toContain('php artisan app:down')
+        // The guard runs ahead of the write-ahead record, so the failed boot
+        // leaves nothing behind to clean up.
+        ->and($this->store->current())->toBeNull();
 });
 
 test('a known mid-boot failure also shows the app:down hint', function (): void {

@@ -13,6 +13,7 @@ use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
+use Igne\LaravelBootUp\Servers\PortGuard;
 
 /**
  * Boots the selected server. The active-server record is written BEFORE
@@ -24,7 +25,10 @@ use Igne\LaravelBootUp\Servers\ActiveServerStore;
 #[Label('Starting the development server')]
 final class StartServer implements Step
 {
-    public function __construct(private readonly ActiveServerStore $store) {}
+    public function __construct(
+        private readonly ActiveServerStore $store,
+        private readonly PortGuard $ports,
+    ) {}
 
     public function handle(BootContext $context, Closure $next): mixed
     {
@@ -38,6 +42,14 @@ final class StartServer implements Step
         // record is where it has to survive to -- app:down runs in another
         // process entirely.
         $wasRunning = $server->isRunning();
+
+        // Only worth asking of a server that is down: a running one holds its
+        // own ports, and would be reported as clashing with itself. Guarding
+        // before the record is written keeps the failure clean -- nothing was
+        // started, so there is nothing for app:down to find.
+        if (! $wasRunning) {
+            $this->ports->guard($context);
+        }
 
         $this->store->remember(new ActiveServerRecord(
             key: $server->key(),

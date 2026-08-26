@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Exceptions;
 
+use Igne\LaravelBootUp\Data\PortConflict;
+
 final class ServerException extends BootUpException
 {
     public static function unknownServer(string $key): self
@@ -28,6 +30,29 @@ final class ServerException extends BootUpException
     public static function dockerUnavailable(): self
     {
         return new self('Docker did not become available in time. Start Docker manually and try again.');
+    }
+
+    /**
+     * Every clashing port in one message: a boot that reports only the first
+     * one sends the user round the loop again for the second.
+     *
+     * @param  list<PortConflict>  $conflicts
+     */
+    public static function portsUnavailable(string $label, array $conflicts): self
+    {
+        $count = \count($conflicts);
+        $lines = array_map(
+            static fn (PortConflict $conflict): string => "  • {$conflict->describe()}",
+            $conflicts,
+        );
+
+        return new self(implode(PHP_EOL, [
+            $count === 1
+                ? "{$label} cannot start — a host port it needs is already in use:"
+                : "{$label} cannot start — {$count} of the host ports it needs are already in use:",
+            ...$lines,
+            'Free them or move them, then run php artisan app:up again.',
+        ]));
     }
 
     public static function dockerRegistryUnreachable(): self

@@ -1,14 +1,14 @@
 # Commands
 
-The authoritative reference is always the CLI itself — `php artisan list`
-shows every command, and `php artisan app:up --help` (or any other
-command with `--help`) shows its full signature. This page mirrors those
-signatures with more context.
+The authoritative reference is always the CLI itself — `php artisan list` shows
+every command, and `php artisan app:up --help` (or any other command with
+`--help`) shows its full signature. This page mirrors those signatures with more
+context.
 
-Two commands cover the daily loop: `app:up` gets the project ready, `dev`
-runs it. Setting up is what you do after a clone; running is what you do every
-day, which is why they are separate — `app:up` still ends in `dev`, so a
-fresh clone is one command from a running application.
+Two commands cover the daily loop: `app:up` gets the project ready, `dev` runs
+it. Setting up is what you do after a clone; running is what you do every day,
+which is why they are separate — `app:up` still ends in `dev`, so a fresh clone
+is one command from a running application.
 
 ## `app:up`
 
@@ -17,13 +17,13 @@ plan first, asks to continue, then works through it with a progress bar and a
 section divider per stage. Ctrl+C tears down everything it started so far.
 
 When the boot is done it hands the terminal to `php artisan dev` — the same
-terminal UI, the same tabs — and stays behind it. Quit that terminal and it
-runs `app:down` for you, so the server and everything else the boot started is
+terminal UI, the same tabs — and stays behind it. Quit that terminal and it runs
+`app:down` for you, so the server and everything else the boot started is
 stopped again. The whole session is one command; nothing is left running that
 you did not ask for.
 
-Because the run does not end until you quit the dev terminal, this is a
-command for a person at a keyboard. Scripted, unattended work belongs to
+Because the run does not end until you quit the dev terminal, this is a command
+for a person at a keyboard. Scripted, unattended work belongs to
 [`app:deploy`](#appdeploy), which never boots a server.
 
 ```bash
@@ -33,12 +33,40 @@ php artisan app:up
 | Argument / option  | Description                                                                                                                           |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `server`           | The development server to use: `herd`, `sail`, `artisan`, or any driver registered in `boot-up.server.drivers`. Prompts when omitted. |
-| `--seed` / `-s`    | Seed the database after migrating — always, even with nothing to migrate.                                                              |
+| `--seed` / `-s`    | Seed the database after migrating — always, even with nothing to migrate.                                                             |
 | `--fresh`          | Drop all tables and re-run every migration (asks first).                                                                              |
 | `--no-migrate`     | Skip running pending migrations. Wins over `--fresh` as the least destructive option.                                                 |
 | `--update` / `-u`  | Update dependencies instead of installing.                                                                                            |
 | `--without-assets` | Skip frontend dependencies and assets.                                                                                                |
 | `--yes` / `-y`     | Run without the confirmation prompt (config: `setup.auto_accept`).                                                                    |
+
+### Ports
+
+Before the server is started, `app:up` proves the host ports it will bind are
+free. Under Sail that means asking compose which ports this project actually
+publishes (`sail config`, so override files and extra services count too); under
+the artisan driver it is the one `serve` port.
+
+A clash is reported before anything is created — no half-built containers, no
+network and volume to clean up — naming the port, the process holding it and how
+to get it back:
+
+```text
+ Laravel Sail cannot start — 2 of the host ports it needs are already in use:
+   • 3306 (mysql) — held by mysqld (PID 7026). Free it, or set FORWARD_DB_PORT in your .env.
+   • 80 (laravel.test) — held by nginx-arm (PID 7964). Free it, or set APP_PORT in your .env (and APP_URL to match).
+ Free them or move them, then run php artisan app:up again.
+```
+
+Where the port is only a host-side forward — Sail's `FORWARD_*` variables, which
+publish a container port to your machine for tools like TablePlus — nothing in
+the application depends on its number, so `app:up` offers to move it to a free
+one and write that to your `.env` instead of stopping. `--yes` moves them
+without asking. `APP_PORT`, `VITE_PORT` and `PUSHER_PORT` are reported but never
+moved: the application and the container read them too, so half-moving one would
+break more than it fixed.
+
+Turn the whole check off with `server.check_ports`.
 
 ### The browser
 
@@ -58,13 +86,13 @@ is already gone.
 After `setup.browser.wait_timeout_seconds` it opens the URL anyway and says why:
 a page that needs one reload beats a window that never appears. Turn the whole
 thing off with `setup.open_browser`, or set the timeout to `0` to open
-immediately, without waiting. The command doing the waiting is `app:open-browser`,
-hidden because it is `app:up`'s own machinery.
+immediately, without waiting. The command doing the waiting is
+`app:open-browser`, hidden because it is `app:up`'s own machinery.
 
 ## `dev`
 
 Run the dev processes this project needs, in Laravel's dev terminal — one
-searchable tab per process. This *is* Laravel's own `dev` command, so every
+searchable tab per process. This _is_ Laravel's own `dev` command, so every
 option it defines works here too: `--tabs`, `--stream`, `--inline`,
 `--timestamps`, `--no-restart`, `--json` and the buffer sizes, and so do its
 keys: `↑`/`↓` scroll, `tab` cycles tabs, `c` clears, `/` searches, `s` streams,
@@ -84,26 +112,25 @@ immediately.
 php artisan dev
 ```
 
-| Argument / option  | Description                                                                                                                    |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| `server`           | Override the server `app:up` recorded: `herd`, `sail`, `artisan`, or any driver registered in `boot-up.server.drivers`.     |
-| `--without-queue`  | Do not run a queue worker.                                                                                                      |
-| `--without-assets` | Do not run an asset watcher.                                                                                                    |
-| `--detach` / `-d`  | Run the dev processes in the background instead of this terminal, with logs in `storage/logs/boot-up/`.                        |
+| Argument / option  | Description                                                                                                             |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `server`           | Override the server `app:up` recorded: `herd`, `sail`, `artisan`, or any driver registered in `boot-up.server.drivers`. |
+| `--without-queue`  | Do not run a queue worker.                                                                                              |
+| `--without-assets` | Do not run an asset watcher.                                                                                            |
+| `--detach` / `-d`  | Run the dev processes in the background instead of this terminal, with logs in `storage/logs/boot-up/`.                 |
 
 Run on its own, quitting the terminal leaves the project set up and its server
-running — that is what `app:down` is for. A `dev` that `app:up` started
-instead hands control back to it, and the teardown follows automatically.
+running — that is what `app:down` is for. A `dev` that `app:up` started instead
+hands control back to it, and the teardown follows automatically.
 
-The dev terminal needs Node 22.13 or newer. Below that, `--detach` runs the
-same processes without it.
+The dev terminal needs Node 22.13 or newer. Below that, `--detach` runs the same
+processes without it.
 
 ## `app:down`
 
-Stop tracked processes and the server `php artisan app:up` started — and
-nothing it didn't. After a failed Sail boot it also offers `sail down` to clear
-leftover Docker resources (stopped containers, networks, half-pulled
-images).
+Stop tracked processes and the server `php artisan app:up` started — and nothing
+it didn't. After a failed Sail boot it also offers `sail down` to clear leftover
+Docker resources (stopped containers, networks, half-pulled images).
 
 ```bash
 php artisan app:down
@@ -159,8 +186,8 @@ php artisan generate:deploy-script
 
 ## `generate:pipeline`
 
-Generate a CI/CD pipeline, its shared `scripts/ci` files and
-`.env.pipeline` for a git provider. Details, secrets and branch mapping:
+Generate a CI/CD pipeline, its shared `scripts/ci` files and `.env.pipeline` for
+a git provider. Details, secrets and branch mapping:
 [PIPELINES.md](PIPELINES.md).
 
 ```bash
@@ -176,10 +203,10 @@ php artisan generate:pipeline
 
 ## `generate:git-hooks`
 
-Install a tracked pre-commit hook that runs the pipeline's Pint check
-locally before each commit (requires `laravel/pint`). The hook lives in
-`.githooks/` and is shared by pointing `git config core.hooksPath` at it —
-commit `.githooks/` so your whole team gets it.
+Install a tracked pre-commit hook that runs the pipeline's Pint check locally
+before each commit (requires `laravel/pint`). The hook lives in `.githooks/` and
+is shared by pointing `git config core.hooksPath` at it — commit `.githooks/` so
+your whole team gets it.
 
 ```bash
 php artisan generate:git-hooks

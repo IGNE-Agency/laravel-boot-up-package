@@ -14,6 +14,9 @@ const SAIL_MISSING_IMAGE = 'Image sail-8.5/app failed to resolve reference "sail
     .'dialing sail-8.5:443 container via direct connection because Docker Desktop has no HTTPS proxy: '
     .'connecting to sail-8.5:443: dial tcp: lookup sail-8.5: no such host';
 
+const SAIL_PORT_CLASH = 'Error response from daemon: ports are not available: '
+    .'exposing port TCP 0.0.0.0:3306 -> 127.0.0.1:0: listen tcp 0.0.0.0:3306: bind: address already in use';
+
 test('recognises an unreachable registry from real compose output', function (): void {
     $detector = new SailUpFailureDetector;
 
@@ -51,5 +54,34 @@ test('an unrelated compose error matches neither signature', function (): void {
     $output = 'yaml: line 12: mapping values are not allowed in this context';
 
     expect($detector->isRegistryUnreachable($output))->toBeFalse()
-        ->and($detector->isMissingLocalImage($output))->toBeFalse();
+        ->and($detector->isMissingLocalImage($output))->toBeFalse()
+        ->and($detector->isPortConflict($output))->toBeFalse();
+});
+
+test('recognises a taken host port from real daemon output', function (): void {
+    $detector = new SailUpFailureDetector;
+
+    expect($detector->isPortConflict(SAIL_PORT_CLASH))->toBeTrue()
+        ->and($detector->isPortConflict('Bind for 0.0.0.0:80 failed: port is already allocated'))->toBeTrue()
+        ->and($detector->isPortConflict('driver failed programming external connectivity on endpoint'))->toBeTrue();
+});
+
+test('the clashing port is recovered from the message', function (): void {
+    $detector = new SailUpFailureDetector;
+
+    // The container side is named as ":0" in the same sentence, and the host
+    // side twice — one port comes back, not three.
+    expect($detector->portsIn(SAIL_PORT_CLASH))->toBe([3306])
+        ->and($detector->portsIn('Bind for 0.0.0.0:80 failed: port is already allocated'))->toBe([80])
+        ->and($detector->portsIn('listen tcp [::]:5173: bind: address already in use'))->toBe([5173])
+        ->and($detector->portsIn('ports are not available'))->toBe([]);
+});
+
+test('a port clash is not mistaken for a registry or image problem', function (): void {
+    $detector = new SailUpFailureDetector;
+
+    expect($detector->isRegistryUnreachable(SAIL_PORT_CLASH))->toBeFalse()
+        ->and($detector->isMissingLocalImage(SAIL_PORT_CLASH))->toBeFalse()
+        ->and($detector->isPortConflict(SAIL_DNS_FAILURE))->toBeFalse()
+        ->and($detector->isPortConflict(SAIL_MISSING_IMAGE))->toBeFalse();
 });

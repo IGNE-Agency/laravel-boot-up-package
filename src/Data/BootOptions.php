@@ -20,5 +20,6 @@ final readonly class BootOptions
         public bool $withQueue = true,
         public bool $withAssets = true,
         public bool $fresh = false,
+        public bool $autoAccept = false,
     ) {}
 }

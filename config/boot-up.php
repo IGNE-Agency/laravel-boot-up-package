@@ -50,6 +50,14 @@ return [
         'default' => env('BOOT_UP_SERVER'),
         'prompt' => env('BOOT_UP_SERVER_PROMPT', true),
         'drivers' => [],
+
+        // Prove the host ports a driver publishes are free before starting
+        // it, so a clash is a sentence naming the port and what holds it
+        // instead of a raw Docker error and half-created containers. Where
+        // the port is only a host-side forward (Sail's FORWARD_* variables),
+        // boot-up offers to move it in your .env. Turn off if the probe ever
+        // disagrees with what your machine actually allows.
+        'check_ports' => env('BOOT_UP_SERVER_CHECK_PORTS', true),
     ],
 
     'herd' => [

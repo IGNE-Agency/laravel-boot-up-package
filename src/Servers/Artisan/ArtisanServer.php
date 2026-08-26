@@ -6,9 +6,11 @@ namespace Igne\LaravelBootUp\Servers\Artisan;
 
 use Igne\LaravelBootUp\Config\ArtisanServeConfig;
 use Igne\LaravelBootUp\Contracts\ProvidesDevProcess;
+use Igne\LaravelBootUp\Contracts\ReservesPorts;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Data\ReservedPort;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 
 /**
@@ -19,7 +21,7 @@ use Igne\LaravelBootUp\Process\ProcessReaper;
  * starts it from the registry like any other. So there is nothing to do here
  * beyond saying which command runs it.
  */
-final class ArtisanServer implements ProvidesDevProcess, Server
+final class ArtisanServer implements ProvidesDevProcess, ReservesPorts, Server
 {
     private const string LABEL = 'artisan-serve';
 
@@ -43,6 +45,22 @@ final class ArtisanServer implements ProvidesDevProcess, Server
         terminal()->note($this->isRunning()
             ? 'php artisan serve is already running.'
             : 'php artisan serve runs with the dev processes.');
+    }
+
+    /**
+     * The serve command binds this itself, and fails with its own terse
+     * "Failed to listen" if something else has it. Not remappable: the port
+     * is configuration, not a forward this package may quietly rewrite.
+     *
+     * @return list<ReservedPort>
+     */
+    public function reservedPorts(): array
+    {
+        return [new ReservedPort(
+            port: $this->config->port,
+            purpose: 'php artisan serve',
+            fix: 'change boot-up.artisan.port (or BOOT_UP_ARTISAN_PORT)',
+        )];
     }
 
     /**

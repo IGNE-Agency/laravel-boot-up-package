@@ -24,11 +24,13 @@ final readonly class DevServerConfig
 
     /**
      * @param  array<string, class-string<Server>>  $drivers  key => driver class; project entries win over built-ins
+     * @param  bool  $checkPorts  probe the ports a driver publishes before starting it
      */
     public function __construct(
         public ?string $default = null,
         public bool $prompt = true,
         public array $drivers = self::BUILT_IN_DRIVERS,
+        public bool $checkPorts = true,
     ) {}
 
     public static function fromRepository(Repository $config): self
@@ -39,6 +41,7 @@ final readonly class DevServerConfig
             default: $default === null ? null : (string) $default,
             prompt: (bool) $config->get('boot-up.server.prompt', true),
             drivers: array_merge(self::BUILT_IN_DRIVERS, (array) $config->get('boot-up.server.drivers', [])),
+            checkPorts: (bool) $config->get('boot-up.server.check_ports', true),
         );
     }
 }
