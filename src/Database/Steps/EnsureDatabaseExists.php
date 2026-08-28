@@ -5,49 +5,55 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Database\Steps;
 
 use Closure;
-use Igne\LaravelBootUp\Database\DatabaseConfig;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Label;
+use Igne\LaravelBootUp\Attributes\Stage;
+use Igne\LaravelBootUp\Concerns\SkipsWithNote;
+use Igne\LaravelBootUp\Config\DatabaseConfig;
+use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\DatabaseConnection;
 use Igne\LaravelBootUp\Database\DatabaseCreator;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Illuminate\Contracts\Config\Repository;
-
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
 
 /**
  * Creates the configured database when it does not exist yet. Skipped for
  * servers that provision the database themselves (e.g. Sail's containers).
  */
+#[Stage(BootStage::Database)]
+#[Group('database')]
+#[Label('Ensuring the database exists')]
 final class EnsureDatabaseExists implements Step
 {
+    use SkipsWithNote;
+
     public function __construct(
         private readonly DatabaseConfig $config,
         private readonly DatabaseCreator $creator,
         private readonly Repository $laravelConfig,
     ) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         if (! $this->config->create) {
-            note('Database creation is disabled in configuration — skipping.');
-
-            return $next($context);
+            return $this->skipStep('Database creation is disabled in configuration — skipping.', $context, $next);
         }
 
-        if ($context->server?->providesDatabase() === true) {
-            note("{$context->server->label()} provisions the database itself — skipping creation.");
-
-            return $next($context);
+        if ($context->server instanceof ProvidesDatabase) {
+            return $this->skipStep("{$context->server->label()} provisions the database itself — skipping creation.", $context, $next);
         }
 
         $default = (string) $this->laravelConfig->get('database.default');
-        $connection = (array) $this->laravelConfig->get("database.connections.{$default}", []);
-        $database = (string) ($connection['database'] ?? '');
+        $connection = DatabaseConnection::fromArray(
+            (array) $this->laravelConfig->get("database.connections.{$default}", []),
+        );
 
         if ($this->creator->createDatabaseIfMissing($connection)) {
-            info("Database [{$database}] created.");
+            terminal()->success("Database [{$connection->database}] created.");
         } else {
-            note("Database [{$database}] already exists.");
+            terminal()->note("Database [{$connection->database}] already exists.");
         }
 
         return $next($context);

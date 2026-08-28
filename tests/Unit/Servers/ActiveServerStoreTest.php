@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Servers\ActiveServer;
+use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 
 beforeEach(function (): void {
@@ -16,10 +16,10 @@ afterEach(function (): void {
 });
 
 test('remember and current round-trip the record', function (): void {
-    $this->store->remember(new ActiveServer(
+    $this->store->remember(new ActiveServerRecord(
         key: 'herd',
         startedByUs: true,
-        servePid: 1234,
+        setupPid: 1234,
         startedAt: '2026-07-10T10:00:00+00:00',
     ));
 
@@ -28,15 +28,15 @@ test('remember and current round-trip the record', function (): void {
     expect($current)->not->toBeNull()
         ->and($current->key)->toBe('herd')
         ->and($current->startedByUs)->toBeTrue()
-        ->and($current->servePid)->toBe(1234)
+        ->and($current->setupPid)->toBe(1234)
         ->and($current->startedAt)->toBe('2026-07-10T10:00:00+00:00')
         ->and(is_file($this->path))->toBeTrue()
         ->and(is_file($this->path.'.tmp'))->toBeFalse();
 });
 
 test('remember overwrites the previous record', function (): void {
-    $this->store->remember(new ActiveServer('herd', true, 1, '2026-07-10T10:00:00+00:00'));
-    $this->store->remember(new ActiveServer('sail', false, 2, '2026-07-10T11:00:00+00:00'));
+    $this->store->remember(new ActiveServerRecord('herd', true, 1, '2026-07-10T10:00:00+00:00'));
+    $this->store->remember(new ActiveServerRecord('sail', false, 2, '2026-07-10T11:00:00+00:00'));
 
     expect($this->store->current()->key)->toBe('sail')
         ->and($this->store->current()->startedByUs)->toBeFalse();
@@ -64,7 +64,7 @@ test('current is null when the payload misses keys, which counts as corrupt', fu
 });
 
 test('clear removes the record and is a no-op when already gone', function (): void {
-    $this->store->remember(new ActiveServer('laravel', true, 99, '2026-07-10T10:00:00+00:00'));
+    $this->store->remember(new ActiveServerRecord('artisan', true, 99, '2026-07-10T10:00:00+00:00'));
 
     $this->store->clear();
 

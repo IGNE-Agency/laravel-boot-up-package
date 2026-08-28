@@ -4,38 +4,35 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Artisan;
 
-use Igne\LaravelBootUp\Process\ProcessLedger;
+use Igne\LaravelBootUp\Config\ArtisanServeConfig;
+use Igne\LaravelBootUp\Contracts\ProvidesDevProcess;
+use Igne\LaravelBootUp\Contracts\ReservesPorts;
+use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Data\ReservedPort;
 use Igne\LaravelBootUp\Process\ProcessReaper;
-use Igne\LaravelBootUp\Process\ProcessRecord;
-use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Servers\CommandRewrites;
-use Igne\LaravelBootUp\Servers\Server;
-use Igne\LaravelBootUp\Servers\ServersConfig;
-use Igne\LaravelBootUp\Tools\Tool;
-
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
 
 /**
- * Serves via a tracked, detached `php artisan serve` process. Key stays
- * 'laravel' for backwards compatibility with existing config and args.
+ * Serves through `php artisan serve`.
+ *
+ * The serve command is a dev process, not something the setup starts: the
+ * multiplexer owns its output and restarts it if it dies, and a detached run
+ * starts it from the registry like any other. So there is nothing to do here
+ * beyond saying which command runs it.
  */
-final class ArtisanServer implements Server
+final class ArtisanServer implements ProvidesDevProcess, ReservesPorts, Server
 {
     private const string LABEL = 'artisan-serve';
 
     public function __construct(
-        private readonly ProcessRunner $runner,
-        private readonly ProcessLedger $ledger,
         private readonly ProcessReaper $reaper,
-        private readonly ServersConfig $config,
+        private readonly ArtisanServeConfig $config,
     ) {}
 
     public function key(): string
     {
-        return 'laravel';
+        return 'artisan';
     }
 
     public function label(): string
@@ -43,64 +40,56 @@ final class ArtisanServer implements Server
         return 'Laravel (php artisan serve)';
     }
 
+    public function start(BootContext $context): void
+    {
+        terminal()->note($this->isRunning()
+            ? 'php artisan serve is already running.'
+            : 'php artisan serve runs with the dev processes.');
+    }
+
     /**
-     * @return list<Tool>
+     * The serve command binds this itself, and fails with its own terse
+     * "Failed to listen" if something else has it. Not remappable: the port
+     * is configuration, not a forward this package may quietly rewrite.
+     *
+     * @return list<ReservedPort>
      */
-    public function requiredTools(): array
+    public function reservedPorts(): array
     {
-        return [];
+        return [new ReservedPort(
+            port: $this->config->port,
+            purpose: 'php artisan serve',
+            fix: 'change boot-up.artisan.port (or BOOT_UP_ARTISAN_PORT)',
+        )];
     }
 
-    public function commandRewrites(): CommandRewrites
+    /**
+     * Runs as the [server] process, exactly as it does under plain
+     * `php artisan dev`. Null only when a tracked serve is already alive --
+     * one a detached run started, or one that outlived its terminal.
+     */
+    public function devProcess(BootContext $context): ?CommandLine
     {
-        return CommandRewrites::none();
+        return $this->isRunning() ? null : $this->serveCommand();
     }
 
-    public function providesDatabase(): bool
+    private function serveCommand(): CommandLine
     {
-        return false;
-    }
-
-    public function databaseReachableFromHost(): bool
-    {
-        return true;
-    }
-
-    public function stopImpact(): ?string
-    {
-        return null;
-    }
-
-    public function start(ServeContext $context): void
-    {
-        if ($this->isRunning()) {
-            note('php artisan serve is already running.');
-
-            return;
-        }
-
-        $record = $this->runner->start(
-            ShellCommand::make([
-                'php', 'artisan', 'serve',
-                "--host={$this->config->artisanHost}",
-                "--port={$this->config->artisanPort}",
-            ])->withTimeout(null),
-            self::LABEL,
-        );
-
-        info("php artisan serve started (PID {$record->pid}).");
+        return CommandLine::make([
+            'php', 'artisan', 'serve',
+            "--host={$this->config->host}",
+            "--port={$this->config->port}",
+        ])->withTimeout(null);
     }
 
     public function isRunning(): bool
     {
-        return $this->ledger->withLabel(self::LABEL)
-            ->contains(fn (ProcessRecord $record): bool => $this->reaper->isAlive($record));
+        return $this->reaper->isRunning(self::LABEL);
     }
 
     public function stop(): void
     {
-        $this->ledger->withLabel(self::LABEL)
-            ->each(fn (ProcessRecord $record) => $this->reaper->reap($record));
+        $this->reaper->stop(self::LABEL);
     }
 
     /**
@@ -110,6 +99,6 @@ final class ArtisanServer implements Server
      */
     public function url(): string
     {
-        return "http://{$this->config->artisanHost}:{$this->config->artisanPort}";
+        return "http://{$this->config->host}:{$this->config->port}";
     }
 }

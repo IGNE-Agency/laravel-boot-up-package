@@ -4,16 +4,26 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
-use Igne\LaravelBootUp\Support\Lines;
+use Igne\LaravelBootUp\Concerns\SharesStandardPipelineShape;
+use Igne\LaravelBootUp\Contracts\PipelineGenerator;
+use Igne\LaravelBootUp\Data\CiJob;
+use Igne\LaravelBootUp\Data\GeneratedFile;
+use Igne\LaravelBootUp\Data\Lines;
+use Igne\LaravelBootUp\Data\PipelinePlan;
+use Igne\LaravelBootUp\Data\PipelineSecret;
+use Illuminate\Support\Str;
 
 /**
  * Renders a Bitbucket Pipelines file: lint, build and test run as parallel
  * steps on pull requests and pushes; a green push then triggers the branch's
- * deployment-scoped deploy hook via scripts/ci/deploy-hook.sh.
+ * deployment-scoped deploy hook via scripts/ci/deploy-hook.sh — unless the
+ * plan's host is NONE, in which case the deploy steps are omitted.
  * All logic lives in the shared scripts — the pipeline only wires them up.
  */
 final class BitbucketPipelinesGenerator implements PipelineGenerator
 {
+    use SharesStandardPipelineShape;
+
     public function __construct(private readonly CiScripts $scripts) {}
 
     public function key(): string
@@ -38,73 +48,101 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
     {
         $secrets = [];
 
-        foreach ($plan->branchEnvironments as $branch => $environment) {
+        if ($plan->host->deploys()) {
             $secrets[] = new PipelineSecret(
                 'DEPLOY_HOOK',
-                "Repository settings → Deployments → {$environment} → Variables (mark as secured; create the environment first)",
-                "Deploy hook URL from your host — fortrabbit: dashboard → your app → {$environment} → Deploy hook",
-                "Deploys {$environment} after a green push to {$branch}",
+                'each deployment',
+                'triggers the deploy on a green push',
+                $this->deployHookDetails($plan),
             );
         }
 
-        if ($plan->nova) {
+        if ($plan->composerAuth) {
             $secrets[] = new PipelineSecret(
                 'COMPOSER_AUTH',
-                'Repository settings → Repository variables (mark as secured)',
-                'Composer auth JSON for nova.laravel.com (example below)',
-                'Lets composer install Laravel Nova in CI',
+                'repository variables',
+                'authenticates Composer for private/licensed packages',
+                [
+                    'Add under, in your Bitbucket repository: Repository settings → Repository variables (mark as secured).',
+                    'Value: composer auth JSON for the private registry your packages need — e.g. Laravel Nova:',
+                    '{"http-basic":{"nova.laravel.com":{"username":"you@example.com","password":"<license key>"}}}',
+                    'Composer reads COMPOSER_AUTH straight from the environment — no auth.json step is needed.',
+                ],
             );
         }
 
         return $secrets;
     }
 
+    public function notes(PipelinePlan $plan): array
+    {
+        return [
+            ...$plan->host->notes(),
+            ...$plan->host->deploys() ? [
+                "An unset DEPLOY_HOOK skips that environment's deploy with a notice instead of failing the run.",
+                'Deploying from other branches? Remap boot-up.pipeline.branches and regenerate.',
+            ] : [],
+        ];
+    }
+
     public function instructions(PipelinePlan $plan): array
     {
-        $notes = [
+        return [
             'Commit bitbucket-pipelines.yml, scripts/ci/* and .env.pipeline — every script also runs locally, e.g. `bash scripts/ci/test.sh`.',
             'Enable Pipelines once under Repository settings → Pipelines → Settings.',
-            'DEPLOY_HOOK example (fortrabbit): https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}',
-            'The deploy script always sends the `User-Agent: fortrabbit` header fortrabbit requires; other hosts ignore it.',
+            ...$this->secrets($plan) === [] ? [] : [
+                'Add the variables above to your Bitbucket repository (repository/deployment variables — each section lists the exact path).',
+            ],
+            ...$plan->host->deploys() ? [] : [
+                'Ready to deploy from this pipeline later? Rerun generate:pipeline with a deploy-hook host to add the deploy steps.',
+            ],
+            ...$plan->pint ? ['Lint before every commit: run `php artisan generate:git-hooks` to install the pre-commit Pint hook.'] : [],
         ];
+    }
 
-        if ($plan->nova) {
-            $notes[] = 'COMPOSER_AUTH example: {"http-basic":{"nova.laravel.com":{"username":"you@example.com","password":"<license key>"}}}';
-            $notes[] = 'Composer reads COMPOSER_AUTH straight from the environment — no auth.json step is needed.';
-        }
+    /**
+     * One DEPLOY_HOOK entry covering every deployment environment: a "set one
+     * per deployment" instruction, the generic settings path, then the host's
+     * value guidance labelled per environment (the URL differs per env).
+     *
+     * @return list<string>
+     */
+    protected function deployHookHeader(PipelinePlan $plan): array
+    {
+        $environments = implode(', ', array_values($plan->branchEnvironments));
 
         return [
-            ...$notes,
-            'Optional approval gate: add `trigger: manual` to the production deploy step.',
-            "An unset DEPLOY_HOOK skips that environment's deploy with a notice instead of failing the run.",
-            'Deploying from other branches (e.g. main)? Remap boot-up.pipeline.branches and regenerate.',
+            "Configure a DEPLOY_HOOK for EACH deployment environment: {$environments}.",
+            'Add under, in your Bitbucket repository: Repository settings → Deployments → <environment> → Variables (mark as secured; create each environment first).',
         ];
     }
 
     private function pipeline(PipelinePlan $plan): string
     {
-        $image = 'laravelsail/php'.str_replace('.', '', $plan->phpVersion).'-composer:latest';
+        $version = str_replace('.', '', $plan->phpVersion);
+        $image = "laravelsail/php{$version}-composer:latest";
 
         return Lines::make()
             ->comment(
                 'CI/CD pipeline (Bitbucket Pipelines)',
                 'Generated by igne-agency/laravel-boot-up — lives at bitbucket-pipelines.yml.',
-                "Checks run on pull requests and on pushes to {$this->scripts->branchList($plan)};",
-                "a green push then triggers its environment's deploy hook via",
-                'scripts/ci/deploy-hook.sh (skipped when DEPLOY_HOOK is unset).',
+                ...$plan->host->deploys() ? [
+                    "Checks run on pull requests and on pushes to {$plan->branchList()};",
+                    "a green push then triggers its environment's deploy hook via",
+                    'scripts/ci/deploy-hook.sh (skipped when DEPLOY_HOOK is unset).',
+                ] : [
+                    "Checks run on pull requests and on pushes to {$plan->branchList()}.",
+                    'No deploy steps were generated — rerun generate:pipeline with a deploy-hook host to add them.',
+                ],
             )
             ->lineWithBreak("image: {$image}")
             ->lineWithBreak('definitions:')
             ->indent(2, fn (Lines $yaml) => $yaml
                 ->line('steps:')
-                ->indent(2, function (Lines $yaml) use ($plan): void {
-                    if ($plan->pint) {
-                        $this->stepDefinition($yaml, $plan, 'lint', 'Lint', node: false);
-                    }
-
-                    $this->stepDefinition($yaml, $plan, 'build', 'Build', node: true);
-                    $this->stepDefinition($yaml, $plan, 'test', 'Test', node: true);
-                }))
+                ->indent(2, fn (Lines $yaml) => $yaml->each(
+                    $this->standardJobs($plan),
+                    fn (Lines $yaml, CiJob $job) => $this->stepDefinition($yaml, $plan, $job),
+                )))
             ->lineWithBreak('pipelines:')
             ->indent(2, function (Lines $yaml) use ($plan): void {
                 $yaml->line('pull-requests:')
@@ -119,7 +157,10 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
                             $yaml->line("{$branch}:")
                                 ->indent(2, function (Lines $yaml) use ($plan, $environment): void {
                                     $this->checkSteps($yaml, $plan);
-                                    $this->deployStep($yaml, $environment);
+
+                                    if ($plan->host->deploys()) {
+                                        $this->deployStep($yaml, $plan, $environment);
+                                    }
                                 });
                         },
                     ));
@@ -131,17 +172,21 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
      * One reusable step anchor calling its shared script. The node cache only
      * helps steps that install Node dependencies via bootstrap.sh.
      */
-    private function stepDefinition(Lines $yaml, PipelinePlan $plan, string $step, string $name, bool $node): void
+    private function stepDefinition(Lines $yaml, PipelinePlan $plan, CiJob $job): void
     {
-        $yaml->line("- step: &{$step}")
+        $yaml->line("- step: &{$job->key}")
             ->indent(4, fn (Lines $yaml) => $yaml
-                ->line("name: {$name}")
+                ->line("name: {$job->name}")
                 ->line('caches:')
                 ->indent(2, fn (Lines $yaml) => $yaml
                     ->line('- composer')
-                    ->when($node && $plan->deployment->frontend, fn (Lines $yaml) => $yaml->line('- node')))
+                    ->when($job->usesNode && $plan->deployment->frontend, fn (Lines $yaml) => $yaml->line('- node')))
                 ->line('script:')
-                ->indent(2, fn (Lines $yaml) => $yaml->line('- '.$this->scalar("bash scripts/ci/{$step}.sh"))));
+                ->indent(2, function (Lines $yaml) use ($plan, $job): void {
+                    $this->extraScript($yaml, $plan, $job->key, 'before');
+                    $yaml->line($this->scalarLine("bash scripts/ci/{$job->key}.sh"));
+                    $this->extraScript($yaml, $plan, $job->key, 'after');
+                }));
     }
 
     /**
@@ -151,25 +196,42 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
     private function checkSteps(Lines $yaml, PipelinePlan $plan): void
     {
         $yaml->line('- parallel:')
-            ->indent(4, fn (Lines $yaml) => $yaml
-                ->when($plan->pint, fn (Lines $yaml) => $yaml->line('- step: *lint'))
-                ->line('- step: *build')
-                ->line('- step: *test'));
+            ->indent(4, fn (Lines $yaml) => $yaml->each(
+                $this->standardJobs($plan),
+                fn (Lines $yaml, CiJob $job) => $yaml->line("- step: *{$job->key}"),
+            ));
     }
 
     /**
      * A deployment-tracked step: Bitbucket scopes the DEPLOY_HOOK variable to
      * the named environment and serializes deployments to it natively.
      */
-    private function deployStep(Lines $yaml, string $environment): void
+    private function deployStep(Lines $yaml, PipelinePlan $plan, string $environment): void
     {
         $yaml->line('- step:')
             ->indent(4, fn (Lines $yaml) => $yaml
                 ->line("name: Deploy ({$environment})")
                 ->line("deployment: {$environment}")
                 ->line('script:')
-                ->indent(2, fn (Lines $yaml) => $yaml
-                    ->line('- '.$this->scalar("bash scripts/ci/deploy-hook.sh {$environment} \"\${DEPLOY_HOOK:-}\""))));
+                ->indent(2, function (Lines $yaml) use ($plan, $environment): void {
+                    $this->extraScript($yaml, $plan, 'deploy', 'before');
+                    $yaml->line($this->scalarLine("bash scripts/ci/deploy-hook.sh {$environment} \"\${DEPLOY_HOOK:-}\""));
+                    $this->extraScript($yaml, $plan, 'deploy', 'after');
+                }));
+    }
+
+    /**
+     * Render the project's configured extra steps at one anchor as Bitbucket
+     * script lines (a leading comment names each). Per-line env is a GitHub
+     * concept — on Bitbucket, expose values as repository/deployment
+     * variables, which are already in the environment.
+     */
+    private function extraScript(Lines $yaml, PipelinePlan $plan, string $job, string $position): void
+    {
+        foreach ($plan->extensions->stepsFor($this->key(), $job, $position) as $step) {
+            $yaml->comment($step->name)
+                ->line($this->scalarLine($step->run));
+        }
     }
 
     /**
@@ -177,10 +239,17 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
      * scalar. Normally a no-op: the script invocations avoid leading #,
      * quotes, flow indicators and ": " on purpose.
      */
+    private function scalarLine(string $value): string
+    {
+        $scalar = $this->scalar($value);
+
+        return "- {$scalar}";
+    }
+
     private function scalar(string $command): string
     {
         $unsafeFirst = $command === '' || str_contains('#&*!|>%@`"\'{}[],', $command[0]);
-        $unsafeStart = str_starts_with($command, '- ') || str_starts_with($command, '? ') || str_starts_with($command, ': ');
+        $unsafeStart = Str::startsWith($command, ['- ', '? ', ': ']);
 
         if (! $unsafeFirst && ! $unsafeStart && ! str_contains($command, ': ') && ! str_ends_with($command, ':')) {
             return $command;

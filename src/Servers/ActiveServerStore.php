@@ -4,54 +4,50 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers;
 
-use Igne\LaravelBootUp\Support\AtomicFile;
-
-use function Laravel\Prompts\warning;
+use Igne\LaravelBootUp\Data\ActiveServerRecord;
+use Igne\LaravelBootUp\Services\JsonStore;
 
 /**
- * Persists the active-server record across the app:serve / app:down
- * boundary as atomic JSON in storage/framework/boot-up.
+ * Persists the active-server record as atomic JSON in
+ * storage/framework/boot-up, so the three commands that need it agree:
+ * app:up writes it, `dev` and app:status read it, app:down clears it.
  */
 final class ActiveServerStore
 {
-    public function __construct(private readonly string $path) {}
+    private readonly JsonStore $store;
 
-    public function remember(ActiveServer $server): void
+    public function __construct(string $path)
     {
-        AtomicFile::write($this->path, (string) json_encode($server->toArray(), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+        $this->store = new JsonStore(
+            $path,
+            'The boot-up active-server record was corrupt — moved to %s and reset. A previously started server may still be running.',
+        );
     }
 
-    public function current(): ?ActiveServer
+    public function remember(ActiveServerRecord $server): void
     {
-        if (! is_file($this->path)) {
+        $this->store->write($server->toArray());
+    }
+
+    public function current(): ?ActiveServerRecord
+    {
+        $decoded = $this->store->read();
+
+        if ($decoded === null) {
             return null;
         }
 
-        $decoded = json_decode((string) file_get_contents($this->path), true);
-
-        if (! \is_array($decoded) || ! isset($decoded['key'], $decoded['started_by_us'], $decoded['serve_pid'], $decoded['started_at'])) {
-            $this->quarantine();
+        if (! ActiveServerRecord::hydratable($decoded)) {
+            $this->store->quarantine();
 
             return null;
         }
 
-        return ActiveServer::fromArray($decoded);
+        return ActiveServerRecord::fromArray($decoded);
     }
 
     public function clear(): void
     {
-        AtomicFile::delete($this->path);
-    }
-
-    /**
-     * Moves an undecodable record aside (a rename inside a read path, on
-     * purpose): the evidence survives for inspection, and the warning
-     * cannot repeat because the next read finds no file.
-     */
-    private function quarantine(): void
-    {
-        rename($this->path, $this->path.'.corrupt');
-
-        warning('The boot-up active-server record was corrupt — moved to '.basename($this->path).'.corrupt and reset. A previously started server may still be running.');
+        $this->store->clear();
     }
 }

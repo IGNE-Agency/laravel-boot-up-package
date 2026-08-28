@@ -4,16 +4,25 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
-use Igne\LaravelBootUp\Support\Lines;
+use Igne\LaravelBootUp\Concerns\SharesStandardPipelineShape;
+use Igne\LaravelBootUp\Contracts\PipelineGenerator;
+use Igne\LaravelBootUp\Data\CiJob;
+use Igne\LaravelBootUp\Data\GeneratedFile;
+use Igne\LaravelBootUp\Data\Lines;
+use Igne\LaravelBootUp\Data\PipelinePlan;
+use Igne\LaravelBootUp\Data\PipelineSecret;
 
 /**
  * Renders a GitHub Actions workflow: lint, build and test run as parallel
  * status checks on pull requests and pushes; a green push then triggers the
- * branch's environment-scoped deploy hook via scripts/ci/deploy-hook.sh.
+ * branch's environment-scoped deploy hook via scripts/ci/deploy-hook.sh —
+ * unless the plan's host is NONE, in which case the deploy jobs are omitted.
  * All logic lives in the shared scripts — the workflow only wires them up.
  */
 final class GitHubActionsGenerator implements PipelineGenerator
 {
+    use SharesStandardPipelineShape;
+
     public function __construct(private readonly CiScripts $scripts) {}
 
     public function key(): string
@@ -38,48 +47,81 @@ final class GitHubActionsGenerator implements PipelineGenerator
     {
         $secrets = [];
 
-        foreach ($plan->branchEnvironments as $branch => $environment) {
+        if ($plan->host->deploys()) {
             $secrets[] = new PipelineSecret(
                 'DEPLOY_HOOK',
-                "Settings → Environments → {$environment} → Environment secrets (create the environment first)",
-                "Deploy hook URL from your host — fortrabbit: dashboard → your app → {$environment} → Deploy hook",
-                "Deploys {$environment} after a green push to {$branch}",
+                'each environment',
+                'triggers the deploy on a green push',
+                $this->deployHookDetails($plan),
             );
         }
 
-        if ($plan->nova) {
+        if ($plan->composerAuth) {
             $secrets[] = new PipelineSecret(
                 'COMPOSER_AUTH',
-                'Settings → Secrets and variables → Actions → Repository secrets',
-                'Composer auth JSON for nova.laravel.com (example below)',
-                'Lets composer install Laravel Nova in CI',
+                'repository secrets',
+                'authenticates Composer for private/licensed packages',
+                [
+                    'Add under, in your GitHub repository: Settings → Secrets and variables → Actions → Repository secrets.',
+                    'Value: composer auth JSON for the private registry your packages need — e.g. Laravel Nova:',
+                    '{"http-basic":{"nova.laravel.com":{"username":"you@example.com","password":"<license key>"}}}',
+                ],
             );
         }
 
         return $secrets;
     }
 
-    public function instructions(PipelinePlan $plan): array
+    public function notes(PipelinePlan $plan): array
     {
         $checks = $plan->pint ? 'Lint, Build and Test' : 'Build and Test';
 
-        $notes = [
-            'Commit .github/workflows/ci.yml, scripts/ci/* and .env.pipeline — every script also runs locally, e.g. `bash scripts/ci/test.sh`.',
-            'DEPLOY_HOOK example (fortrabbit): https://api.fortrabbit.com/webhooks/environments/{app-env-id}/deploy/{secret}',
-            'The deploy script always sends the `User-Agent: fortrabbit` header fortrabbit requires; other hosts ignore it.',
+        return [
+            "Branch protection: require the {$checks} checks.",
+            ...$plan->host->notes(),
+            ...$plan->host->deploys() ? [
+                "An unset DEPLOY_HOOK skips that environment's deploy with a notice instead of failing the run.",
+                'Deploying from other branches? Remap boot-up.pipeline.branches and regenerate.',
+            ] : [],
         ];
+    }
 
-        if ($plan->nova) {
-            $notes[] = 'COMPOSER_AUTH example: {"http-basic":{"nova.laravel.com":{"username":"you@example.com","password":"<license key>"}}}';
-        }
+    public function instructions(PipelinePlan $plan): array
+    {
+        return [
+            'Commit .github/workflows/ci.yml, scripts/ci/* and .env.pipeline — every script also runs locally, e.g. `bash scripts/ci/test.sh`.',
+            ...$this->secrets($plan) === [] ? [] : [
+                'Add the secrets above to your GitHub repository (repository/environment secrets — each secret\'s section lists the exact path).',
+            ],
+            ...$plan->host->deploys() ? [] : [
+                'Ready to deploy from this pipeline later? Rerun generate:pipeline with a deploy-hook host to add the deploy jobs.',
+            ],
+            ...$plan->pint ? ['Lint before every commit: run `php artisan generate:git-hooks` to install the pre-commit Pint hook.'] : [],
+        ];
+    }
+
+    /**
+     * One DEPLOY_HOOK entry covering every environment: a "set one per
+     * environment" instruction, the generic settings path, then the host's
+     * value guidance labelled per environment (the URL differs per env).
+     *
+     * @return list<string>
+     */
+    protected function deployHookHeader(PipelinePlan $plan): array
+    {
+        $environments = implode(', ', array_values($plan->branchEnvironments));
 
         return [
-            ...$notes,
-            "Branch protection: require the {$checks} checks.",
-            'Optional approval gate: add required reviewers to the production environment (Settings → Environments).',
-            "An unset DEPLOY_HOOK skips that environment's deploy with a notice instead of failing the run.",
-            'Deploying from other branches (e.g. main)? Remap boot-up.pipeline.branches and regenerate.',
+            "Configure a DEPLOY_HOOK for EACH environment: {$environments}.",
+            'Add under, in your GitHub repository: Settings → Environments → <environment> → Environment secrets (create each environment first).',
         ];
+    }
+
+    private function branchesLine(PipelinePlan $plan): string
+    {
+        $branches = implode(', ', array_keys($plan->branchEnvironments));
+
+        return "branches: [{$branches}]";
     }
 
     private function workflow(PipelinePlan $plan): string
@@ -88,21 +130,26 @@ final class GitHubActionsGenerator implements PipelineGenerator
             ->comment(
                 'CI/CD pipeline (GitHub Actions)',
                 'Generated by igne-agency/laravel-boot-up — lives at .github/workflows/ci.yml.',
-                "Checks run on pull requests and on pushes to {$this->scripts->branchList($plan)};",
-                "a green push then triggers its environment's deploy hook via",
-                'scripts/ci/deploy-hook.sh (skipped when DEPLOY_HOOK is unset).',
+                ...$plan->host->deploys() ? [
+                    "Checks run on pull requests and on pushes to {$plan->branchList()};",
+                    "a green push then triggers its environment's deploy hook via",
+                    'scripts/ci/deploy-hook.sh (skipped when DEPLOY_HOOK is unset).',
+                ] : [
+                    "Checks run on pull requests and on pushes to {$plan->branchList()}.",
+                    'No deploy jobs were generated — rerun generate:pipeline with a deploy-hook host to add them.',
+                ],
             )
             ->lineWithBreak('name: CI/CD')
             ->lineWithBreak('on:')
             ->indent(2, fn (Lines $yaml) => $yaml
                 ->line('push:')
                 ->indent(2, fn (Lines $yaml) => $yaml
-                    ->line('branches: ['.implode(', ', array_keys($plan->branchEnvironments)).']'))
+                    ->line($this->branchesLine($plan)))
                 ->line('pull_request:'))
             ->lineWithBreak('permissions:')
             ->indent(2, fn (Lines $yaml) => $yaml->line('contents: read'))
             ->blank()
-            ->comment('Superseded pull-request runs are cancelled; push runs never are — they deploy.')
+            ->comment('Superseded pull-request runs are cancelled; push runs never are'.($plan->host->deploys() ? ' — they deploy.' : '.'))
             ->line('concurrency:')
             ->indent(2, fn (Lines $yaml) => $yaml
                 ->line('group: ${{ github.workflow }}-${{ github.ref }}')
@@ -121,30 +168,32 @@ final class GitHubActionsGenerator implements PipelineGenerator
      */
     private function checkJobs(Lines $yaml, PipelinePlan $plan): void
     {
-        if ($plan->pint) {
-            $this->checkJob($yaml, $plan, 'lint', 'Lint', 'Check the code style', 10);
-        }
-
-        $this->checkJob($yaml, $plan, 'build', 'Build', 'Build the frontend and framework caches', 15);
-        $this->checkJob($yaml, $plan, 'test', 'Test', 'Run the test suite', 20);
+        $yaml->each(
+            $this->standardJobs($plan),
+            fn (Lines $yaml, CiJob $job) => $this->checkJob($yaml, $plan, $job),
+        );
     }
 
-    private function checkJob(Lines $yaml, PipelinePlan $plan, string $job, string $name, string $step, int $timeout): void
+    private function checkJob(Lines $yaml, PipelinePlan $plan, CiJob $job): void
     {
-        $yaml->line("{$job}:")
-            ->indent(2, function (Lines $yaml) use ($plan, $job, $name, $step, $timeout): void {
-                $yaml->line("name: {$name}")
+        $yaml->line("{$job->key}:")
+            ->indent(2, function (Lines $yaml) use ($plan, $job): void {
+                $yaml->line("name: {$job->name}")
                     ->line('runs-on: ubuntu-latest')
-                    ->line("timeout-minutes: {$timeout}")
+                    ->line("timeout-minutes: {$job->timeoutMinutes}")
                     ->line('steps:')
-                    ->indent(2, function (Lines $yaml) use ($plan, $job, $step): void {
+                    ->indent(2, function (Lines $yaml) use ($plan, $job): void {
                         $this->setupSteps($yaml, $plan);
 
-                        $yaml->lineWithBreak("- name: {$step}")
+                        $this->extraSteps($yaml, $plan, $job->key, 'before');
+
+                        $yaml->lineWithBreak("- name: {$job->description}")
                             ->indent(2, function (Lines $yaml) use ($plan, $job): void {
                                 $this->composerAuth($yaml, $plan);
-                                $yaml->line("run: bash scripts/ci/{$job}.sh");
+                                $yaml->line("run: bash scripts/ci/{$job->key}.sh");
                             });
+
+                        $this->extraSteps($yaml, $plan, $job->key, 'after');
                     });
             })
             ->blank();
@@ -157,6 +206,10 @@ final class GitHubActionsGenerator implements PipelineGenerator
      */
     private function deployJobs(Lines $yaml, PipelinePlan $plan): void
     {
+        if (! $plan->host->deploys()) {
+            return;
+        }
+
         $needs = $plan->pint ? '[lint, build, test]' : '[build, test]';
 
         foreach ($plan->branchEnvironments as $branch => $environment) {
@@ -173,16 +226,22 @@ final class GitHubActionsGenerator implements PipelineGenerator
                         ->line("group: deployment-{$environment}")
                         ->line('cancel-in-progress: false'))
                     ->line('steps:')
-                    ->indent(2, fn (Lines $yaml) => $yaml
-                        ->line('- uses: actions/checkout@v5')
-                        ->indent(2, fn (Lines $yaml) => $yaml
-                            ->line('with:')
-                            ->indent(2, fn (Lines $yaml) => $yaml->line('sparse-checkout: scripts/ci')))
-                        ->lineWithBreak("- name: Trigger the {$environment} deploy hook")
-                        ->indent(2, fn (Lines $yaml) => $yaml
-                            ->line('env:')
-                            ->indent(2, fn (Lines $yaml) => $yaml->line('DEPLOY_HOOK: ${{ secrets.DEPLOY_HOOK }}'))
-                            ->line("run: bash scripts/ci/deploy-hook.sh {$environment} \"\${DEPLOY_HOOK:-}\""))))
+                    ->indent(2, function (Lines $yaml) use ($plan, $environment): void {
+                        $yaml->line('- uses: actions/checkout@v5')
+                            ->indent(2, fn (Lines $yaml) => $yaml
+                                ->line('with:')
+                                ->indent(2, fn (Lines $yaml) => $yaml->line('sparse-checkout: scripts/ci')));
+
+                        $this->extraSteps($yaml, $plan, 'deploy', 'before');
+
+                        $yaml->lineWithBreak("- name: Trigger the {$environment} deploy hook")
+                            ->indent(2, fn (Lines $yaml) => $yaml
+                                ->line('env:')
+                                ->indent(2, fn (Lines $yaml) => $yaml->line('DEPLOY_HOOK: ${{ secrets.DEPLOY_HOOK }}'))
+                                ->line("run: bash scripts/ci/deploy-hook.sh {$environment} \"\${DEPLOY_HOOK:-}\""));
+
+                        $this->extraSteps($yaml, $plan, 'deploy', 'after');
+                    }))
                 ->blank();
         }
     }
@@ -215,9 +274,31 @@ final class GitHubActionsGenerator implements PipelineGenerator
                     ->line('restore-keys: composer-')));
     }
 
+    /**
+     * Render the project's configured extra steps at one job anchor as GitHub
+     * job steps, with their optional env block.
+     */
+    private function extraSteps(Lines $yaml, PipelinePlan $plan, string $job, string $position): void
+    {
+        foreach ($plan->extensions->stepsFor($this->key(), $job, $position) as $step) {
+            $yaml->lineWithBreak("- name: {$step->name}")
+                ->indent(2, function (Lines $yaml) use ($step): void {
+                    if ($step->env !== []) {
+                        $yaml->line('env:')
+                            ->indent(2, fn (Lines $yaml) => $yaml->each(
+                                $step->env,
+                                fn (Lines $yaml, string $value, string $key) => $yaml->line("{$key}: {$value}"),
+                            ));
+                    }
+
+                    $yaml->line("run: {$step->run}");
+                });
+        }
+    }
+
     private function composerAuth(Lines $yaml, PipelinePlan $plan): void
     {
-        if (! $plan->nova) {
+        if (! $plan->composerAuth) {
             return;
         }
 

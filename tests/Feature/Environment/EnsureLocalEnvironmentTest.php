@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Config\EnvironmentConfig;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Environment\EnvFile;
-use Igne\LaravelBootUp\Environment\EnvironmentConfig;
-use Igne\LaravelBootUp\Environment\EnvironmentException;
+use Igne\LaravelBootUp\Environment\LocalEnvironment;
 use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
+use Igne\LaravelBootUp\Exceptions\EnvironmentException;
 
 beforeEach(function (): void {
     $this->dir = sys_get_temp_dir().'/boot-up-local-env-'.bin2hex(random_bytes(4));
@@ -17,9 +18,7 @@ beforeEach(function (): void {
 
     // Empty server vars so a CI box reached over SSH does not trip the guard.
     $this->step = fn (?EnvironmentConfig $config = null, ?array $serverVars = []): EnsureLocalEnvironment => new EnsureLocalEnvironment(
-        $this->envFile,
-        $config ?? new EnvironmentConfig,
-        $serverVars,
+        new LocalEnvironment($this->envFile, $config ?? new EnvironmentConfig, $serverVars),
     );
 });
 
@@ -30,7 +29,7 @@ afterEach(function (): void {
 test('passes for the allowed environments', function (string $environment): void {
     file_put_contents($this->dir.'/.env', "APP_ENV={$environment}\n");
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     expect(($this->step)()->handle($context, fn ($passed) => $passed))->toBe($context);
 })->with(['local', 'development']);
@@ -38,7 +37,7 @@ test('passes for the allowed environments', function (string $environment): void
 test('a missing APP_ENV key counts as local and passes', function (): void {
     file_put_contents($this->dir.'/.env', "APP_NAME=Laravel\n");
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     expect(($this->step)()->handle($context, fn ($passed) => $passed))->toBe($context);
 });
@@ -46,7 +45,7 @@ test('a missing APP_ENV key counts as local and passes', function (): void {
 test('an empty APP_ENV value counts as local and passes', function (): void {
     file_put_contents($this->dir.'/.env', "APP_ENV=\n");
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     expect(($this->step)()->handle($context, fn ($passed) => $passed))->toBe($context);
 });
@@ -54,14 +53,20 @@ test('an empty APP_ENV value counts as local and passes', function (): void {
 test('throws for a production APP_ENV', function (): void {
     file_put_contents($this->dir.'/.env', "APP_ENV=production\n");
 
-    ($this->step)()->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    ($this->step)()->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 })->throws(EnvironmentException::class, 'production');
+
+test('the rejection names the configured allowed environments', function (): void {
+    file_put_contents($this->dir.'/.env', "APP_ENV=production\n");
+
+    ($this->step)()->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
+})->throws(EnvironmentException::class, '[local, development]');
 
 test('respects a customised allowed environments list', function (): void {
     file_put_contents($this->dir.'/.env', "APP_ENV=staging\n");
 
-    $config = new EnvironmentConfig(allowedEnvironments: ['staging']);
-    $context = new ServeContext(new ServeOptions);
+    $config = new EnvironmentConfig(allowed: ['staging']);
+    $context = new BootContext(new BootOptions);
 
     expect(($this->step)($config)->handle($context, fn ($passed) => $passed))->toBe($context);
 });
@@ -69,7 +74,7 @@ test('respects a customised allowed environments list', function (): void {
 test('throws when running over SSH', function (array $serverVars): void {
     file_put_contents($this->dir.'/.env', "APP_ENV=local\n");
 
-    ($this->step)(null, $serverVars)->handle(new ServeContext(new ServeOptions), fn ($passed) => $passed);
+    ($this->step)(null, $serverVars)->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 })->with([
     'SSH_CLIENT' => [['SSH_CLIENT' => '10.0.0.5 51000 22']],
     'SSH_TTY' => [['SSH_TTY' => '/dev/pts/0']],

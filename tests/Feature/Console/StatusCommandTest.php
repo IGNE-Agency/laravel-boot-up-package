@@ -2,13 +2,11 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Data\ActiveServerRecord;
+use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Process\ProcessLedger;
-use Igne\LaravelBootUp\Process\ProcessRecord;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Servers\ActiveServer;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
-use Igne\LaravelBootUp\Support\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -25,10 +23,7 @@ beforeEach(function (): void {
     app()->singleton(ProcessRunner::class, fn ($app) => new ProcessRunner(
         processes: $app->make(Factory::class),
         ledger: $this->ledger,
-        terminal: new NullTerminal,
-        poller: new Poller,
         logDirectory: $this->workDir.'/logs',
-        runtimeDirectory: $this->workDir.'/runtime',
     ));
 });
 
@@ -40,6 +35,7 @@ test('reports that nothing is running on a clean project', function (): void {
     ProcessFaker::fake();
 
     $this->artisan('app:status')
+        ->expectsOutputToContain('Application status')
         ->expectsOutputToContain('Nothing is running.')
         ->assertSuccessful();
 
@@ -48,20 +44,20 @@ test('reports that nothing is running on a clean project', function (): void {
 
 test('shows the active server, its serve pid state, and every tracked process', function (): void {
     ProcessFaker::fake([
-        'ps -p 99999*' => Process::result('php artisan app:serve laravel'),
+        'ps -p 99999*' => Process::result('php artisan app:up laravel'),
         'kill -0 4242' => Process::result(),
         'ps -p 4242*' => Process::result('php artisan queue:work database'),
         'kill -0 5555' => Process::result(exitCode: 1),
     ]);
 
-    $this->store->remember(new ActiveServer('laravel', true, 99999, date(DATE_ATOM)));
+    $this->store->remember(new ActiveServerRecord('artisan', true, 99999, date(DATE_ATOM)));
     $this->ledger->record(new ProcessRecord(4242, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM)));
     $this->ledger->record(new ProcessRecord(5555, 'assets-watch', 'bun run dev', date(DATE_ATOM)));
 
     $this->artisan('app:status')
         ->expectsOutputToContain('Laravel (php artisan serve) at http://127.0.0.1:8000')
-        ->expectsOutputToContain('The server was started by app:serve.')
-        ->expectsOutputToContain('app:serve is running (pid 99999).')
+        ->expectsOutputToContain('The server was started by php artisan app:up.')
+        ->expectsOutputToContain('php artisan app:up is still running (pid 99999).')
         ->expectsOutputToContain('queue-worker (pid 4242): running — logs: storage/logs/boot-up/queue-worker.log')
         ->expectsOutputToContain('assets-watch (pid 5555): dead — logs: storage/logs/boot-up/assets-watch.log')
         ->expectsOutputToContain('php artisan app:down')
@@ -73,11 +69,11 @@ test('a dead serve pid is reported, not hidden', function (): void {
         'ps -p 99999*' => Process::result(''),
     ]);
 
-    $this->store->remember(new ActiveServer('laravel', false, 99999, date(DATE_ATOM)));
+    $this->store->remember(new ActiveServerRecord('artisan', false, 99999, date(DATE_ATOM)));
 
     $this->artisan('app:status')
-        ->expectsOutputToContain('The server was already running before app:serve.')
-        ->expectsOutputToContain('Its app:serve (pid 99999) is no longer running.')
+        ->expectsOutputToContain('The server was already running before php artisan app:up ran.')
+        ->expectsOutputToContain('The php artisan app:up that started it (pid 99999) has finished.')
         ->assertSuccessful();
 });
 

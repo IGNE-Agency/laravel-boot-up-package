@@ -4,101 +4,119 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootUp\Deploy\DeployConfig;
-use Igne\LaravelBootUp\Deploy\Scripts\DeploymentEnvironment;
+use Igne\LaravelBootUp\Concerns\ResolvesGenerators;
+use Igne\LaravelBootUp\Config\DeployConfig;
+use Igne\LaravelBootUp\Contracts\ScriptGenerator;
+use Igne\LaravelBootUp\Data\Lines;
 use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlanner;
 use Igne\LaravelBootUp\Deploy\Scripts\ForgeScriptGenerator;
 use Igne\LaravelBootUp\Deploy\Scripts\FortrabbitScriptGenerator;
-use Igne\LaravelBootUp\Deploy\Scripts\ScriptGenerator;
-use Illuminate\Console\Command;
+use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
 
-use function Laravel\Prompts\error;
-use function Laravel\Prompts\note;
-use function Laravel\Prompts\select;
-
-final class DeployScriptCommand extends Command
+final class DeployScriptCommand extends BootUpCommand
 {
-    private const BUILT_IN_GENERATORS = [
-        'forge' => ForgeScriptGenerator::class,
+    use ResolvesGenerators;
+
+    private const array BUILT_IN_GENERATORS = [
         'fortrabbit' => FortrabbitScriptGenerator::class,
+        'forge' => ForgeScriptGenerator::class,
     ];
 
-    protected $signature = 'app:deploy-script
-        {platform? : The hosting platform (forge, fortrabbit)}
+    protected $signature = 'generate:deploy-script
+        {platform? : The hosting platform (fortrabbit, forge, or any generator registered in boot-up.deploy.script_generators)}
         {environment? : The target environment (development, staging, production)}
         {--classic : Forge only — generate for classic (non-zero-downtime) sites}
         {--output= : Write the script to a file instead of printing it}';
 
     protected $description = 'Export a deployment script for a hosting platform, based on this package\'s config';
 
-    public function handle(DeploymentPlanner $planner, DeployConfig $config): int
+    public function handle(DeploymentPlanner $planner): int
     {
-        $generators = array_merge(self::BUILT_IN_GENERATORS, $config->scriptGenerators);
-
-        $platform = $this->platform($generators);
-
-        if (! isset($generators[$platform])) {
-            error("Unknown platform [{$platform}]. Available: ".implode(', ', array_keys($generators)));
-
-            return self::FAILURE;
-        }
+        $platform = $this->choose('platform', 'Which platform should the deployment script target?', $this->platformOptions());
 
         /** @var ScriptGenerator $generator */
-        $generator = $this->laravel->make($generators[$platform]);
+        $generator = $this->laravel->make($this->generators()[$platform]);
+
+        $environment = DeploymentEnvironment::from(
+            $this->choose('environment', 'Which environment is this script for?', $this->environmentOptions(), DeploymentEnvironment::Production->value),
+        );
 
         $script = $generator->generate($planner->plan(
-            environment: $this->environment(),
+            environment: $environment,
             zeroDowntime: ! $this->option('classic'),
         ));
 
         $output = $this->option('output');
 
         if (\is_string($output) && $output !== '') {
-            file_put_contents($output, $script);
-            note("Deployment script written to {$output}.");
+            $this->announce('Generating a deployment script...');
+            file_put_contents($output, $script->render());
 
-            return self::SUCCESS;
+            return $this->done("Deployment script written to {$output}.");
         }
 
-        foreach (explode("\n", rtrim($script, "\n")) as $line) {
-            $this->line($line);
-        }
+        $this->printScript($script);
 
         return self::SUCCESS;
     }
 
     /**
-     * @param  array<string, class-string<ScriptGenerator>>  $generators
+     * @return array<string, class-string<ScriptGenerator>>
      */
-    private function platform(array $generators): string
+    private function generators(): array
     {
-        $argument = $this->argument('platform');
-
-        if (\is_string($argument) && $argument !== '') {
-            return strtolower($argument);
-        }
-
-        $options = [];
-
-        foreach ($generators as $key => $class) {
-            $options[$key] = $this->laravel->make($class)->label();
-        }
-
-        return (string) select('Which platform should the deployment script target?', $options);
+        return $this->mergeGenerators(
+            self::BUILT_IN_GENERATORS,
+            $this->laravel->make(DeployConfig::class)->scriptGenerators,
+            'boot-up.deploy.script_generators',
+            ScriptGenerator::class,
+        );
     }
 
-    private function environment(): DeploymentEnvironment
+    /**
+     * @return array<string, string>
+     */
+    private function platformOptions(): array
     {
-        $argument = $this->argument('environment');
+        return $this->generatorLabels($this->generators());
+    }
 
-        if (\is_string($argument) && $argument !== '') {
-            return DeploymentEnvironment::from(strtolower($argument));
+    /**
+     * @return array<string, string>
+     */
+    private function environmentOptions(): array
+    {
+        return collect(DeploymentEnvironment::cases())
+            ->mapWithKeys(fn (DeploymentEnvironment $environment): array => [
+                $environment->value => $environment->value,
+            ])
+            ->all();
+    }
+
+    /**
+     * Print the script to stdout. On an interactive terminal comments are
+     * dimmed and section headings are bold-cyan so it's clear what to copy;
+     * otherwise (redirect, pipe, non-TTY) the raw plain text goes out so
+     * `generate:deploy-script forge production > deploy.sh` stays clean.
+     */
+    private function printScript(Lines $script): void
+    {
+        $lines = $this->output->isDecorated()
+            ? $script->toStyledArray($this->styleLine(...))
+            : explode("\n", rtrim($script->render(), "\n"));
+
+        foreach ($lines as $line) {
+            $this->line($line);
         }
+    }
 
-        return DeploymentEnvironment::from((string) select(
-            label: 'Which environment is this script for?',
-            options: array_column(DeploymentEnvironment::cases(), 'value', 'value'),
-            default: DeploymentEnvironment::PRODUCTION->value,
-        ));
+    private function styleLine(string $kind, string $text): string
+    {
+        return match ($kind) {
+            Lines::KIND_HEADING => terminal()->bold(terminal()->cyan($text)),
+            Lines::KIND_WARNING => terminal()->orange($text),
+            Lines::KIND_COMMENT => terminal()->dim($text),
+            default => $text,
+        };
     }
 }

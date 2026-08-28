@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Environment;
 
-use Igne\LaravelBootUp\Support\AtomicFile;
+use Igne\LaravelBootUp\Exceptions\EnvironmentException;
+use Igne\LaravelBootUp\Services\AtomicFile;
 
 /**
  * Line-preserving reader/writer for the application's .env file.
@@ -92,6 +93,53 @@ final class EnvFile
     }
 
     /**
+     * Remove these keys entirely. A key that is not there is not an error —
+     * the caller wants it gone, and it is.
+     *
+     * @param  list<string>  $keys
+     */
+    public function remove(array $keys): void
+    {
+        if ($keys === [] || ! $this->exists()) {
+            return;
+        }
+
+        $content = (string) file_get_contents($this->path);
+
+        foreach ($keys as $key) {
+            // The line's own newline goes with it, so removing a key does not
+            // leave a blank line where it was.
+            $content = (string) preg_replace($this->keyPattern($key, wholeLine: true), '', $content, 1);
+        }
+
+        $this->write($content);
+    }
+
+    /**
+     * Every key in the file with its value, for callers that have to compare
+     * the whole environment before and after something else wrote to it.
+     *
+     * @return array<string, string>
+     */
+    public function all(): array
+    {
+        if (! $this->exists()) {
+            return [];
+        }
+
+        preg_match_all(
+            '/'.self::linePattern('([A-Za-z_][A-Za-z0-9_.]*)').'/m',
+            (string) file_get_contents($this->path),
+            $matches,
+            PREG_SET_ORDER,
+        );
+
+        return collect($matches)
+            ->mapWithKeys(fn (array $match): array => [$match[1] => $this->unquote(trim($match[2]))])
+            ->all();
+    }
+
+    /**
      * Keys that are absent from the file OR present with an empty value.
      *
      * @param  list<string>  $keys
@@ -99,15 +147,16 @@ final class EnvFile
      */
     public function missing(array $keys): array
     {
-        return array_values(array_filter(
-            $keys,
-            fn (string $key): bool => ($this->get($key) ?? '') === '',
-        ));
+        return collect($keys)
+            ->filter(fn (string $key): bool => ($this->get($key) ?? '') === '')
+            ->values()
+            ->all();
     }
 
     private function apply(string $content, string $key, string $value): string
     {
-        $line = $key.'='.$this->quoteIfNeeded($value);
+        $quoted = $this->quoteIfNeeded($value);
+        $line = "{$key}={$quoted}";
 
         if (preg_match($this->keyPattern($key), $content) === 1) {
             // Callback replacement so values containing $ or \ stay literal.
@@ -123,12 +172,28 @@ final class EnvFile
             $content .= "\n";
         }
 
-        return $content.$line."\n";
+        return "{$content}{$line}\n";
     }
 
-    private function keyPattern(string $key): string
+    private function keyPattern(string $key, bool $wholeLine = false): string
     {
-        return '/^'.preg_quote($key, '/').'[ \t]*=[ \t]*(.*)$/m';
+        $line = self::linePattern(preg_quote($key, '/'));
+
+        return $wholeLine ? "/{$line}\\R?/m" : "/{$line}/m";
+    }
+
+    /**
+     * The one definition of "a KEY= line", shared by the single-key pattern
+     * and all()'s scan so get/set/remove and all() agree by construction —
+     * an indented key that only all() could see would be recorded as changed
+     * by EnvRestorePoint and then never restored, and setMany() on it would
+     * append a duplicate line instead of editing it.
+     *
+     * $key arrives regex-ready: a preg_quote()d literal or a capturing class.
+     */
+    private static function linePattern(string $key): string
+    {
+        return "^[ \\t]*{$key}[ \\t]*=[ \\t]*(.*)$";
     }
 
     private function quoteIfNeeded(string $value): string
@@ -137,7 +202,9 @@ final class EnvFile
             return $value;
         }
 
-        return '"'.str_replace(['\\', '"'], ['\\\\', '\\"'], $value).'"';
+        $escaped = str_replace(['\\', '"'], ['\\\\', '\\"'], $value);
+
+        return "\"{$escaped}\"";
     }
 
     private function unquote(string $value): string

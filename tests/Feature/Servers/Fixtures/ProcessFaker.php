@@ -45,6 +45,16 @@ final class ProcessFaker
         Process::assertDidntRun(fn (PendingProcess $process): bool => Str::is($pattern, self::commandString($process)));
     }
 
+    /**
+     * The command ran AND ran in the given working directory — for commands
+     * whose effect depends on their cwd, such as `herd link`.
+     */
+    public static function assertRanIn(string $pattern, string $path): void
+    {
+        Process::assertRan(fn (PendingProcess $process): bool => Str::is($pattern, self::commandString($process))
+            && $process->path === $path);
+    }
+
     public static function assertRanTimes(string $pattern, int $times): void
     {
         Process::assertRanTimes(

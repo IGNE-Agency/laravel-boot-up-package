@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
-use Igne\LaravelBootUp\Process\ProcessRecord;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\Poller;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -27,12 +27,18 @@ afterEach(function (): void {
  */
 function reaper(ProcessLedger $ledger): ProcessReaper
 {
-    return new ProcessReaper(app(Factory::class), $ledger, new Poller, termGraceSeconds: 0, killGraceSeconds: 0);
+    return new ProcessReaper(
+        app(Factory::class),
+        $ledger,
+        new Poller,
+        termGraceSeconds: 0,
+        killGraceSeconds: 0,
+    );
 }
 
-function workerRecord(int $pid = 4242): ProcessRecord
+function workerRecord(int $pid = 4242, ?string $startedAt = null): ProcessRecord
 {
-    return new ProcessRecord($pid, 'queue-worker', 'php artisan queue:work database', date(DATE_ATOM));
+    return new ProcessRecord($pid, 'queue', 'php artisan queue:work database', $startedAt ?? date(DATE_ATOM));
 }
 
 test('a process that survives KILL stays in the ledger with a warning', function (): void {
@@ -41,8 +47,7 @@ test('a process that survives KILL stays in the ledger with a warning', function
 
     ProcessFaker::fake([
         'kill -0 4242' => Process::result(),
-        'ps -p 4242*' => Process::result('php artisan queue:work database'),
-        'pkill*' => Process::result(),
+        'ps -p 4242*' => Process::result('00:10'),
         'kill -TERM 4242' => Process::result(),
         'kill -KILL 4242' => Process::result(),
     ]);
@@ -52,7 +57,7 @@ test('a process that survives KILL stays in the ledger with a warning', function
     ProcessFaker::assertRan('kill -KILL 4242');
     expect($reaped)->toBeFalse()
         ->and($this->ledger->all())->toHaveCount(1);
-    Prompt::assertStrippedOutputContains('Could not stop queue-worker (pid 4242)');
+    Prompt::assertStrippedOutputContains('Could not stop queue (pid 4242)');
 });
 
 test('a confirmed kill forgets the ledger entry and reports success', function (): void {
@@ -64,13 +69,12 @@ test('a confirmed kill forgets the ledger entry and reports success', function (
         'kill -0 4242' => function () use (&$alive) {
             return Process::result(exitCode: $alive ? 0 : 1);
         },
-        'ps -p 4242*' => fn () => Process::result('php artisan queue:work database'),
-        'pkill -TERM -P 4242' => function () use (&$alive) {
+        'ps -p 4242*' => fn () => Process::result('00:05'),
+        'kill -TERM 4242' => function () use (&$alive) {
             $alive = false;
 
             return Process::result();
         },
-        'kill -TERM 4242' => Process::result(),
     ]);
 
     $reaped = reaper($this->ledger)->reap(workerRecord());
@@ -80,33 +84,70 @@ test('a confirmed kill forgets the ledger entry and reports success', function (
     ProcessFaker::assertDidntRun('*KILL*');
 });
 
-test('a recycled pid running the same binary with other arguments is not signalled', function (): void {
+test('a recycled pid that started after the record is treated as gone, not signalled', function (): void {
     Prompt::fake();
-    $this->ledger->record(workerRecord());
+    $record = workerRecord(startedAt: date(DATE_ATOM, time() - 3600));
+    $this->ledger->record($record);
 
+    // Alive, but only running for 10s — it cannot be the process we recorded
+    // an hour ago, so the pid was reused and ours is gone.
     ProcessFaker::fake([
         'kill -0 4242' => Process::result(),
-        'ps -p 4242*' => Process::result('php /usr/local/bin/some-other-tool --daemon'),
+        'ps -p 4242*' => Process::result('00:10'),
     ]);
 
-    $reaped = reaper($this->ledger)->reap(workerRecord());
+    $reaped = reaper($this->ledger)->reap($record);
 
     ProcessFaker::assertDidntRun('kill -TERM*');
-    ProcessFaker::assertDidntRun('pkill*');
+    ProcessFaker::assertDidntRun('pgrep*');
     expect($reaped)->toBeTrue()
         ->and($this->ledger->isEmpty())->toBeTrue();
 });
 
-test('a rewritten command line that contains the recorded arguments still matches', function (): void {
+test('a live process is identified by its start time, not its command line', function (): void {
     Prompt::fake();
     $this->ledger->record(workerRecord());
 
+    // No command is ever inspected; a recent start time consistent with the
+    // record is enough to treat the pid as ours.
     ProcessFaker::fake([
         'kill -0 4242' => Process::result(),
-        'ps -p 4242*' => Process::result('/opt/homebrew/bin/php artisan queue:work database'),
+        'ps -p 4242*' => Process::result('00:30'),
     ]);
 
     expect(reaper($this->ledger)->isAlive(workerRecord()))->toBeTrue();
+});
+
+test('signals the whole descendant tree, deepest first', function (): void {
+    Prompt::fake();
+    $this->ledger->record(workerRecord());
+
+    $alive = true;
+    ProcessFaker::fake([
+        'pgrep -P 4242' => Process::result("100\n200"),
+        'pgrep -P 100' => Process::result('300'),
+        // TERM on the recorded pid takes the whole snapshotted tree down.
+        'kill -TERM 4242' => function () use (&$alive) {
+            $alive = false;
+
+            return Process::result();
+        },
+        // Liveness is checked across every pid in the snapshot, not just 4242.
+        'kill -0 *' => function () use (&$alive) {
+            return Process::result(exitCode: $alive ? 0 : 1);
+        },
+        'ps -p 4242*' => fn () => Process::result('00:05'),
+    ]);
+
+    $reaped = reaper($this->ledger)->reap(workerRecord());
+
+    expect($reaped)->toBeTrue();
+    ProcessFaker::assertRan('kill -TERM 300');
+    ProcessFaker::assertRan('kill -TERM 100');
+    ProcessFaker::assertRan('kill -TERM 200');
+    ProcessFaker::assertRan('kill -TERM 4242');
+    // The KILL pass never runs because the tree is gone after TERM.
+    ProcessFaker::assertDidntRun('kill -KILL*');
 });
 
 test('prune drops dead entries and keeps live ones without signalling', function (): void {
@@ -117,13 +158,46 @@ test('prune drops dead entries and keeps live ones without signalling', function
     ProcessFaker::fake([
         'kill -0 1000' => Process::result(exitCode: 1),
         'kill -0 2000' => Process::result(),
-        'ps -p 2000*' => Process::result('bun run dev'),
+        'ps -p 2000*' => Process::result('00:10'),
     ]);
 
     reaper($this->ledger)->prune();
 
     ProcessFaker::assertDidntRun('kill -TERM*');
-    ProcessFaker::assertDidntRun('pkill*');
+    ProcessFaker::assertDidntRun('pgrep*');
     expect($this->ledger->all())->toHaveCount(1)
         ->and($this->ledger->all()->first()->pid)->toBe(2000);
+});
+
+test('isRunning is true while any process under the label is alive', function (): void {
+    $this->ledger->record(new ProcessRecord(3001, 'queue', 'php artisan queue:work', date(DATE_ATOM)));
+    ProcessFaker::fake(['kill -0 3001' => Process::result()]);
+
+    expect(reaper($this->ledger)->isRunning('queue'))->toBeTrue();
+});
+
+test('isRunning is false when every process under the label is dead', function (): void {
+    $this->ledger->record(new ProcessRecord(3002, 'queue', 'php artisan queue:work', date(DATE_ATOM)));
+    ProcessFaker::fake(['kill -0 3002' => Process::result(exitCode: 1)]);
+
+    expect(reaper($this->ledger)->isRunning('queue'))->toBeFalse();
+});
+
+test('isRunning is false for a label nothing was ever recorded under', function (): void {
+    ProcessFaker::fake();
+
+    expect(reaper($this->ledger)->isRunning('queue'))->toBeFalse();
+    Process::assertNothingRan();
+});
+
+test('stop reaps every process under the label and leaves the others alone', function (): void {
+    $this->ledger->record(new ProcessRecord(3003, 'queue', 'php artisan queue:work', date(DATE_ATOM)));
+    $this->ledger->record(new ProcessRecord(3004, 'queue', 'php artisan queue:work', date(DATE_ATOM)));
+    $this->ledger->record(new ProcessRecord(3005, 'vite', 'bun run dev', date(DATE_ATOM)));
+    ProcessFaker::fake(['kill -0 *' => Process::result(exitCode: 1)]);
+
+    reaper($this->ledger)->stop('queue');
+
+    expect($this->ledger->withLabel('queue'))->toBeEmpty()
+        ->and($this->ledger->withLabel('vite'))->toHaveCount(1);
 });

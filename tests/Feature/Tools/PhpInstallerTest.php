@@ -2,14 +2,12 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Data\VersionConstraint;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Support\Poller;
 use Igne\LaravelBootUp\Tools\Installers\Homebrew;
 use Igne\LaravelBootUp\Tools\Installers\PhpInstaller;
 use Igne\LaravelBootUp\Tools\ToolInspector;
-use Igne\LaravelBootUp\Tools\VersionConstraint;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 
@@ -27,10 +25,7 @@ function makePhpInstaller(string $workDir): PhpInstaller
     $runner = new ProcessRunner(
         processes: app(Factory::class),
         ledger: new ProcessLedger($workDir.'/processes.json'),
-        terminal: new NullTerminal,
-        poller: new Poller,
         logDirectory: $workDir.'/logs',
-        runtimeDirectory: $workDir.'/runtime',
     );
 
     return new PhpInstaller(new ToolInspector($runner), new Homebrew($runner), $runner);

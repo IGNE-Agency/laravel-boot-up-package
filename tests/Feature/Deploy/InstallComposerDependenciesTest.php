@@ -2,22 +2,26 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Config\ProcessConfig;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Deploy\Composer;
 use Igne\LaravelBootUp\Deploy\Steps\InstallComposerDependencies;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
-use Igne\LaravelBootUp\Support\LockfileConflictDetector;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Services\LockfileConflictDetector;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
 use Laravel\Prompts\Prompt;
 
 beforeEach(function (): void {
     $this->dir = sys_get_temp_dir().'/boot-up-install-composer-'.bin2hex(random_bytes(4));
-    mkdir($this->dir, 0755, true);
+    mkdir($this->dir.'/vendor/composer', 0755, true);
+    // vendor present but stale relative to the lock, so install() runs.
+    touch($this->dir.'/vendor/autoload.php', time() - 100);
+    touch($this->dir.'/vendor/composer/installed.json', time() - 100);
+    touch($this->dir.'/composer.json', time() - 100);
+    touch($this->dir.'/composer.lock', time());
     Prompt::fake();
 });
 
@@ -32,12 +36,11 @@ function installComposerStep(string $dir): InstallComposerDependencies
         new ProcessRunner(
             processes: app(Factory::class),
             ledger: new ProcessLedger($dir.'/processes.json'),
-            terminal: new NullTerminal,
-            poller: new Poller,
             logDirectory: $dir.'/logs',
-            runtimeDirectory: $dir.'/runtime',
         ),
         new LockfileConflictDetector,
+        new ProcessConfig,
+        $dir,
     ));
 }
 
@@ -49,7 +52,7 @@ function installComposerCommandOf(object $process): string
 test('installs composer dependencies and continues the pipeline', function (): void {
     Process::fake(['*' => Process::result()]);
 
-    $context = new ServeContext(new ServeOptions);
+    $context = new BootContext(new BootOptions);
 
     $result = installComposerStep($this->dir)->handle($context, fn ($passed) => $passed);
 
@@ -60,7 +63,7 @@ test('installs composer dependencies and continues the pipeline', function (): v
 test('the --update serve option switches the step to composer update', function (): void {
     Process::fake(['*' => Process::result()]);
 
-    $context = new ServeContext(new ServeOptions(update: true));
+    $context = new BootContext(new BootOptions(update: true));
 
     installComposerStep($this->dir)->handle($context, fn ($passed) => $passed);
 

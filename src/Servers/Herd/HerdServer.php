@@ -4,28 +4,26 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Herd;
 
+use Igne\LaravelBootUp\Config\HerdConfig;
+use Igne\LaravelBootUp\Contracts\RequiresTools;
+use Igne\LaravelBootUp\Contracts\RewritesCommands;
+use Igne\LaravelBootUp\Contracts\Server;
+use Igne\LaravelBootUp\Contracts\WarnsBeforeStop;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Data\CommandRewrites;
+use Igne\LaravelBootUp\Enums\Tool;
+use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Servers\CommandRewrites;
-use Igne\LaravelBootUp\Servers\Server;
-use Igne\LaravelBootUp\Servers\ServerException;
-use Igne\LaravelBootUp\Servers\ServersConfig;
-use Igne\LaravelBootUp\Tools\Tool;
 
-use function Laravel\Prompts\confirm;
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\text;
-use function Laravel\Prompts\warning;
-
-final class HerdServer implements Server
+final class HerdServer implements RequiresTools, RewritesCommands, Server, WarnsBeforeStop
 {
     public function __construct(
         private readonly ProcessRunner $runner,
         private readonly HerdServices $services,
         private readonly HerdSites $sites,
-        private readonly ServersConfig $config,
-        private readonly ?string $projectPath = null,
+        private readonly HerdConfig $config,
+        private readonly string $projectPath,
     ) {}
 
     public function key(): string
@@ -38,9 +36,12 @@ final class HerdServer implements Server
         return 'Laravel Herd';
     }
 
+    /**
+     * @return list<Tool>
+     */
     public function requiredTools(): array
     {
-        return [Tool::HERD];
+        return [Tool::Herd];
     }
 
     public function commandRewrites(): CommandRewrites
@@ -51,50 +52,61 @@ final class HerdServer implements Server
         );
     }
 
-    public function providesDatabase(): bool
-    {
-        return false;
-    }
-
-    public function databaseReachableFromHost(): bool
-    {
-        return true;
-    }
-
-    public function stopImpact(): ?string
+    public function stopImpact(): string
     {
         return '`herd stop` halts ALL Herd sites on this machine, not just this project.';
     }
 
-    public function start(ServeContext $context): void
+    public function start(BootContext $context): void
     {
-        $project = $this->project();
+        $project = $this->projectPath;
 
         $linked = $this->sites->nameFor($project);
 
         if ($linked !== null) {
-            info("Project already linked to Herd as https://{$linked}.test.");
-            $this->secure($linked);
+            // An already-linked site is already secured — re-running `herd
+            // secure` on every serve regenerates the cert and reloads Nginx,
+            // which briefly refuses connections right as the reachability probe
+            // starts and made the boot wrongly report Herd as "not answering".
+            terminal()->note("Project already linked to Laravel Herd as https://{$linked}.test.");
+        } else {
+            $name = $this->claimSiteName($project);
 
-            return;
+            $this->runOrFail(['herd', 'link', $name]);
+            terminal()->success("Project linked to Laravel Herd as https://{$name}.test.");
+
+            $this->secure($name);
         }
 
-        $name = $this->claimSiteName($project);
-
-        $this->runOrFail(['herd', 'link', $name]);
-        info("Project linked to Herd as https://{$name}.test.");
-
-        $this->secure($name);
+        $this->ensureServing();
     }
 
     public function isRunning(): bool
     {
-        return $this->services->isHealthy();
+        return $this->services->isRunning();
+    }
+
+    /**
+     * A linked, secured site is not a working one: Herd's daemons must be up
+     * and Nginx must actually answer. Boot Herd if its processes are down,
+     * then wait for the site to respond (restarting an unhealthy Nginx along
+     * the way) before the boot reports the server ready.
+     */
+    private function ensureServing(): void
+    {
+        if (! $this->services->isRunning()) {
+            terminal()->info('Starting Herd services...');
+            $this->services->boot();
+        }
+
+        terminal()->info('Verifying Laravel Herd is reachable...');
+        $this->services->ensureReachable($this->url());
+        terminal()->success("Laravel Herd is serving {$this->url()}.");
     }
 
     public function stop(): void
     {
-        $this->runner->run(ShellCommand::make('herd stop'));
+        $this->runner->run(CommandLine::make('herd stop'));
     }
 
     /**
@@ -105,14 +117,10 @@ final class HerdServer implements Server
      */
     public function url(): string
     {
-        $project = $this->project();
+        $project = $this->projectPath;
+        $name = $this->sites->nameFor($project) ?? basename($project);
 
-        return 'https://'.($this->sites->nameFor($project) ?? basename($project)).'.test';
-    }
-
-    private function project(): string
-    {
-        return $this->projectPath ?? (getcwd() ?: '');
+        return "https://{$name}.test";
     }
 
     /**
@@ -124,7 +132,7 @@ final class HerdServer implements Server
      */
     private function claimSiteName(string $project): string
     {
-        $name = $this->config->herdSite ?? $this->promptForName($project);
+        $name = $this->config->site ?? $this->promptForName($project);
 
         while (! $this->claim($name)) {
             $name = $this->promptForName($project);
@@ -142,13 +150,13 @@ final class HerdServer implements Server
         }
 
         if (! is_dir($target)) {
-            warning("Herd linked [{$name}] to {$target}, which no longer exists — relinking to this project.");
+            terminal()->warning("Herd linked [{$name}] to {$target}, which no longer exists — relinking to this project.");
             $this->runOrFail(['herd', 'unlink', $name]);
 
             return true;
         }
 
-        if (! confirm("Herd already links [{$name}] to {$target}. Replace it with this project?", default: false)) {
+        if (! terminal()->confirm("Herd already links [{$name}] to {$target}. Replace it with this project?", default: false)) {
             return false;
         }
 
@@ -159,7 +167,7 @@ final class HerdServer implements Server
 
     private function promptForName(string $project): string
     {
-        return (string) text(
+        return (string) terminal()->text(
             label: 'What should the Herd site be called?',
             default: basename($project),
             hint: 'The site is served at https://{name}.test.',
@@ -172,21 +180,25 @@ final class HerdServer implements Server
     private function secure(string $name): void
     {
         $this->runOrFail(['herd', 'secure', $name]);
-        info('HTTPS certificate configured.');
+        terminal()->success('HTTPS certificate configured.');
     }
 
     /**
+     * Run in the project directory, not the process's cwd: `herd link` links
+     * whatever directory it runs in, so this is what makes the injected
+     * project path hold when artisan is invoked from elsewhere.
+     *
      * @param  list<string>  $command
      */
     private function runOrFail(array $command): void
     {
-        $result = $this->runner->runSilently(ShellCommand::make($command));
+        $result = $this->runner->runSilently(CommandLine::make($command)->inDirectory($this->projectPath));
 
         if (! $result->successful()) {
-            throw ServerException::startFailed(
-                $this->label(),
-                '`'.implode(' ', $command).'` failed: '.trim($result->errorOutput() !== '' ? $result->errorOutput() : $result->output()),
-            );
+            $line = implode(' ', $command);
+            $output = trim($result->errorOutput() !== '' ? $result->errorOutput() : $result->output());
+
+            throw ServerException::startFailed($this->label(), "`{$line}` failed: {$output}");
         }
     }
 }

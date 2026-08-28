@@ -2,30 +2,36 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Deploy\ProjectCommand;
-use Igne\LaravelBootUp\Deploy\Scripts\DeploymentEnvironment;
-use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlan;
+use Igne\LaravelBootUp\Data\DeploymentPlan;
+use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Deploy\Scripts\FortrabbitScriptGenerator;
-use Igne\LaravelBootUp\Frontend\PackageManager;
+use Igne\LaravelBootUp\Enums\BuiltInProcess;
+use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
+use Igne\LaravelBootUp\Enums\PackageManager;
 
 function fortrabbitPlan(array $overrides = []): DeploymentPlan
 {
     $defaults = [
-        'environment' => DeploymentEnvironment::PRODUCTION,
+        'environment' => DeploymentEnvironment::Production,
         'migrate' => true,
         'finalize' => ['storage:link'],
         'beforeMigrations' => [],
         'afterMigrations' => [],
         'frontend' => true,
-        'packageManager' => PackageManager::PNPM,
-        'restartQueues' => true,
+        'packageManager' => PackageManager::Pnpm,
+        'restarts' => [BuiltInProcess::Queue],
     ];
 
     return new DeploymentPlan(...array_merge($defaults, $overrides));
 }
 
+function fortrabbitScript(array $overrides = []): string
+{
+    return (new FortrabbitScriptGenerator)->generate(fortrabbitPlan($overrides))->render();
+}
+
 test('renders build and post-deploy sections for production with pnpm', function (): void {
-    $script = (new FortrabbitScriptGenerator)->generate(fortrabbitPlan());
+    $script = fortrabbitScript();
 
     expect($script)->toBe(<<<'SCRIPT'
 # Fortrabbit deployment commands (production)
@@ -48,19 +54,38 @@ php artisan queue:restart
 SCRIPT);
 });
 
+test('renders bound commands for all four phases in the canonical order', function (): void {
+    $script = fortrabbitScript([
+        'beforeDeploy' => [DeployTask::artisan('pennant:purge')],
+        'beforeMigrations' => [DeployTask::artisan('wayfinder:generate')],
+        'afterMigrations' => [DeployTask::artisan('model:typer')],
+        'afterDeploy' => [DeployTask::artisan('cache:warm')],
+    ]);
+
+    expect($script)
+        ->toContain('php artisan pennant:purge')
+        ->toContain('php artisan wayfinder:generate')
+        ->toContain('php artisan model:typer')
+        ->toContain('php artisan cache:warm');
+
+    // before-deploy runs before migrations; after-deploy runs after finalize.
+    expect(strpos($script, 'pennant:purge'))->toBeLessThan(strpos($script, 'migrate --force'))
+        ->and(strpos($script, 'cache:warm'))->toBeGreaterThan(strpos($script, 'storage:link'));
+});
+
 test('npm needs no global install line, non-npm managers do', function (): void {
-    $npm = (new FortrabbitScriptGenerator)->generate(fortrabbitPlan(['packageManager' => PackageManager::NPM]));
-    $bun = (new FortrabbitScriptGenerator)->generate(fortrabbitPlan(['packageManager' => PackageManager::BUN]));
+    $npm = fortrabbitScript(['packageManager' => PackageManager::Npm]);
+    $bun = fortrabbitScript(['packageManager' => PackageManager::Bun]);
 
     expect($npm)->not->toContain('npm i -g')
         ->and($bun)->toContain('npm i -g bun');
 });
 
 test('project commands wrap the migrate line in the post-deploy section', function (): void {
-    $script = (new FortrabbitScriptGenerator)->generate(fortrabbitPlan([
-        'beforeMigrations' => [ProjectCommand::artisan('wayfinder:generate', 'Generating routes...')],
-        'afterMigrations' => [ProjectCommand::composer('dump-autoload --optimize')],
-    ]));
+    $script = fortrabbitScript([
+        'beforeMigrations' => [DeployTask::artisan('wayfinder:generate', 'Generating routes...')],
+        'afterMigrations' => [DeployTask::composer('dump-autoload --optimize')],
+    ]);
 
     $before = strpos($script, 'php artisan wayfinder:generate');
     $migrate = strpos($script, 'php artisan migrate --force');
@@ -72,13 +97,13 @@ test('project commands wrap the migrate line in the post-deploy section', functi
 });
 
 test('development drops no-dev and optimize; toggles drop their lines', function (): void {
-    $script = (new FortrabbitScriptGenerator)->generate(fortrabbitPlan([
-        'environment' => DeploymentEnvironment::DEVELOPMENT,
+    $script = fortrabbitScript([
+        'environment' => DeploymentEnvironment::Development,
         'migrate' => false,
         'frontend' => false,
-        'restartQueues' => false,
+        'restarts' => [],
         'finalize' => [],
-    ]));
+    ]);
 
     expect($script)->toContain('composer install --prefer-dist')
         ->and($script)->not->toContain('--no-dev')
@@ -87,4 +112,16 @@ test('development drops no-dev and optimize; toggles drop their lines', function
         ->and($script)->not->toContain('run build')
         ->and($script)->not->toContain('queue:restart')
         ->and($script)->not->toContain('storage:link');
+});
+
+test('a Horizon project terminates Horizon instead of restarting the queue', function (): void {
+    $script = fortrabbitScript(['restarts' => [BuiltInProcess::Horizon]]);
+
+    expect($script)->toContain('horizon:terminate')->not->toContain('queue:restart');
+});
+
+test('a Reverb project restarts it after the queue', function (): void {
+    $script = fortrabbitScript(['restarts' => [BuiltInProcess::Queue, BuiltInProcess::Reverb]]);
+
+    expect(strpos($script, 'queue:restart'))->toBeLessThan(strpos($script, 'reverb:restart'));
 });

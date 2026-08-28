@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-use Igne\LaravelBootUp\Tools\InstallsTool;
-use Igne\LaravelBootUp\Tools\ToolException;
+use Igne\LaravelBootUp\Config\ToolsConfig;
+use Igne\LaravelBootUp\Contracts\InstallsTool;
+use Igne\LaravelBootUp\Data\VersionConstraint;
+use Igne\LaravelBootUp\Enums\ToolStatus;
+use Igne\LaravelBootUp\Exceptions\ToolException;
 use Igne\LaravelBootUp\Tools\ToolManager;
-use Igne\LaravelBootUp\Tools\ToolsConfig;
-use Igne\LaravelBootUp\Tools\VersionConstraint;
 use Laravel\Prompts\Key;
 use Laravel\Prompts\Prompt;
 
@@ -88,10 +89,11 @@ test('installs a missing tool when auto-install is enabled', function (): void {
     Prompt::fake();
     $tool = toolManagerDouble(installed: false);
 
-    toolManagerWith()->ensure($tool, VersionConstraint::wildcard());
+    $outcome = toolManagerWith()->ensure($tool, VersionConstraint::wildcard());
 
     expect($tool->installs)->toBe(1)
-        ->and($tool->updates)->toBe(0);
+        ->and($tool->updates)->toBe(0)
+        ->and($outcome->status)->toBe(ToolStatus::Installed);
     Prompt::assertStrippedOutputContains('Double not found. Installing...');
 });
 
@@ -118,21 +120,24 @@ test('presence alone satisfies a wildcard constraint', function (): void {
     Prompt::fake();
     $tool = toolManagerDouble(installed: true, version: '9.9.9');
 
-    toolManagerWith()->ensure($tool, VersionConstraint::wildcard());
+    $outcome = toolManagerWith()->ensure($tool, VersionConstraint::wildcard());
 
     expect($tool->installs)->toBe(0)
         ->and($tool->updates)->toBe(0)
-        ->and($tool->versionReads)->toBe(0);
-    Prompt::assertStrippedOutputContains('Double is installed.');
+        ->and($tool->versionReads)->toBe(0)
+        ->and($outcome->status)->toBe(ToolStatus::Satisfied)
+        ->and($outcome->label)->toBe('Double');
+    Prompt::assertStrippedOutputDoesntContain('Double is installed.');
 });
 
 test('warns and continues when the installed version cannot be read', function (): void {
     Prompt::fake();
     $tool = toolManagerDouble(installed: true, version: null);
 
-    toolManagerWith()->ensure($tool, VersionConstraint::of('^8.3'));
+    $outcome = toolManagerWith()->ensure($tool, VersionConstraint::of('^8.3'));
 
-    expect($tool->updates)->toBe(0);
+    expect($tool->updates)->toBe(0)
+        ->and($outcome->status)->toBe(ToolStatus::Unverified);
     Prompt::assertStrippedOutputContains('Could not determine the installed Double version');
 });
 
@@ -140,21 +145,25 @@ test('a satisfied constraint requires no action', function (): void {
     Prompt::fake();
     $tool = toolManagerDouble(installed: true, version: '8.3.5');
 
-    toolManagerWith()->ensure($tool, VersionConstraint::of('^8.3'));
+    $outcome = toolManagerWith()->ensure($tool, VersionConstraint::of('^8.3'));
 
     expect($tool->installs)->toBe(0)
-        ->and($tool->updates)->toBe(0);
-    Prompt::assertStrippedOutputContains("Double 8.3.5 satisfies '^8.3'.");
+        ->and($tool->updates)->toBe(0)
+        ->and($outcome->status)->toBe(ToolStatus::Satisfied)
+        ->and($outcome->version)->toBe('8.3.5');
+    Prompt::assertStrippedOutputDoesntContain('satisfies');
 });
 
 test('updates an outdated tool and reports the version it reached', function (): void {
     Prompt::fake();
     $tool = toolManagerDouble(installed: true, version: '8.2.0', versionAfterUpdate: '8.3.7');
 
-    toolManagerWith()->ensure($tool, VersionConstraint::of('^8.3'));
+    $outcome = toolManagerWith()->ensure($tool, VersionConstraint::of('^8.3'));
 
     expect($tool->updates)->toBe(1)
-        ->and($tool->installs)->toBe(0);
+        ->and($tool->installs)->toBe(0)
+        ->and($outcome->status)->toBe(ToolStatus::Updated)
+        ->and($outcome->version)->toBe('8.3.7');
     Prompt::assertStrippedOutputContains('Updating');
     Prompt::assertStrippedOutputContains('Double updated to 8.3.7.');
 });
@@ -163,9 +172,10 @@ test('an update that cannot reach the constraint warns instead of pretending suc
     Prompt::fake();
     $tool = toolManagerDouble(installed: true, version: '8.2.0', versionAfterUpdate: '8.2.1');
 
-    toolManagerWith()->ensure($tool, VersionConstraint::of('^8.3'));
+    $outcome = toolManagerWith()->ensure($tool, VersionConstraint::of('^8.3'));
 
-    expect($tool->updates)->toBe(1);
+    expect($tool->updates)->toBe(1)
+        ->and($outcome->status)->toBe(ToolStatus::Unverified);
     Prompt::assertStrippedOutputContains("Double is 8.2.1 after updating, which still does not satisfy '^8.3'.");
 });
 
@@ -173,9 +183,10 @@ test('skips updating tools that update themselves', function (): void {
     Prompt::fake();
     $tool = toolManagerDouble(installed: true, version: '8.2.0', updatesAutomatically: true);
 
-    toolManagerWith()->ensure($tool, VersionConstraint::of('^8.3'));
+    $outcome = toolManagerWith()->ensure($tool, VersionConstraint::of('^8.3'));
 
-    expect($tool->updates)->toBe(0);
+    expect($tool->updates)->toBe(0)
+        ->and($outcome->status)->toBe(ToolStatus::SkippedSelfUpdating);
     Prompt::assertStrippedOutputContains('updates itself');
 });
 
@@ -183,8 +194,9 @@ test('warns without updating when auto-update is disabled', function (): void {
     Prompt::fake();
     $tool = toolManagerDouble(installed: true, version: '8.2.0');
 
-    toolManagerWith(autoUpdate: false)->ensure($tool, VersionConstraint::of('^8.3'));
+    $outcome = toolManagerWith(autoUpdate: false)->ensure($tool, VersionConstraint::of('^8.3'));
 
-    expect($tool->updates)->toBe(0);
+    expect($tool->updates)->toBe(0)
+        ->and($outcome->status)->toBe(ToolStatus::Unverified);
     Prompt::assertStrippedOutputContains('boot-up.tools.auto_update');
 });

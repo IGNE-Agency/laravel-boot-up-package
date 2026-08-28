@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Environment\EnvFile;
-use Igne\LaravelBootUp\Environment\EnvironmentException;
+use Igne\LaravelBootUp\Exceptions\EnvironmentException;
 
 beforeEach(function (): void {
     $this->dir = sys_get_temp_dir().'/boot-up-envfile-'.bin2hex(random_bytes(4));
@@ -192,6 +192,63 @@ test('missing reports keys that are absent or have an empty value', function ():
         ->toBe(['DB_PASSWORD', 'DB_USERNAME', 'DB_DATABASE']);
 });
 
+test('all reads every key with its value, unquoted', function (): void {
+    file_put_contents($this->envPath, implode(PHP_EOL, [
+        '# A comment',
+        'APP_NAME="My App"',
+        '',
+        'DB_HOST=127.0.0.1',
+        'DB_PASSWORD=',
+        'not a key at all',
+        '',
+    ]));
+
+    expect($this->envFile->all())->toBe([
+        'APP_NAME' => 'My App',
+        'DB_HOST' => '127.0.0.1',
+        'DB_PASSWORD' => '',
+    ]);
+});
+
+test('all is empty without a file', function (): void {
+    expect($this->envFile->all())->toBe([]);
+});
+
+test('remove takes the line out, and its newline with it', function (): void {
+    file_put_contents($this->envPath, implode(PHP_EOL, [
+        '# Database',
+        'DB_HOST=127.0.0.1',
+        'DB_USERNAME=root',
+        'DB_PASSWORD=secret',
+        '',
+    ]));
+
+    $this->envFile->remove(['DB_USERNAME', 'DB_NOT_THERE']);
+
+    expect((string) file_get_contents($this->envPath))->toBe(implode(PHP_EOL, [
+        '# Database',
+        'DB_HOST=127.0.0.1',
+        'DB_PASSWORD=secret',
+        '',
+    ]))
+        ->and($this->envFile->get('DB_USERNAME'))->toBeNull();
+});
+
+test('remove leaves keys that only share a prefix alone', function (): void {
+    file_put_contents($this->envPath, "DB_HOST=127.0.0.1\nDB_HOST_READ=10.0.0.1\n");
+
+    $this->envFile->remove(['DB_HOST']);
+
+    expect($this->envFile->get('DB_HOST'))->toBeNull()
+        ->and($this->envFile->get('DB_HOST_READ'))->toBe('10.0.0.1');
+});
+
+test('remove without a file is a no-op, not a failure', function (): void {
+    $this->envFile->remove(['DB_HOST']);
+
+    expect($this->envFile->exists())->toBeFalse();
+});
+
 test('writes are atomic and leave no temporary files behind', function (): void {
     file_put_contents($this->envPath, "APP_ENV=local\n");
 
@@ -201,4 +258,22 @@ test('writes are atomic and leave no temporary files behind', function (): void 
     $files = array_values(array_diff(scandir($this->dir) ?: [], ['.', '..']));
 
     expect($files)->toBe(['.env']);
+});
+
+test('an indented key is one key to get, set, remove and all alike', function (): void {
+    file_put_contents($this->envPath, "APP_ENV=local\n  DB_HOST=mysql\n");
+
+    expect($this->envFile->get('DB_HOST'))->toBe('mysql')
+        ->and($this->envFile->all())->toBe(['APP_ENV' => 'local', 'DB_HOST' => 'mysql']);
+
+    // Editing must replace the indented line, never append a duplicate.
+    $this->envFile->set('DB_HOST', '127.0.0.1');
+
+    expect(substr_count((string) file_get_contents($this->envPath), 'DB_HOST'))->toBe(1)
+        ->and($this->envFile->get('DB_HOST'))->toBe('127.0.0.1');
+
+    $this->envFile->remove(['DB_HOST']);
+
+    expect($this->envFile->get('DB_HOST'))->toBeNull()
+        ->and($this->envFile->all())->toBe(['APP_ENV' => 'local']);
 });

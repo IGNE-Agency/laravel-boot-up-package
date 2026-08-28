@@ -1,6 +1,6 @@
 {
   "name": "igne-agency/laravel-boot-up",
-  "description": "Boot a Laravel project on any machine with one command: app:serve installs missing tools (PHP, Node, Composer, Herd, Docker), creates .env, sets up the database, runs migrations, builds assets, starts a queue worker and serves via Herd, Sail or artisan serve; app:down cleanly stops everything it started. Also exports deployment scripts for Laravel Forge and fortrabbit (app:deploy-script) and generates CI/CD pipelines with linting, tests and webhook deploys for GitHub Actions and Bitbucket Pipelines (app:pipeline). Development only - not for production use.",
+  "description": "Boot a Laravel project on any machine with one command: php artisan app:up installs missing tools (PHP, Node, Composer, Herd, Docker), creates .env, sets up the database, runs migrations, builds assets and serves via Herd, Sail or artisan serve, then runs Laravel's own dev terminal and cleanly stops everything it started when you quit it; app:down does the same on demand. Also exports deployment scripts for Laravel Forge and fortrabbit (generate:deploy-script) and generates CI/CD pipelines with linting, tests and webhook deploys for GitHub Actions and Bitbucket Pipelines (generate:pipeline). Development only - not for production use.",
   "type": "library",
   "license": "MIT",
   "keywords": [
@@ -28,14 +28,11 @@
   "require": {
     "php": "^8.3",
     "composer/semver": "^3.4",
-    "illuminate/console": "^13.0",
-    "illuminate/database": "^13.0",
-    "illuminate/pipeline": "^13.0",
-    "illuminate/process": "^13.0",
-    "illuminate/support": "^13.0",
+    "laravel/framework": "^13.25",
     "laravel/prompts": "^0.3.21"
   },
   "require-dev": {
+    "larastan/larastan": "^3.10",
     "laravel/pint": "^1.27",
     "mockery/mockery": "^1.6",
     "orchestra/testbench": "^11.0",
@@ -45,7 +42,10 @@
   "autoload": {
     "psr-4": {
       "Igne\\LaravelBootUp\\": "src/"
-    }
+    },
+    "files": [
+      "src/helpers.php"
+    ]
   },
   "autoload-dev": {
     "psr-4": {
@@ -55,11 +55,12 @@
   "extra": {
     "laravel": {
       "providers": [
-        "Igne\\LaravelBootUp\\BootUpServiceProvider"
+        "Igne\\LaravelBootUp\\Providers\\BootUpServiceProvider"
       ]
     }
   },
   "scripts": {
+    "analyse": "phpstan analyse --memory-limit=512M",
     "test": "pest",
     "test-coverage": "pest --coverage"
   },

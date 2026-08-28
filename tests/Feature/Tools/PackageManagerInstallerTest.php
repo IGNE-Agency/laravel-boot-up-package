@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Data\VersionConstraint;
+use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Igne\LaravelBootUp\Tools\Installers\PackageManagerInstaller;
-use Igne\LaravelBootUp\Tools\Tool;
-use Igne\LaravelBootUp\Tools\VersionConstraint;
 
 function packageManagerInstaller(Tool $tool): PackageManagerInstaller
 {
@@ -21,16 +21,16 @@ test('brew-based managers install and upgrade via Homebrew', function (Tool $too
     packageManagerInstaller($tool)->update(VersionConstraint::wildcard());
     ProcessFaker::assertRan("brew upgrade {$tool->value}");
 })->with([
-    'bun' => [Tool::BUN],
-    'yarn' => [Tool::YARN],
-    'pnpm' => [Tool::PNPM],
+    'bun' => [Tool::Bun],
+    'yarn' => [Tool::Yarn],
+    'pnpm' => [Tool::Pnpm],
 ]);
 
 test('npm installs and updates itself through npm', function (): void {
     ProcessFaker::fake();
 
-    packageManagerInstaller(Tool::NPM)->install(VersionConstraint::wildcard());
-    packageManagerInstaller(Tool::NPM)->update(VersionConstraint::wildcard());
+    packageManagerInstaller(Tool::Npm)->install(VersionConstraint::wildcard());
+    packageManagerInstaller(Tool::Npm)->update(VersionConstraint::wildcard());
 
     ProcessFaker::assertRanTimes('npm install -g npm', 2);
     ProcessFaker::assertDidntRun('brew*');

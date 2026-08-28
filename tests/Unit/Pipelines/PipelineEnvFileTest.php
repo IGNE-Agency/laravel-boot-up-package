@@ -44,3 +44,17 @@ test('random keys decode to 32 bytes and differ per call', function (): void {
         ->and(strlen((string) base64_decode(substr($key, 7), true)))->toBe(32)
         ->and(PipelineEnvFile::randomKey())->not->toBe($key);
 });
+
+test('currentAppKey reads the APP_KEY out of existing file contents', function (): void {
+    $key = (new PipelineEnvFile)->currentAppKey("APP_ENV=testing\nAPP_KEY=base64:existing\nAPP_DEBUG=true\n");
+
+    expect($key)->toBe('base64:existing');
+});
+
+test('currentAppKey is null when the key is absent or present but empty', function (): void {
+    $env = new PipelineEnvFile;
+
+    expect($env->currentAppKey("APP_ENV=testing\n"))->toBeNull()
+        ->and($env->currentAppKey("APP_KEY=\n"))->toBeNull()
+        ->and($env->currentAppKey('APP_KEY='))->toBeNull();
+});

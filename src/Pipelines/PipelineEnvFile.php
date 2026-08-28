@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
-use Igne\LaravelBootUp\Support\Lines;
+use Igne\LaravelBootUp\Data\Lines;
 
 /**
  * Renders a fresh .env.pipeline: the committed CI test environment the
@@ -47,5 +47,21 @@ final class PipelineEnvFile
     public static function randomKey(): string
     {
         return 'base64:'.base64_encode(random_bytes(32));
+    }
+
+    /**
+     * The APP_KEY found in existing .env.pipeline contents, or null when the
+     * key is absent or present but empty — so callers can preserve a set key
+     * across regeneration and only mint a fresh one when there isn't one.
+     */
+    public function currentAppKey(string $contents): ?string
+    {
+        if (preg_match('/^APP_KEY[ \t]*=[ \t]*(.*)$/m', $contents, $matches) !== 1) {
+            return null;
+        }
+
+        $value = trim($matches[1]);
+
+        return $value === '' ? null : $value;
     }
 }

@@ -1,0 +1,31 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    # tests/ is deliberately absent: Pest binds $this inside test closures to
+    # the TestCase at runtime, which statically reads as Pest's TestCall, and
+    # that one blind spot accounts for over a thousand findings on its own.
+    paths:
+        - src
+        - config
+
+    level: 6
+
+    treatPhpDocTypesAsCertain: false
+
+    ignoreErrors:
+        # This package's config file IS a config file; the rule looks for the
+        # config/ directory of an application, which a package does not have.
+        - identifier: larastan.noEnvCallsOutsideOfConfig
+          path: config/boot-up.php
+
+        # Illuminate\Process\Factory::__call() forwards to newPendingProcess(),
+        # so command() exists at runtime but not on the class.
+        - identifier: method.notFound
+          message: '#Factory::command\(\)#'
+
+        # DevCommand::toArray() returns a priority, but the framework's
+        # @phpstan-type DevCommandArray does not list it.
+        - identifier: offsetAccess.notFound
+          message: "#Offset 'priority' does not exist#"
+          path: src/Boot/DevProcessRegistrar.php

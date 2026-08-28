@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Process;
 
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Process\Factory;
 
-use function Laravel\Prompts\warning;
-
 /**
- * Terminates ledger-tracked processes: TERM (including children), a grace
- * period, then KILL. Guards against PID reuse by comparing the running
- * command against the recorded snapshot before signalling.
+ * Terminates ledger-tracked processes: TERM the whole descendant tree,
+ * a grace period, then KILL. Guards against PID reuse by comparing the
+ * running process's start time against the recorded snapshot before
+ * signalling.
  */
 final class ProcessReaper
 {
@@ -30,12 +30,13 @@ final class ProcessReaper
             return false;
         }
 
-        $running = trim($this->processes
-            ->command(['ps', '-p', (string) $record->pid, '-o', 'command='])
-            ->run()
-            ->output());
-
-        return $running !== '' && $this->commandsMatch($running, $record->command);
+        // The PID exists. Guard against PID reuse (after a reboot, or after
+        // our process exited and the OS handed the number to something else):
+        // a reused PID necessarily started AFTER we recorded ours, so a live
+        // process that started later than the record is not ours. When the
+        // start time cannot be read we err toward "alive" so a still-running
+        // process is never silently abandoned.
+        return $this->startedAfterRecord($record) !== true;
     }
 
     /**
@@ -46,38 +47,72 @@ final class ProcessReaper
     public function reap(ProcessRecord $record): bool
     {
         if (! $this->isAlive($record)) {
-            $this->ledger->forget($record->pid);
-
-            return true;
+            return $this->settle($record);
         }
 
-        $this->signalTree($record->pid, 'TERM');
+        // Snapshot the whole tree ONCE, while everything is still alive and
+        // parented, and reuse that exact target list for both signal passes.
+        // Recomputing it after TERM would find nothing (the parent is gone and
+        // its children have reparented to init), letting a TERM-surviving
+        // descendant slip through the KILL pass.
+        $targets = [...$this->descendants($record->pid), $record->pid];
 
-        $terminated = $this->poller->until(
-            fn (): bool => ! $this->isAlive($record),
-            timeoutSeconds: $this->termGraceSeconds,
-            intervalMs: 250,
-        );
-
-        if (! $terminated) {
-            $this->signalTree($record->pid, 'KILL');
-
-            $terminated = $this->poller->until(
-                fn (): bool => ! $this->isAlive($record),
-                timeoutSeconds: $this->killGraceSeconds,
-                intervalMs: 250,
-            );
-        }
-
-        if (! $terminated) {
-            warning("Could not stop {$record->label} (pid {$record->pid}) — it stays in the ledger; stop it manually or re-run app:down.");
+        if (! $this->terminate($targets)) {
+            terminal()->warning("Could not stop {$record->label} (pid {$record->pid}) — it stays in the ledger; stop it manually or re-run app:down.");
 
             return false;
         }
 
-        $this->ledger->forget($record->pid);
+        return $this->settle($record);
+    }
 
-        return true;
+    /**
+     * TERM the targets and wait; escalate to KILL for survivors. Returns
+     * whether every target is confirmed gone.
+     *
+     * @param  list<int>  $targets
+     */
+    private function terminate(array $targets): bool
+    {
+        $this->signalAll($targets, 'TERM');
+
+        $terminated = $this->poller->until(
+            fn (): bool => $this->allGone($targets),
+            timeoutSeconds: $this->termGraceSeconds,
+            intervalMs: 250,
+        );
+
+        if ($terminated) {
+            return true;
+        }
+
+        $this->signalAll($targets, 'KILL');
+
+        return $this->poller->until(
+            fn (): bool => $this->allGone($targets),
+            timeoutSeconds: $this->killGraceSeconds,
+            intervalMs: 250,
+        );
+    }
+
+    /**
+     * Whether anything recorded under this label is still alive. A label can
+     * hold several records after a crash-and-restart, so one live process is
+     * enough to count as running.
+     */
+    public function isRunning(string $label): bool
+    {
+        return $this->ledger->withLabel($label)
+            ->contains(fn (ProcessRecord $record): bool => $this->isAlive($record));
+    }
+
+    /**
+     * Stop everything recorded under this label.
+     */
+    public function stop(string $label): void
+    {
+        $this->ledger->withLabel($label)
+            ->each(fn (ProcessRecord $record) => $this->reap($record));
     }
 
     /**
@@ -101,13 +136,72 @@ final class ProcessReaper
             ->each(fn (ProcessRecord $record) => $this->ledger->forget($record->pid));
     }
 
-    private function signalTree(int $pid, string $signal): void
+    /**
+     * The process is gone: forget it.
+     */
+    private function settle(ProcessRecord $record): bool
     {
-        // Children first (vite/esbuild under a watcher), then the parent.
-        // A failing pkill just means no children; a failing parent kill is
-        // caught by the isAlive() re-poll after each signal round.
-        $this->processes->command(['pkill', "-{$signal}", '-P', (string) $pid])->run();
-        $this->signal($pid, "-{$signal}");
+        $this->ledger->forget($record->pid);
+
+        return true;
+    }
+
+    /**
+     * Signal a pre-collected set of pids, deepest-first (macOS has no
+     * setsid/process groups to lean on, so we cannot signal by group).
+     *
+     * @param  list<int>  $targets
+     */
+    private function signalAll(array $targets, string $signal): void
+    {
+        foreach ($targets as $target) {
+            $this->signal($target, "-{$signal}");
+        }
+    }
+
+    /**
+     * Whether every pid in the snapshot is gone — a single survivor keeps the
+     * reap alive so the KILL pass still runs against it.
+     *
+     * @param  list<int>  $targets
+     */
+    private function allGone(array $targets): bool
+    {
+        return collect($targets)->doesntContain(fn (int $target): bool => $this->signal($target, '-0'));
+    }
+
+    /**
+     * All descendant pids of the given pid, deepest-first.
+     *
+     * @return list<int>
+     */
+    private function descendants(int $pid): array
+    {
+        return collect($this->childrenOf($pid))
+            ->flatMap(fn (int $child): array => [...$this->descendants($child), $child])
+            ->all();
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function childrenOf(int $pid): array
+    {
+        $output = trim($this->processes
+            ->command(['pgrep', '-P', (string) $pid])
+            ->run()
+            ->output());
+
+        if ($output === '') {
+            return [];
+        }
+
+        return str($output)
+            ->explode(PHP_EOL)
+            ->map(fn (string $line): int => (int) trim($line))
+            ->filter(fn (int $child): bool => $child > 0)
+            ->values()
+            ->all();
     }
 
     private function signal(int $pid, string $signal): bool
@@ -119,27 +213,61 @@ final class ProcessReaper
     }
 
     /**
-     * PID-reuse guard: after a reboot the recorded PID may belong to an
-     * unrelated process. Only treat it as ours when the running command
-     * resembles the recorded one.
+     * Whether the live process holding this PID started clearly after the
+     * record was written — the signature of a reused PID. Null when the start
+     * time cannot be determined (treated as "not reused" by the caller).
      */
-    private function commandsMatch(string $running, string $recorded): bool
+    private function startedAfterRecord(ProcessRecord $record): ?bool
     {
-        if (str_contains($running, $recorded)) {
-            return true;
+        $recordedAt = strtotime($record->startedAt);
+
+        if ($recordedAt === false) {
+            return null;
         }
 
-        $runningBinary = basename(strtok($running, ' ') ?: '');
-        $recordedBinary = basename(strtok($recorded, ' ') ?: '');
+        $elapsed = $this->elapsedSeconds($record->pid);
 
-        if ($runningBinary === '' || $runningBinary !== $recordedBinary) {
-            return false;
+        if ($elapsed === null) {
+            return null;
         }
 
-        // A matching binary alone is too loose after PID reuse: any `php`
-        // would match any other `php`. The recorded arguments must appear too.
-        $recordedArguments = trim((string) strstr($recorded, ' '));
+        // etime is second-resolution and startedAt is stamped just after the
+        // spawn, so allow a small tolerance before calling a PID reused.
+        return (time() - $elapsed) > ($recordedAt + 5);
+    }
 
-        return $recordedArguments === '' || str_contains($running, $recordedArguments);
+    /**
+     * Seconds the process holding this PID has been running, from
+     * `ps -o etime=` (portable across macOS and Linux), or null if unknown.
+     */
+    private function elapsedSeconds(int $pid): ?int
+    {
+        $etime = trim($this->processes
+            ->command(['ps', '-p', (string) $pid, '-o', 'etime='])
+            ->run()
+            ->output());
+
+        if ($etime === '') {
+            return null;
+        }
+
+        // Format: [[dd-]hh:]mm:ss
+        $days = 0;
+
+        if (str_contains($etime, '-')) {
+            [$dayPart, $etime] = explode('-', $etime, 2);
+            $days = (int) $dayPart;
+        }
+
+        $parts = array_map('intval', explode(':', $etime));
+
+        $seconds = match (\count($parts)) {
+            3 => $parts[0] * 3600 + $parts[1] * 60 + $parts[2],
+            2 => $parts[0] * 60 + $parts[1],
+            1 => $parts[0],
+            default => null,
+        };
+
+        return $seconds === null ? null : $days * 86400 + $seconds;
     }
 }

@@ -2,11 +2,9 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Process\Terminal\NullTerminal;
-use Igne\LaravelBootUp\Support\Poller;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 use Illuminate\Process\Factory;
 use Illuminate\Support\Facades\Process;
@@ -26,32 +24,43 @@ function makeRunner(ProcessLedger $ledger, string $workDir): ProcessRunner
     return new ProcessRunner(
         processes: app(Factory::class),
         ledger: $ledger,
-        terminal: new NullTerminal,
-        poller: new Poller,
         logDirectory: $workDir.'/logs',
-        runtimeDirectory: $workDir.'/runtime',
     );
 }
 
 test('run throws on failure', function (): void {
     Process::fake(['*' => Process::result(exitCode: 1, errorOutput: 'boom')]);
 
-    makeRunner($this->ledger, $this->workDir)->run(ShellCommand::make('composer install'));
+    makeRunner($this->ledger, $this->workDir)->run(CommandLine::make('composer install'));
 })->throws(ProcessFailedException::class);
 
 test('runSilently never throws on failure and returns the result', function (): void {
     Process::fake(['*' => Process::result(exitCode: 127)]);
 
-    $result = makeRunner($this->ledger, $this->workDir)->runSilently(ShellCommand::make('command -v missing'));
+    $result = makeRunner($this->ledger, $this->workDir)->runSilently(CommandLine::make('command -v missing'));
 
     expect($result->successful())->toBeFalse()->and($result->exitCode())->toBe(127);
+});
+
+test('runInTerminal hands the command the terminal and returns its exit code', function (): void {
+    Process::fake(['*' => Process::result(exitCode: 3)]);
+
+    $exitCode = makeRunner($this->ledger, $this->workDir)
+        ->runInTerminal(CommandLine::make(['sh', '-c', 'npx multiplex'])->withTimeout(null));
+
+    expect($exitCode)->toBe(3);
+
+    // Nothing is tracked: the process belongs to this run's terminal, not to
+    // the ledger app:down reaps.
+    expect($this->ledger->isEmpty())->toBeTrue();
+    Process::assertRan(fn ($process): bool => $process->command === ['sh', '-c', 'npx multiplex']);
 });
 
 test('start spawns a detached nohup wrapper and records the pid in the ledger', function (): void {
     Process::fake(['*' => Process::result(output: "4242\n")]);
 
     $record = makeRunner($this->ledger, $this->workDir)
-        ->start(ShellCommand::make('php artisan serve'), 'artisan-serve');
+        ->start(CommandLine::make('php artisan serve'), 'artisan-serve');
 
     Process::assertRan(function ($process): bool {
         $command = is_array($process->command) ? implode(' ', $process->command) : $process->command;
@@ -69,18 +78,8 @@ test('start spawns a detached nohup wrapper and records the pid in the ledger', 
 test('start throws when no pid is echoed back', function (): void {
     Process::fake(['*' => Process::result(output: '')]);
 
-    makeRunner($this->ledger, $this->workDir)->start(ShellCommand::make('php artisan serve'), 'artisan-serve');
-})->throws(Igne\LaravelBootUp\Process\ProcessException::class);
-
-test('startInTerminal degrades to a tracked background start when no terminal exists', function (): void {
-    Process::fake(['*' => Process::result(output: "77\n")]);
-
-    $record = makeRunner($this->ledger, $this->workDir)
-        ->startInTerminal(ShellCommand::make('bun run dev'), 'assets-watch');
-
-    expect($record->pid)->toBe(77)
-        ->and($this->ledger->withLabel('assets-watch'))->toHaveCount(1);
-});
+    makeRunner($this->ledger, $this->workDir)->start(CommandLine::make('php artisan serve'), 'artisan-serve');
+})->throws(Igne\LaravelBootUp\Exceptions\ProcessException::class);
 
 test('isCommandAvailable reflects the probe exit code', function (): void {
     Process::fake(['*' => Process::result()]);

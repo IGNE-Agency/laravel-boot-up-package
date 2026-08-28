@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Process\ProcessLedger;
-use Igne\LaravelBootUp\Process\ProcessRecord;
 
 beforeEach(function (): void {
     $this->path = sys_get_temp_dir().'/boot-up-ledger-test-'.bin2hex(random_bytes(4)).'/processes.json';

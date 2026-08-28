@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Tests\Feature\Console\Fixtures;
 
 use Closure;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\BootContext;
 use RuntimeException;
 
 /**
@@ -15,7 +15,7 @@ use RuntimeException;
  */
 final class ExplodingStep implements Step
 {
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         throw new RuntimeException('something exploded');
     }

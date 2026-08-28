@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Tests\Feature\Console\Fixtures;
 
-use Igne\LaravelBootUp\Pipelines\GeneratedFile;
-use Igne\LaravelBootUp\Pipelines\PipelineGenerator;
-use Igne\LaravelBootUp\Pipelines\PipelinePlan;
+use Igne\LaravelBootUp\Contracts\PipelineGenerator;
+use Igne\LaravelBootUp\Data\GeneratedFile;
+use Igne\LaravelBootUp\Data\PipelinePlan;
 
 /**
  * A project-registered custom git provider, as the extension API allows.
@@ -23,12 +23,22 @@ final class StaticPipelineGenerator implements PipelineGenerator
         return 'Static Provider';
     }
 
+    public function anchors(PipelinePlan $plan): array
+    {
+        return ['build', 'test'];
+    }
+
     public function files(PipelinePlan $plan): array
     {
         return [new GeneratedFile('static-pipeline.yml', "static-pipeline for php {$plan->phpVersion}\n")];
     }
 
     public function secrets(PipelinePlan $plan): array
+    {
+        return [];
+    }
+
+    public function notes(PipelinePlan $plan): array
     {
         return [];
     }

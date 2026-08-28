@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Environment\Steps;
 
 use Closure;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Label;
+use Igne\LaravelBootUp\Attributes\Stage;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
 
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
-
+#[Stage(BootStage::Prepare)]
+#[Group('prepare')]
+#[Label('Checking the application key')]
 final class GenerateAppKey implements Step
 {
     public function __construct(
@@ -21,20 +25,20 @@ final class GenerateAppKey implements Step
         private readonly ProcessRunner $processes,
     ) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
         $key = $this->envFile->get('APP_KEY');
 
         if ($key !== null && $key !== '') {
-            note('Application key already set.');
+            terminal()->note('Application key already set.');
 
             return $next($context);
         }
 
         // Always host-side (no server rewriting): the key must land in the
         // host .env file that every later step reads.
-        $this->processes->run(ShellCommand::make('php artisan key:generate --ansi'));
-        info('Application key generated.');
+        $this->processes->run(CommandLine::make('php artisan key:generate --ansi'));
+        terminal()->success('Application key generated.');
 
         return $next($context);
     }

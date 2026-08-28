@@ -4,64 +4,61 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootUp\Serve\ServeConfig;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\ServeOptions;
-use Igne\LaravelBootUp\Support\BootUpException;
-use Igne\LaravelBootUp\Support\Platform;
-use Illuminate\Console\Command;
+use Igne\LaravelBootUp\Boot\StageReporter;
+use Igne\LaravelBootUp\Boot\StepSequence;
+use Igne\LaravelBootUp\Config\DeployConfig;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\BootOptions;
 use Illuminate\Contracts\Console\Isolatable;
 use Illuminate\Pipeline\Pipeline;
-use Illuminate\Process\Exceptions\ProcessFailedException;
-use Illuminate\Process\Exceptions\ProcessTimedOutException;
 
-use function Laravel\Prompts\error;
-use function Laravel\Prompts\intro;
-use function Laravel\Prompts\outro;
-
-use Throwable;
-
-final class DeployCommand extends Command implements Isolatable
+final class DeployCommand extends BootUpCommand implements Isolatable
 {
     protected $signature = 'app:deploy
         {--s|seed : Seed the database after migrating}
         {--no-migrate : Skip running pending migrations}
         {--fresh : Drop all tables and re-run every migration (asks first)}
-        {--u|update : Update dependencies instead of installing}';
+        {--u|update : Update dependencies instead of installing}
+        {--y|yes : Run without the confirmation prompt}';
 
     protected $description = 'Install dependencies, run project commands and migrate — without booting a server';
 
-    public function handle(ServeConfig $config, Platform $platform, Pipeline $pipeline): int
+    private ?StageReporter $reporter = null;
+
+    protected function requiresUnix(): bool
     {
-        if ($platform->isWindows()) {
-            error('app:deploy is not supported on native Windows. Run it inside WSL2.');
+        return true;
+    }
 
-            return self::FAILURE;
-        }
+    public function handle(DeployConfig $config, Pipeline $pipeline, StageReporter $reporter): int
+    {
+        $this->announce('Deploying the application...');
 
-        intro('Deploying the application...');
-
-        $options = new ServeOptions(
+        $options = new BootOptions(
             seed: (bool) $this->option('seed'),
             migrate: ! $this->option('no-migrate'),
             update: (bool) $this->option('update'),
             fresh: (bool) $this->option('fresh'),
         );
 
-        try {
-            $pipeline->send(new ServeContext($options))->through($config->deploySteps)->thenReturn();
-        } catch (BootUpException|ProcessFailedException|ProcessTimedOutException $exception) {
-            error($exception->getMessage());
+        $plan = StepSequence::for($config->steps, $options);
 
-            return self::FAILURE;
-        } catch (Throwable $exception) {
-            error('Unexpected error: '.$exception->getMessage());
-
-            return self::FAILURE;
+        if (! $this->confirmPlan($plan, 'app:deploy', $config->autoAccept)) {
+            return $this->skip('Aborted — nothing was changed.');
         }
 
-        outro('Deploy complete.');
+        $this->reporter = $reporter;
+        $pipes = $reporter->begin($plan);
 
-        return self::SUCCESS;
+        $pipeline->send(new BootContext($options))->through($pipes)->thenReturn();
+
+        $reporter->finish();
+
+        return $this->done('Deploy complete.');
+    }
+
+    protected function onFailure(): void
+    {
+        $this->reporter?->fail();
     }
 }

@@ -5,21 +5,32 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Tools\Steps;
 
 use Closure;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Label;
+use Igne\LaravelBootUp\Attributes\Stage;
+use Igne\LaravelBootUp\Config\ToolsConfig;
+use Igne\LaravelBootUp\Contracts\RequiresTools;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\ToolOutcome;
+use Igne\LaravelBootUp\Data\VersionConstraint;
+use Igne\LaravelBootUp\Enums\BootStage;
+use Igne\LaravelBootUp\Enums\Tool;
+use Igne\LaravelBootUp\Enums\ToolStatus;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
-use Igne\LaravelBootUp\Tools\Tool;
 use Igne\LaravelBootUp\Tools\ToolManager;
 use Igne\LaravelBootUp\Tools\ToolRegistry;
-use Igne\LaravelBootUp\Tools\ToolsConfig;
-use Igne\LaravelBootUp\Tools\VersionConstraint;
 
 /**
  * Ensures every configured tool — plus whatever the selected server needs,
  * plus the selected frontend package manager — is installed and satisfies
- * its version constraint.
+ * its version constraint. Quiet successes are bundled into one summary;
+ * installs, updates and warnings printed during the run stay where they are.
  */
+#[Stage(BootStage::Tools)]
+#[Group('tools')]
+#[Label('Checking required tools')]
 final class EnsureToolsReady implements Step
 {
     public function __construct(
@@ -30,37 +41,52 @@ final class EnsureToolsReady implements Step
         private readonly PackageJson $packageJson,
     ) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
+    {
+        $this->summarize($this->outcomes($context));
+
+        return $next($context);
+    }
+
+    /**
+     * @return list<ToolOutcome>
+     */
+    private function outcomes(BootContext $context): array
     {
         $covered = [];
+        $outcomes = [];
 
-        foreach ($this->config->required as $id => $constraint) {
-            $this->manager->ensure(
-                $this->registry->installerFor($id),
-                VersionConstraint::of((string) $constraint),
-            );
-
-            $covered[$id] = true;
-        }
-
-        foreach ($context->server?->requiredTools() ?? [] as $tool) {
-            $id = $tool instanceof Tool ? $tool->value : $tool;
-
+        foreach ($this->requiredConstraints($context) as $id => $constraint) {
             if (isset($covered[$id])) {
                 continue;
             }
 
-            $this->manager->ensure(
-                $this->registry->installerFor($id),
-                VersionConstraint::wildcard(),
-            );
-
+            $outcomes[] = $this->manager->ensure($this->registry->installerFor($id), $constraint);
             $covered[$id] = true;
         }
 
-        $this->ensurePackageManager($context, $covered);
+        $outcomes[] = $this->ensurePackageManager($context, $covered);
 
-        return $next($context);
+        return array_values(array_filter($outcomes));
+    }
+
+    /**
+     * Configured tools with their constraints first, then the server's
+     * required tools as wildcards — the first occurrence of an id wins.
+     *
+     * @return iterable<string, VersionConstraint>
+     */
+    private function requiredConstraints(BootContext $context): iterable
+    {
+        foreach ($this->config->required as $id => $constraint) {
+            yield $id => VersionConstraint::of((string) $constraint);
+        }
+
+        $required = $context->server instanceof RequiresTools ? $context->server->requiredTools() : [];
+
+        foreach ($required as $tool) {
+            yield ($tool instanceof Tool ? $tool->value : $tool) => VersionConstraint::wildcard();
+        }
     }
 
     /**
@@ -70,25 +96,74 @@ final class EnsureToolsReady implements Step
      *
      * @param  array<string, true>  $covered
      */
-    private function ensurePackageManager(ServeContext $context, array $covered): void
+    private function ensurePackageManager(BootContext $context, array $covered): ?ToolOutcome
     {
         if (! $context->options->withAssets || ! $this->packageJson->exists()) {
-            return;
+            return null;
         }
 
         $manager = $this->selector->selected();
 
         if (isset($covered[$manager->tool()->value])) {
-            return;
+            return null;
         }
 
-        if ($context->server?->commandRewrites()->wraps($manager->binary()) === true) {
-            return;
+        if ($context->commandRewrites()?->wraps($manager->binary()) === true) {
+            return null;
         }
 
-        $this->manager->ensure(
+        return $this->manager->ensure(
             $this->registry->installerFor($manager->tool()->value),
             VersionConstraint::wildcard(),
         );
+    }
+
+    /**
+     * @param  list<ToolOutcome>  $outcomes
+     */
+    private function summarize(array $outcomes): void
+    {
+        if ($outcomes === []) {
+            return;
+        }
+
+        terminal()->summary(
+            'Dependencies ready',
+            collect($outcomes)->map(fn (ToolOutcome $outcome): string => $outcome->describe())->all(),
+            $this->footer($outcomes),
+        );
+    }
+
+    /**
+     * Accurate wording: "all installed" only when every check was quietly
+     * satisfied; installs/updates and unverified tools are called out.
+     *
+     * @param  list<ToolOutcome>  $outcomes
+     */
+    private function footer(array $outcomes): string
+    {
+        $of = fn (ToolStatus $status): int => collect($outcomes)
+            ->filter(fn (ToolOutcome $outcome): bool => $outcome->status === $status)
+            ->count();
+
+        $unverified = $of(ToolStatus::Unverified);
+
+        if ($unverified > 0) {
+            $total = \count($outcomes);
+
+            return "{$unverified} of {$total} dependencies could not be verified — boot continues (see warnings above).";
+        }
+
+        $changed = $of(ToolStatus::Installed) + $of(ToolStatus::Updated);
+
+        if ($changed > 0) {
+            return "All dependencies are ready — {$changed} installed or updated during boot.";
+        }
+
+        if ($of(ToolStatus::SkippedSelfUpdating) > 0) {
+            return 'All dependencies are ready.';
+        }
+
+        return 'All required dependencies are installed.';
     }
 }

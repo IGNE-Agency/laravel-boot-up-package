@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Process;
 
-use Igne\LaravelBootUp\Process\Terminal\TerminalLauncher;
-use Igne\LaravelBootUp\Support\Poller;
+use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Exceptions\ProcessException;
 use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Process\Factory;
 use Illuminate\Process\PendingProcess;
@@ -16,47 +17,89 @@ use Illuminate\Process\PendingProcess;
  * Modes:
  *  - run():             synchronous, output streamed live, throws on failure
  *  - runSilently():     synchronous, output captured, never throws on failure
+ *  - runInTerminal():   synchronous, the child owns this terminal, returns its exit code
  *  - start():           detached background process, PID persisted to the ledger
- *  - startInTerminal(): new terminal window, real PID captured via pid file
  */
 final class ProcessRunner
 {
+    /**
+     * Where detached processes write, relative to the storage directory.
+     * Public because the announce step and the ledger's status lines tell
+     * the user about it, and a path they can copy has to match the real one.
+     */
+    public const string LOG_SUBDIRECTORY = 'logs/boot-up';
+
+    /**
+     * What a terminal handover reports when the process left no exit code of
+     * its own — a failure, because a run whose ending cannot be read is not
+     * a run that succeeded.
+     */
+    private const int UNKNOWN_EXIT_CODE = 1;
+
     public function __construct(
         private readonly Factory $processes,
         private readonly ProcessLedger $ledger,
-        private readonly TerminalLauncher $terminal,
-        private readonly Poller $poller,
         private readonly string $logDirectory,
-        private readonly string $runtimeDirectory,
     ) {}
 
-    public function run(ShellCommand $command): ProcessResult
+    public function run(CommandLine $command): ProcessResult
     {
-        return $this->pending($command, $command->tokens)
+        // Stream sub-process output with the active progress bar out of the
+        // way: it is erased before the output and redrawn once afterward, so
+        // the live stream never corrupts the bar's frame diffing.
+        return terminal()->suspend(fn (): ProcessResult => $this->pending($command, $command->tokens)
             ->run(null, function (string $type, string $buffer): void {
                 fwrite($type === 'err' ? STDERR : STDOUT, $buffer);
             })
-            ->throw();
+            ->throw());
     }
 
-    public function runSilently(ShellCommand $command): ProcessResult
+    public function runSilently(CommandLine $command): ProcessResult
     {
         return $this->pending($command, $command->tokens)->run();
     }
 
     /**
-     * Start a detached background process that survives this PHP process.
-     * Output is appended to storage/logs/boot-up/{label}.log.
+     * Hand this terminal to a command and wait for it.
+     *
+     * The child is given the TTY itself rather than a pair of pipes, so a
+     * full-screen UI owns the screen and its keys exactly as it would had it
+     * been typed at the prompt — and this process is still here afterwards
+     * to act on how it ended, which is the whole reason not to exec it.
      */
-    public function start(ShellCommand $command, string $label): ProcessRecord
+    public function runInTerminal(CommandLine $command): int
     {
-        $logFile = $this->logDirectory.'/'.$label.'.log';
+        $pending = $this->pending($command, $command->tokens);
+
+        // No TTY means there is no screen to hand over — a piped or CI run.
+        // Streaming the output is the closest thing to being there.
+        $result = $pending->supportsTty()
+            ? $pending->tty()->run()
+            : $pending->run(null, function (string $type, string $buffer): void {
+                fwrite($type === 'err' ? STDERR : STDOUT, $buffer);
+            });
+
+        return $result->exitCode() ?? self::UNKNOWN_EXIT_CODE;
+    }
+
+    /**
+     * Start a detached background process that survives this PHP process.
+     * Output is appended to the log file for this label.
+     */
+    public function start(CommandLine $command, string $label): ProcessRecord
+    {
+        $logFile = $this->logFile($label);
         $this->ensureDirectory(\dirname($logFile));
 
         // nohup exec()s the command, so the echoed PID belongs to the real
         // process — and it survives this PHP process exiting after boot.
+        //
+        // stdin comes from /dev/null because nohup only ignores SIGHUP: it
+        // does not detach the controlling terminal, so without this every
+        // background process inherits the boot's TTY on stdin and is one
+        // read away from stopping itself.
         $wrapper = sprintf(
-            'nohup %s >> %s 2>&1 & echo $!',
+            'nohup %s < /dev/null >> %s 2>&1 & echo $!',
             $command->toString(),
             escapeshellarg($logFile),
         );
@@ -73,74 +116,30 @@ final class ProcessRunner
     }
 
     /**
-     * Run the command in a new terminal window. The command is wrapped in a
-     * pid-file shim (`echo $$ > pidfile; exec ...`) so the ledger records the
-     * real PID. Falls back to start() when no terminal emulator is available.
+     * Where a background process with this label appends its output.
      */
-    public function startInTerminal(ShellCommand $command, string $label): ProcessRecord
+    public function logFile(string $label): string
     {
-        if (! $this->terminal->available()) {
-            return $this->start($command, $label);
-        }
-
-        $pidFile = $this->runtimeDirectory.'/pids/'.$label.'-'.bin2hex(random_bytes(4)).'.pid';
-        $this->ensureDirectory(\dirname($pidFile));
-
-        $shim = sprintf(
-            'echo $$ > %s; exec %s',
-            escapeshellarg($pidFile),
-            $command->toString(),
-        );
-
-        $this->terminal->open($shim, $command->cwd ?? getcwd() ?: null);
-
-        $captured = $this->poller->until(
-            fn (): bool => is_file($pidFile) && trim((string) file_get_contents($pidFile)) !== '',
-            timeoutSeconds: 5,
-            intervalMs: 100,
-        );
-
-        if (! $captured) {
-            throw ProcessException::terminalPidNotCaptured($label);
-        }
-
-        $pid = (int) trim((string) file_get_contents($pidFile));
-        @unlink($pidFile);
-
-        if ($pid <= 0) {
-            throw ProcessException::terminalPidNotCaptured($label);
-        }
-
-        return $this->remember($pid, $label, $command);
+        return "{$this->logDirectory}/{$label}.log";
     }
 
     public function isCommandAvailable(string $binary): bool
     {
-        return $this->runSilently(ShellCommand::make(['sh', '-c', 'command -v '.escapeshellarg($binary)]))
+        $quoted = escapeshellarg($binary);
+
+        return $this->runSilently(CommandLine::make(['sh', '-c', "command -v {$quoted}"]))
             ->successful();
     }
 
     /**
      * @param  list<string>  $tokens
      */
-    private function pending(ShellCommand $command, array $tokens): PendingProcess
+    private function pending(CommandLine $command, array $tokens): PendingProcess
     {
-        $pending = $this->processes->command($tokens);
-
-        if ($command->cwd !== null) {
-            $pending = $pending->path($command->cwd);
-        }
-
-        if ($command->env !== []) {
-            $pending = $pending->env($command->env);
-        }
-
-        return $command->timeout === null
-            ? $pending->forever()
-            : $pending->timeout($command->timeout);
+        return PendingProcessBuilder::build($this->processes, $command, $tokens);
     }
 
-    private function remember(int $pid, string $label, ShellCommand $command): ProcessRecord
+    private function remember(int $pid, string $label, CommandLine $command): ProcessRecord
     {
         $record = new ProcessRecord(
             pid: $pid,

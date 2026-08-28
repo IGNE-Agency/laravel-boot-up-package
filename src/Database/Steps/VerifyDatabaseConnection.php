@@ -5,17 +5,20 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Database\Steps;
 
 use Closure;
-use Igne\LaravelBootUp\Database\DatabaseException;
+use Igne\LaravelBootUp\Attributes\Group;
+use Igne\LaravelBootUp\Attributes\Label;
+use Igne\LaravelBootUp\Attributes\Stage;
+use Igne\LaravelBootUp\Concerns\RunsThroughServer;
+use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
+use Igne\LaravelBootUp\Contracts\Step;
+use Igne\LaravelBootUp\Data\BootContext;
+use Igne\LaravelBootUp\Data\CommandLine;
+use Igne\LaravelBootUp\Enums\BootStage;
+use Igne\LaravelBootUp\Exceptions\DatabaseException;
 use Igne\LaravelBootUp\Process\ProcessRunner;
-use Igne\LaravelBootUp\Process\ShellCommand;
-use Igne\LaravelBootUp\Serve\ServeContext;
-use Igne\LaravelBootUp\Serve\Step;
 use Igne\LaravelBootUp\Servers\CommandRewriter;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\Facades\DB;
-
-use function Laravel\Prompts\info;
-
 use Throwable;
 
 /**
@@ -24,33 +27,35 @@ use Throwable;
  * check runs through the server's command rewrites; otherwise a host-side
  * PDO connection is enough.
  */
+#[Stage(BootStage::Database)]
+#[Group('database')]
+#[Label('Verifying the database connection')]
 final class VerifyDatabaseConnection implements Step
 {
+    use RunsThroughServer;
+
     public function __construct(
         private readonly ProcessRunner $runner,
         private readonly CommandRewriter $rewriter,
         private readonly Repository $laravelConfig,
     ) {}
 
-    public function handle(ServeContext $context, Closure $next): mixed
+    public function handle(BootContext $context, Closure $next): mixed
     {
-        if ($context->server !== null && ! $context->server->databaseReachableFromHost()) {
+        if ($context->server instanceof ProvidesDatabase && ! $context->server->databaseReachableFromHost()) {
             $this->verifyThroughServer($context);
         } else {
             $this->verifyFromHost();
         }
 
-        info('Database connection verified.');
+        terminal()->success('Database connection verified.');
 
         return $next($context);
     }
 
-    private function verifyThroughServer(ServeContext $context): void
+    private function verifyThroughServer(BootContext $context): void
     {
-        $result = $this->runner->runSilently($this->rewriter->rewrite(
-            ShellCommand::make('php artisan migrate:status'),
-            $context->server?->commandRewrites(),
-        ));
+        $result = $this->runSilentlyThroughServer($context, CommandLine::make('php artisan migrate:status'));
 
         if (! $result->successful()) {
             throw DatabaseException::connectionFailed($context->server?->key() ?? 'server', trim($result->errorOutput()));
