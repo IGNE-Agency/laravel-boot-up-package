@@ -4,30 +4,14 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Frontend;
 
+use Igne\LaravelBootUp\Concerns\ReadsJsonFile;
 use Igne\LaravelBootUp\Enums\PackageManager;
 
 final class PackageJson
 {
+    use ReadsJsonFile;
+
     public function __construct(private readonly string $path) {}
-
-    public function exists(): bool
-    {
-        return is_file($this->path);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function read(): array
-    {
-        if (! $this->exists()) {
-            return [];
-        }
-
-        $decoded = json_decode((string) file_get_contents($this->path), true);
-
-        return \is_array($decoded) ? $decoded : [];
-    }
 
     public function hasScript(string $script): bool
     {
@@ -43,13 +27,8 @@ final class PackageJson
      */
     public function lockedPackageManager(): ?PackageManager
     {
-        foreach (PackageManager::cases() as $manager) {
-            if ($this->matchedLockfile($manager) !== null) {
-                return $manager;
-            }
-        }
-
-        return null;
+        return collect(PackageManager::cases())
+            ->first(fn (PackageManager $manager): bool => $this->matchedLockfile($manager) !== null);
     }
 
     /**
@@ -59,13 +38,8 @@ final class PackageJson
      */
     public function matchedLockfile(PackageManager $manager): ?string
     {
-        foreach ($manager->lockfiles() as $lockfile) {
-            if (is_file(\dirname($this->path).'/'.$lockfile)) {
-                return $lockfile;
-            }
-        }
-
-        return null;
+        return collect($manager->lockfiles())
+            ->first(fn (string $lockfile): bool => is_file(\dirname($this->path).'/'.$lockfile));
     }
 
     /**

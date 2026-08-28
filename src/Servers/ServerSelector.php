@@ -9,7 +9,6 @@ use Igne\LaravelBootUp\Config\DevServerConfig;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Exceptions\ServerException;
 use Illuminate\Contracts\Container\Container;
-use Throwable;
 
 /**
  * Picks the server driver for this run: explicit argument, then the
@@ -63,11 +62,13 @@ final class ServerSelector
         $key = $this->store->current()?->key;
 
         if ($key !== null) {
-            try {
-                return $this->driver($key);
-            } catch (Throwable) {
-                terminal()->warning("The recorded server [{$key}] is not a known driver — run php artisan app:up to choose one.");
+            $server = $this->driverOrNull($key);
+
+            if ($server !== null) {
+                return $server;
             }
+
+            terminal()->warning("The recorded server [{$key}] is not a known driver — run php artisan app:up to choose one.");
         }
 
         return $this->config->default === null ? null : $this->driver($this->config->default);
@@ -85,16 +86,23 @@ final class ServerSelector
     }
 
     /**
+     * driver(), with "the key no longer names a driver" as a tolerable
+     * outcome instead of a Throwable: a key persisted by an earlier run may
+     * belong to a custom driver that has since left the config. Callers own
+     * their own recovery, which is why nothing is reported here.
+     */
+    public function driverOrNull(string $key): ?Server
+    {
+        return rescue(fn (): Server => $this->driver($key), report: false);
+    }
+
+    /**
      * @return array<string, string>
      */
     private function options(): array
     {
-        $options = [];
-
-        foreach (array_keys($this->config->drivers) as $key) {
-            $options[$key] = $this->driver($key)->label();
-        }
-
-        return $options;
+        return collect(array_keys($this->config->drivers))
+            ->mapWithKeys(fn (string $key): array => [$key => $this->driver($key)->label()])
+            ->all();
     }
 }

@@ -44,7 +44,7 @@ final class ProcessLedger
         $entries = new Collection($this->store->read() ?? []);
 
         $usable = $entries
-            ->filter(fn (mixed $entry): bool => \is_array($entry) && isset($entry['pid'], $entry['label'], $entry['command'], $entry['started_at']))
+            ->filter(fn (mixed $entry): bool => ProcessRecord::hydratable($entry))
             ->values();
 
         // Unlike the active-server record, a malformed entry does not condemn

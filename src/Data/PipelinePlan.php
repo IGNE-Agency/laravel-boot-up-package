@@ -29,6 +29,16 @@ final readonly class PipelinePlan
     ) {}
 
     /**
+     * The configured branches as prose for generated header comments — the
+     * branchEnvironments keys, e.g. "develop, staging and main" for the
+     * default map.
+     */
+    public function branchList(): string
+    {
+        return collect($this->branchEnvironments)->keys()->join(', ', ' and ');
+    }
+
+    /**
      * A copy of this plan carrying the validated project extensions.
      */
     public function withExtensions(PipelineExtensions $extensions): self

@@ -64,10 +64,7 @@ enum PackageManager: string
      */
     public function updateCommand(): array
     {
-        return match ($this) {
-            self::Npm => ['npm', 'update'],
-            default => [$this->value, 'update'],
-        };
+        return [$this->value, 'update'];
     }
 
     /**

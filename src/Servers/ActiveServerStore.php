@@ -37,7 +37,7 @@ final class ActiveServerStore
             return null;
         }
 
-        if (! isset($decoded['key'], $decoded['started_by_us'], $decoded['setup_pid'], $decoded['started_at'])) {
+        if (! ActiveServerRecord::hydratable($decoded)) {
             $this->store->quarantine();
 
             return null;

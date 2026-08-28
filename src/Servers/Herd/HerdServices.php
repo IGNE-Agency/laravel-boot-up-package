@@ -34,13 +34,11 @@ final class HerdServices
 
     public function isRunning(): bool
     {
-        foreach (self::SERVICE_PATTERNS as $pattern) {
-            if ($this->runner->runSilently(CommandLine::make(['pgrep', '-f', $pattern]))->successful()) {
-                return true;
-            }
-        }
-
-        return false;
+        // contains() short-circuits, so the php-fpm pgrep is skipped once
+        // nginx already matched — each check spawns a process.
+        return collect(self::SERVICE_PATTERNS)->contains(
+            fn (string $pattern): bool => $this->runner->runSilently(CommandLine::make(['pgrep', '-f', $pattern]))->successful(),
+        );
     }
 
     /**

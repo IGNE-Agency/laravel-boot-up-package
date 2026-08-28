@@ -105,14 +105,10 @@ final readonly class CommandLine
      */
     private static function tokenize(string|array $command): array
     {
-        if (\is_array($command)) {
-            return array_values(array_filter($command, static fn (string $token): bool => $token !== ''));
-        }
+        $tokens = \is_array($command) ? $command : (preg_split('/\s+/', trim($command)) ?: []);
 
-        return array_values(array_filter(
-            preg_split('/\s+/', trim($command)) ?: [],
-            static fn (string $token): bool => $token !== '',
-        ));
+        // The explicit predicate keeps the legitimate token '0'.
+        return array_values(array_filter($tokens, static fn (string $token): bool => $token !== ''));
     }
 
     private static function escapeToken(string $token): string

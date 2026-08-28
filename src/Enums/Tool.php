@@ -42,7 +42,9 @@ enum Tool: string
     }
 
     /**
-     * The command whose output reveals the installed version.
+     * The command whose output reveals the installed version. PHP is the one
+     * exception: `php --version` opens with a banner, so the version is
+     * asked for directly.
      *
      * @return list<string>
      */
@@ -50,9 +52,6 @@ enum Tool: string
     {
         return match ($this) {
             self::Php => ['php', '-r', 'echo PHP_VERSION;'],
-            self::Homebrew => ['brew', '--version'],
-            self::Composer => ['composer', '--version'],
-            self::Docker => ['docker', '--version'],
             default => [$this->binary(), '--version'],
         };
     }

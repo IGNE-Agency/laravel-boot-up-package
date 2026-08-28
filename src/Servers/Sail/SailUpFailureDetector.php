@@ -76,13 +76,13 @@ final class SailUpFailureDetector
     {
         preg_match_all(self::BOUND_PORT, $output, $matches);
 
-        $ports = array_map(static fn (string $port): int => (int) $port, $matches[1]);
-
-        // Compose names the container side as ":0" in the same sentence, so
-        // the impossible ports have to go before the list is deduplicated.
-        return array_values(array_unique(array_filter(
-            $ports,
-            static fn (int $port): bool => $port > 0 && $port < 65536,
-        )));
+        // Compose names the container side as ":0" in the same sentence,
+        // which is why the impossible ports go before the deduplication.
+        return collect($matches[1])
+            ->map(static fn (string $port): int => (int) $port)
+            ->filter(static fn (int $port): bool => $port > 0 && $port < 65536)
+            ->unique()
+            ->values()
+            ->all();
     }
 }

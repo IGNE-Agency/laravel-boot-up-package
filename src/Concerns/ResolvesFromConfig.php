@@ -10,6 +10,8 @@ use Igne\LaravelBootUp\Exceptions\ConfigException;
  * For backed enums read from the config file: null and '' mean "use the
  * default"; anything else must be a case — a typo'd value silently falling
  * back is worse than a boot-time error naming the key.
+ *
+ * @phpstan-require-implements \BackedEnum
  */
 trait ResolvesFromConfig
 {

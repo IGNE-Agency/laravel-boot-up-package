@@ -39,15 +39,19 @@ use Igne\LaravelBootUp\Console\UpCommand;
 use Igne\LaravelBootUp\Deploy\Composer;
 use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Environment\EnvRestorePoint;
+use Igne\LaravelBootUp\Environment\LocalEnvironment;
 use Igne\LaravelBootUp\Environment\ShellProfile;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Frontend\ViteHotFile;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
+use Igne\LaravelBootUp\Pipelines\PipelineExtensionValidator;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
+use Igne\LaravelBootUp\Servers\Herd\HerdServer;
+use Igne\LaravelBootUp\Servers\Herd\HerdServices;
 use Igne\LaravelBootUp\Servers\Herd\HerdSites;
 use Igne\LaravelBootUp\Services\GeneratedFilePublisher;
 use Igne\LaravelBootUp\Services\LockfileConflictDetector;
@@ -181,6 +185,16 @@ final class BootUpServiceProvider extends ServiceProvider
                 ? "{$home}/Library/Application Support/Herd/config/valet/Sites"
                 : "{$home}/.config/valet/Sites");
         });
+
+        // The application root, never getcwd(): `php /path/to/artisan app:up`
+        // run from elsewhere must link the project, not the current directory.
+        $this->app->singleton(HerdServer::class, fn (Application $app) => new HerdServer(
+            runner: $app->make(ProcessRunner::class),
+            services: $app->make(HerdServices::class),
+            sites: $app->make(HerdSites::class),
+            config: $app->make(HerdConfig::class),
+            projectPath: $app->basePath(),
+        ));
     }
 
     /**
@@ -238,11 +252,20 @@ final class BootUpServiceProvider extends ServiceProvider
             $app->basePath('composer.json'),
         ));
 
+        $this->app->singleton(PipelineExtensionValidator::class, fn (Application $app) => new PipelineExtensionValidator(
+            $app->basePath(),
+        ));
+
+        $this->app->singleton(LocalEnvironment::class, fn (Application $app) => new LocalEnvironment(
+            envFile: $app->make(EnvFile::class),
+            config: $app->make(EnvironmentConfig::class),
+        ));
+
         $this->app->singleton(ProjectReadiness::class, fn (Application $app) => new ProjectReadiness(
             envFile: $app->make(EnvFile::class),
             packageJson: $app->make(PackageJson::class),
             frontendConfig: $app->make(FrontendConfig::class),
-            environmentConfig: $app->make(EnvironmentConfig::class),
+            localEnvironment: $app->make(LocalEnvironment::class),
             basePath: $app->basePath(),
         ));
     }

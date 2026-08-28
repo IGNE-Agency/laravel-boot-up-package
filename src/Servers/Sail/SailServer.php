@@ -176,11 +176,9 @@ final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDe
      */
     private function conflictsIn(string $output): array
     {
-        $reserved = [];
-
-        foreach ($this->ports->published() as $port) {
-            $reserved[$port->port] = $port;
-        }
+        $reserved = collect($this->ports->published())
+            ->keyBy(fn (ReservedPort $port): int => $port->port)
+            ->all();
 
         return array_map(
             fn (int $port): PortConflict => new PortConflict($reserved[$port] ?? new ReservedPort(

@@ -11,6 +11,7 @@ use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Enums\OperatingSystem;
 use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Environment\LocalEnvironment;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
@@ -52,9 +53,8 @@ beforeEach(function (): void {
         envFile: app(EnvFile::class),
         packageJson: new PackageJson($this->workDir.'/package.json'),
         frontendConfig: new FrontendConfig(assets: AssetMode::Watch),
-        environmentConfig: new EnvironmentConfig,
+        localEnvironment: new LocalEnvironment(app(EnvFile::class), new EnvironmentConfig, []),
         basePath: $this->workDir,
-        serverVars: [],
     ));
 
     config()->set('queue.default', 'sync');

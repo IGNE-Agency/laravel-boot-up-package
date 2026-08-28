@@ -28,9 +28,9 @@ final readonly class ProcessConfig
     public static function fromRepository(Repository $config): self
     {
         return new self(
-            termGraceSeconds: self::atLeast($config->get('boot-up.process.term_grace_seconds', 5), 0, 'boot-up.process.term_grace_seconds'),
-            killGraceSeconds: self::atLeast($config->get('boot-up.process.kill_grace_seconds', 2), 0, 'boot-up.process.kill_grace_seconds'),
-            installTimeoutSeconds: self::atLeast($config->get('boot-up.process.install_timeout_seconds', 1800), 1, 'boot-up.process.install_timeout_seconds'),
+            termGraceSeconds: self::intAtLeast($config, 'boot-up.process.term_grace_seconds', 5, 0),
+            killGraceSeconds: self::intAtLeast($config, 'boot-up.process.kill_grace_seconds', 2, 0),
+            installTimeoutSeconds: self::intAtLeast($config, 'boot-up.process.install_timeout_seconds', 1800, 1),
         );
     }
 }

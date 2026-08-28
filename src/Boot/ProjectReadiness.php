@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Boot;
 
-use Igne\LaravelBootUp\Config\EnvironmentConfig;
 use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Environment\LocalEnvironment;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 
 /**
@@ -22,16 +22,12 @@ use Igne\LaravelBootUp\Frontend\PackageJson;
  */
 final class ProjectReadiness
 {
-    /**
-     * @param  array<string, mixed>|null  $serverVars  Overrides $_SERVER for tests.
-     */
     public function __construct(
         private readonly EnvFile $envFile,
         private readonly PackageJson $packageJson,
         private readonly FrontendConfig $frontendConfig,
-        private readonly EnvironmentConfig $environmentConfig,
+        private readonly LocalEnvironment $localEnvironment,
         private readonly string $basePath,
-        private readonly ?array $serverVars = null,
     ) {}
 
     /**
@@ -51,30 +47,20 @@ final class ProjectReadiness
         ]));
     }
 
-    /**
-     * Read from the .env rather than the booted framework: on a machine with
-     * no .env the framework reports 'production', which would refuse every
-     * fresh clone. A missing or empty APP_ENV counts as local.
-     */
     private function environment(): ?string
     {
-        $environment = $this->envFile->get('APP_ENV');
-        $environment = ($environment === null || $environment === '') ? 'local' : $environment;
-
-        if (\in_array($environment, $this->environmentConfig->allowed, true)) {
+        if ($this->localEnvironment->isAllowed()) {
             return null;
         }
 
-        $allowed = implode(', ', $this->environmentConfig->allowed);
+        $allowed = implode(', ', $this->localEnvironment->allowed());
 
-        return "APP_ENV is [{$environment}]; boot-up only runs in: {$allowed}.";
+        return "APP_ENV is [{$this->localEnvironment->name()}]; boot-up only runs in: {$allowed}.";
     }
 
     private function remoteHost(): ?string
     {
-        $vars = $this->serverVars ?? $_SERVER;
-
-        return isset($vars['SSH_CLIENT']) || isset($vars['SSH_TTY']) || isset($vars['SSH_CONNECTION'])
+        return $this->localEnvironment->isRemoteHost()
             ? 'This looks like a remote machine (SSH); boot-up is for local development.'
             : null;
     }

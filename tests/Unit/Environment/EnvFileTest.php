@@ -259,3 +259,21 @@ test('writes are atomic and leave no temporary files behind', function (): void 
 
     expect($files)->toBe(['.env']);
 });
+
+test('an indented key is one key to get, set, remove and all alike', function (): void {
+    file_put_contents($this->envPath, "APP_ENV=local\n  DB_HOST=mysql\n");
+
+    expect($this->envFile->get('DB_HOST'))->toBe('mysql')
+        ->and($this->envFile->all())->toBe(['APP_ENV' => 'local', 'DB_HOST' => 'mysql']);
+
+    // Editing must replace the indented line, never append a duplicate.
+    $this->envFile->set('DB_HOST', '127.0.0.1');
+
+    expect(substr_count((string) file_get_contents($this->envPath), 'DB_HOST'))->toBe(1)
+        ->and($this->envFile->get('DB_HOST'))->toBe('127.0.0.1');
+
+    $this->envFile->remove(['DB_HOST']);
+
+    expect($this->envFile->get('DB_HOST'))->toBeNull()
+        ->and($this->envFile->all())->toBe(['APP_ENV' => 'local']);
+});

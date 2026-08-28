@@ -6,6 +6,7 @@ use Igne\LaravelBootUp\Config\EnvironmentConfig;
 use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Environment\LocalEnvironment;
 use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
 use Igne\LaravelBootUp\Exceptions\EnvironmentException;
 
@@ -17,9 +18,7 @@ beforeEach(function (): void {
 
     // Empty server vars so a CI box reached over SSH does not trip the guard.
     $this->step = fn (?EnvironmentConfig $config = null, ?array $serverVars = []): EnsureLocalEnvironment => new EnsureLocalEnvironment(
-        $this->envFile,
-        $config ?? new EnvironmentConfig,
-        $serverVars,
+        new LocalEnvironment($this->envFile, $config ?? new EnvironmentConfig, $serverVars),
     );
 });
 

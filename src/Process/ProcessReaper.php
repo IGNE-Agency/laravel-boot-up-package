@@ -96,9 +96,6 @@ final class ProcessReaper
     }
 
     /**
-     * Returns whether every tracked process is confirmed gone.
-     */
-    /**
      * Whether anything recorded under this label is still alive. A label can
      * hold several records after a crash-and-restart, so one live process is
      * enough to count as running.
@@ -118,6 +115,9 @@ final class ProcessReaper
             ->each(fn (ProcessRecord $record) => $this->reap($record));
     }
 
+    /**
+     * Returns whether every tracked process is confirmed gone.
+     */
     public function reapAll(): bool
     {
         return $this->ledger->all()
@@ -167,13 +167,7 @@ final class ProcessReaper
      */
     private function allGone(array $targets): bool
     {
-        foreach ($targets as $target) {
-            if ($this->signal($target, '-0')) {
-                return false;
-            }
-        }
-
-        return true;
+        return collect($targets)->doesntContain(fn (int $target): bool => $this->signal($target, '-0'));
     }
 
     /**
@@ -183,13 +177,9 @@ final class ProcessReaper
      */
     private function descendants(int $pid): array
     {
-        $descendants = [];
-
-        foreach ($this->childrenOf($pid) as $child) {
-            $descendants = [...$descendants, ...$this->descendants($child), $child];
-        }
-
-        return $descendants;
+        return collect($this->childrenOf($pid))
+            ->flatMap(fn (int $child): array => [...$this->descendants($child), $child])
+            ->all();
     }
 
     /**

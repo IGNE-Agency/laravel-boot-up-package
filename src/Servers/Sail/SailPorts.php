@@ -75,22 +75,16 @@ final class SailPorts
      */
     public function published(): array
     {
-        $services = $this->services();
-        $ports = [];
-
-        foreach ($services as $service => $definition) {
-            foreach ($this->portsOf($definition) as $mapping) {
-                $port = $this->reserved((string) $service, $mapping);
-
-                // Compose would refuse a duplicate host port itself; keeping
-                // the first keeps the report free of repeats either way.
-                if ($port !== null && ! isset($ports[$port->port])) {
-                    $ports[$port->port] = $port;
-                }
-            }
-        }
-
-        return array_values($ports);
+        return collect($this->services())
+            ->flatMap(fn (mixed $definition, int|string $service): array => collect($this->portsOf($definition))
+                ->map(fn (array $mapping): ?ReservedPort => $this->reserved((string) $service, $mapping))
+                ->all())
+            ->filter()
+            // Compose would refuse a duplicate host port itself; unique()
+            // keeps the first, so the report is free of repeats either way.
+            ->unique(fn (ReservedPort $port): int => $port->port)
+            ->values()
+            ->all();
     }
 
     /**

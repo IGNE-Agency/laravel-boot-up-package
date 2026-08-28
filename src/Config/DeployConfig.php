@@ -32,7 +32,7 @@ final readonly class DeployConfig
             cacheFrameworkFiles: (bool) $config->get('boot-up.deploy.cache_framework_files', false),
             finalize: (array) $config->get('boot-up.deploy.finalize', ['storage:link']),
             scriptGenerators: (array) $config->get('boot-up.deploy.script_generators', []),
-            steps: self::validatedSteps((array) $config->get('boot-up.deploy.steps', []), 'boot-up.deploy.steps', Step::class),
+            steps: self::stepsFrom($config, 'boot-up.deploy.steps', Step::class),
             autoAccept: (bool) $config->get('boot-up.deploy.auto_accept', false),
         );
     }

@@ -128,19 +128,15 @@ final class EnvFile
         }
 
         preg_match_all(
-            '/^[ \t]*([A-Za-z_][A-Za-z0-9_.]*)[ \t]*=[ \t]*(.*)$/m',
+            '/'.self::linePattern('([A-Za-z_][A-Za-z0-9_.]*)').'/m',
             (string) file_get_contents($this->path),
             $matches,
             PREG_SET_ORDER,
         );
 
-        $values = [];
-
-        foreach ($matches as $match) {
-            $values[$match[1]] = $this->unquote(trim($match[2]));
-        }
-
-        return $values;
+        return collect($matches)
+            ->mapWithKeys(fn (array $match): array => [$match[1] => $this->unquote(trim($match[2]))])
+            ->all();
     }
 
     /**
@@ -181,10 +177,23 @@ final class EnvFile
 
     private function keyPattern(string $key, bool $wholeLine = false): string
     {
-        $quotedKey = preg_quote($key, '/');
-        $line = "^{$quotedKey}[ \\t]*=[ \\t]*(.*)";
+        $line = self::linePattern(preg_quote($key, '/'));
 
-        return $wholeLine ? "/{$line}\\R?/m" : "/{$line}$/m";
+        return $wholeLine ? "/{$line}\\R?/m" : "/{$line}/m";
+    }
+
+    /**
+     * The one definition of "a KEY= line", shared by the single-key pattern
+     * and all()'s scan so get/set/remove and all() agree by construction —
+     * an indented key that only all() could see would be recorded as changed
+     * by EnvRestorePoint and then never restored, and setMany() on it would
+     * append a duplicate line instead of editing it.
+     *
+     * $key arrives regex-ready: a preg_quote()d literal or a capturing class.
+     */
+    private static function linePattern(string $key): string
+    {
+        return "^[ \\t]*{$key}[ \\t]*=[ \\t]*(.*)$";
     }
 
     private function quoteIfNeeded(string $value): string

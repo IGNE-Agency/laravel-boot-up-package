@@ -86,22 +86,13 @@ final class PortProbe
 
     private function describe(string $output): ?string
     {
-        $pid = null;
-        $command = null;
+        // Each -F line is one field: its first character says which ('p' pid,
+        // 'c' command), the rest is the value. First occurrence per field wins.
+        $fields = collect(preg_split('/\R/', trim($output)) ?: [])
+            ->mapToGroups(fn (string $line): array => [$line[0] ?? '' => substr($line, 1)]);
 
-        foreach (preg_split('/\R/', trim($output)) ?: [] as $line) {
-            $value = substr($line, 1);
-
-            match ($line[0] ?? '') {
-                'p' => $pid ??= $value,
-                'c' => $command ??= $value,
-                default => null,
-            };
-
-            if ($pid !== null && $command !== null) {
-                break;
-            }
-        }
+        $pid = $fields->get('p')?->first();
+        $command = $fields->get('c')?->first();
 
         if ($command === null) {
             return null;

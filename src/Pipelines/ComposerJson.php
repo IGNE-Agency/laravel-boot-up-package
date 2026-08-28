@@ -4,28 +4,13 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
+use Igne\LaravelBootUp\Concerns\ReadsJsonFile;
+
 final class ComposerJson
 {
+    use ReadsJsonFile;
+
     public function __construct(private readonly string $path) {}
-
-    public function exists(): bool
-    {
-        return is_file($this->path);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function read(): array
-    {
-        if (! $this->exists()) {
-            return [];
-        }
-
-        $decoded = json_decode((string) file_get_contents($this->path), true);
-
-        return \is_array($decoded) ? $decoded : [];
-    }
 
     /**
      * Whether the package is a production dependency (require, not require-dev).

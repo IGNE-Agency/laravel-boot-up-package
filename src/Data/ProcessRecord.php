@@ -16,6 +16,18 @@ final readonly class ProcessRecord
     ) {}
 
     /**
+     * Whether a decoded payload carries every key fromArray() reads — kept
+     * next to the constructor it feeds, so adding a field cannot leave the
+     * persistence guard silently accepting incomplete payloads.
+     *
+     * @phpstan-assert-if-true array{pid: mixed, label: mixed, command: mixed, started_at: mixed} $data
+     */
+    public static function hydratable(mixed $data): bool
+    {
+        return \is_array($data) && isset($data['pid'], $data['label'], $data['command'], $data['started_at']);
+    }
+
+    /**
      * @param  array{pid: int, label: string, command: string, started_at: string}  $data
      */
     public static function fromArray(array $data): self

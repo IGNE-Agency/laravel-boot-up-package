@@ -24,7 +24,7 @@ final readonly class ArtisanServeConfig
     {
         return new self(
             host: (string) $config->get('boot-up.artisan.host', '127.0.0.1'),
-            port: self::withinRange($config->get('boot-up.artisan.port', 8000), 1, 65535, 'boot-up.artisan.port'),
+            port: self::intWithinRange($config, 'boot-up.artisan.port', 8000, 1, 65535),
         );
     }
 }

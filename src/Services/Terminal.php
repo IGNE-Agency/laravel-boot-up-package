@@ -165,12 +165,9 @@ final class Terminal
      */
     public function orderedList(string $title, array $items): void
     {
-        $numbered = [];
-
-        foreach (array_values($items) as $index => $item) {
-            $number = $index + 1;
-            $numbered[] = "{$number}. {$item}";
-        }
+        $numbered = collect($items)->values()
+            ->map(static fn (string $item, int $index): string => ($index + 1).". {$item}")
+            ->all();
 
         $this->block($title, $numbered);
     }
@@ -260,8 +257,7 @@ final class Terminal
     /**
      * Create and register the progress bar this terminal keeps out of the
      * way of other output. The caller drives start/advance/finish/fail.
-     */
-    /**
+     *
      * @param  iterable<mixed>|int  $steps
      */
     public function progress(string $label, iterable|int $steps, string $hint = ''): TrackedProgress

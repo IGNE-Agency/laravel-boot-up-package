@@ -33,8 +33,21 @@ final class ConfigException extends BootUpException
         return new self("Config [{$key}] is [{$value}]; expected {$expected}.");
     }
 
-    public static function invalidType(string $key, string $actual, string $expected = 'a string'): self
+    /**
+     * A value of the wrong shape entirely — $actualType is a type name
+     * (get_debug_type), rendered without brackets.
+     */
+    public static function invalidType(string $key, string $actualType, string $expected = 'a string'): self
     {
-        return new self("Config [{$key}] is {$actual}; expected {$expected}.");
+        return new self("Config [{$key}] is {$actualType}; expected {$expected}.");
+    }
+
+    /**
+     * A value of the right type that fails validation — rendered bracketed,
+     * like every other factory here, so callers never pre-format it.
+     */
+    public static function invalidValue(string $key, string $value, string $expected): self
+    {
+        return new self("Config [{$key}] is [{$value}]; expected {$expected}.");
     }
 }

@@ -44,20 +44,24 @@ final class ShellProfile
 
     public function contains(string $needle): bool
     {
-        return $this->exists()
-            && str_contains((string) file_get_contents((string) $this->path()), $needle);
+        return str_contains($this->contents(), $needle);
     }
 
     public function definesAlias(string $name): bool
     {
-        if (! $this->exists()) {
-            return false;
-        }
-
         $quotedName = preg_quote($name, '/');
-        $pattern = "/^[ \\t]*alias[ \\t]+{$quotedName}=/m";
 
-        return preg_match($pattern, (string) file_get_contents((string) $this->path())) === 1;
+        return preg_match("/^[ \\t]*alias[ \\t]+{$quotedName}=/m", $this->contents()) === 1;
+    }
+
+    /**
+     * The profile's content, '' when there is no profile to read.
+     */
+    private function contents(): string
+    {
+        $path = $this->path();
+
+        return $path !== null && is_file($path) ? (string) file_get_contents($path) : '';
     }
 
     /**

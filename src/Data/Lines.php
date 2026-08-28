@@ -126,11 +126,7 @@ final class Lines
      */
     public function comment(string ...$comments): self
     {
-        foreach ($comments as $comment) {
-            $this->appendLine($comment === '' ? '#' : "# {$comment}", self::KIND_COMMENT);
-        }
-
-        return $this;
+        return $this->tagged(self::KIND_COMMENT, '#', $comments);
     }
 
     /**
@@ -148,11 +144,7 @@ final class Lines
      */
     public function heading(string ...$headings): self
     {
-        foreach ($headings as $heading) {
-            $this->appendLine($heading === '' ? '#' : "# {$heading}", self::KIND_HEADING);
-        }
-
-        return $this;
+        return $this->tagged(self::KIND_HEADING, '#', $headings);
     }
 
     /**
@@ -162,8 +154,21 @@ final class Lines
      */
     public function warning(string ...$warnings): self
     {
-        foreach ($warnings as $warning) {
-            $this->appendLine($warning === '' ? '#!' : "#! {$warning}", self::KIND_WARNING);
+        return $this->tagged(self::KIND_WARNING, '#!', $warnings);
+    }
+
+    /**
+     * Append "{sigil} {text}" per entry (the bare sigil for an empty string),
+     * tagged with the given kind — the shared shape behind comment(),
+     * heading() and warning().
+     *
+     * @param  self::KIND_*  $kind
+     * @param  list<string>  $texts
+     */
+    private function tagged(string $kind, string $sigil, array $texts): self
+    {
+        foreach ($texts as $text) {
+            $this->appendLine($text === '' ? $sigil : "{$sigil} {$text}", $kind);
         }
 
         return $this;

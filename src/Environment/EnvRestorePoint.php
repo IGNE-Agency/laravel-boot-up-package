@@ -130,10 +130,8 @@ final class EnvRestorePoint
 
         // A key the mutation deleted is restored by writing it back, so it
         // needs a record too.
-        foreach ($before as $key => $value) {
-            if (! \array_key_exists($key, $after)) {
-                $recorded = $this->note($recorded, $key, $value, null);
-            }
+        foreach (array_diff_key($before, $after) as $key => $value) {
+            $recorded = $this->note($recorded, $key, $value, null);
         }
 
         if ($recorded !== []) {

@@ -21,8 +21,8 @@ final readonly class SailConfig
     {
         return new self(
             manageAlias: (bool) $config->get('boot-up.sail.manage_alias', true),
-            readyTimeoutSeconds: self::atLeast($config->get('boot-up.sail.ready_timeout_seconds', 120), 1, 'boot-up.sail.ready_timeout_seconds'),
-            dockerStartTimeoutSeconds: self::atLeast($config->get('boot-up.sail.docker.start_timeout_seconds', 60), 1, 'boot-up.sail.docker.start_timeout_seconds'),
+            readyTimeoutSeconds: self::intAtLeast($config, 'boot-up.sail.ready_timeout_seconds', 120, 1),
+            dockerStartTimeoutSeconds: self::intAtLeast($config, 'boot-up.sail.docker.start_timeout_seconds', 60, 1),
         );
     }
 }

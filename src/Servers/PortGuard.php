@@ -56,10 +56,8 @@ final class PortGuard
 
         // Moving a subset leaves the boot just as broken, so a single
         // unmovable port settles it for all of them.
-        foreach ($conflicts as $conflict) {
-            if (! $conflict->port->isRemappable()) {
-                throw ServerException::portsUnavailable($server->label(), $conflicts);
-            }
+        if (collect($conflicts)->contains(fn (PortConflict $conflict): bool => ! $conflict->port->isRemappable())) {
+            $this->refuse($server, $conflicts);
         }
 
         $this->offerToMove($server, $conflicts, $this->autoAccepts($context));
@@ -71,23 +69,50 @@ final class PortGuard
      */
     private function conflicts(array $ports): array
     {
-        $conflicts = [];
-
-        foreach ($ports as $port) {
-            if ($this->probe->isAvailable($port->port)) {
-                continue;
-            }
-
-            $conflicts[] = new PortConflict($port, $this->probe->holderOf($port->port));
-        }
-
-        return $conflicts;
+        return collect($ports)
+            ->reject(fn (ReservedPort $port): bool => $this->probe->isAvailable($port->port))
+            ->map(fn (ReservedPort $port): PortConflict => new PortConflict($port, $this->probe->holderOf($port->port)))
+            ->values()
+            ->all();
     }
 
     /**
      * @param  list<PortConflict>  $conflicts
      */
     private function offerToMove(Server $server, array $conflicts, bool $autoAccept): void
+    {
+        [$keep, $forThisServer, $lines] = $this->planMoves($server, $conflicts);
+
+        terminal()->summary(
+            "{$server->label()} needs host ports that are already in use",
+            $lines,
+            'Only where the port is yours to move: a forward to your machine, or the address the application answers on.',
+        );
+
+        if ($autoAccept) {
+            terminal()->warning('Moving them to free ports in your .env.');
+        } elseif (! terminal()->confirm('Move them and continue?', default: true)) {
+            $this->refuse($server, $conflicts);
+        }
+
+        $this->envFile->setMany($keep);
+        $this->envRestore->around(fn () => $this->envFile->setMany($forThisServer));
+
+        terminal()->success('Ports updated in .env.');
+    }
+
+    /**
+     * The new port for every conflict, decided before anything is shown or
+     * written: the .env values to keep after teardown, the values the
+     * teardown puts back, and the summary lines describing both.
+     *
+     * Sequential on purpose — each pick depends on the ports already handed
+     * out — so this stays a foreach rather than a collection pipeline.
+     *
+     * @param  list<PortConflict>  $conflicts
+     * @return array{array<string, string>, array<string, string>, list<string>}
+     */
+    private function planMoves(Server $server, array $conflicts): array
     {
         // Two kinds of move. A forward to your machine is true of the machine,
         // not of this server — something else owns 3306 whoever serves the
@@ -104,7 +129,7 @@ final class PortGuard
 
             // Nowhere to move to is the same dead end as not being movable.
             if ($free === null) {
-                throw ServerException::portsUnavailable($server->label(), $conflicts);
+                $this->refuse($server, $conflicts);
             }
 
             $assigned[] = $free;
@@ -123,22 +148,15 @@ final class PortGuard
             $lines[] = "{$port->urlKey}={$url}";
         }
 
-        terminal()->summary(
-            "{$server->label()} needs host ports that are already in use",
-            $lines,
-            'Only where the port is yours to move: a forward to your machine, or the address the application answers on.',
-        );
+        return [$keep, $forThisServer, $lines];
+    }
 
-        if ($autoAccept) {
-            terminal()->warning('Moving them to free ports in your .env.');
-        } elseif (! terminal()->confirm('Move them and continue?', default: true)) {
-            throw ServerException::portsUnavailable($server->label(), $conflicts);
-        }
-
-        $this->envFile->setMany($keep);
-        $this->envRestore->around(fn () => $this->envFile->setMany($forThisServer));
-
-        terminal()->success('Ports updated in .env.');
+    /**
+     * @param  list<PortConflict>  $conflicts
+     */
+    private function refuse(Server $server, array $conflicts): never
+    {
+        throw ServerException::portsUnavailable($server->label(), $conflicts);
     }
 
     /**

@@ -9,6 +9,8 @@ use Igne\LaravelBootUp\Facades\Platform;
 /**
  * The native-Windows guard. Commands that manage OS processes refuse to
  * run outside a Unix-like environment; pure file generators run anywhere.
+ *
+ * @phpstan-require-extends \Illuminate\Console\Command
  */
 trait RequiresUnix
 {

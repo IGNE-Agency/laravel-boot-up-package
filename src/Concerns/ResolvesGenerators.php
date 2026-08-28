@@ -8,6 +8,8 @@ namespace Igne\LaravelBootUp\Concerns;
  * The shared registry shape for generator-backed generate:* commands:
  * built-ins merged UNDER the published config's map (project entries win
  * on key collision), and a key => label map for the interactive picker.
+ *
+ * @phpstan-require-extends \Illuminate\Console\Command
  */
 trait ResolvesGenerators
 {

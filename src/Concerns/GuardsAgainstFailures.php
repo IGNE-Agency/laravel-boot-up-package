@@ -14,6 +14,8 @@ use Throwable;
  * The shared two-tier exception funnel: a known failure (a BootUpException
  * or a process failure) becomes a clean error line, anything else an
  * "Unexpected error" — always with a non-zero exit code.
+ *
+ * @phpstan-require-extends \Illuminate\Console\Command
  */
 trait GuardsAgainstFailures
 {

@@ -60,19 +60,11 @@ final class DeployTaskRunner
         }
 
         try {
-            $this->runThroughServer($context, CommandLine::make($this->tokensFor($command)));
+            $this->runThroughServer($context, CommandLine::make(
+                $command->shellLine('php artisan', 'composer', $this->packageManagers->selected()->binary()),
+            ));
         } catch (ProcessFailedException $exception) {
             throw DeployException::commandFailed($command, $exception->getMessage());
         }
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function tokensFor(DeployTask $command): array
-    {
-        $line = $command->shellLine('php artisan', 'composer', $this->packageManagers->selected()->binary());
-
-        return preg_split('/\s+/', trim($line)) ?: [];
     }
 }

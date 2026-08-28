@@ -69,12 +69,6 @@ final class FinalizeApplication implements Step
             return false;
         }
 
-        foreach (array_keys($links) as $link) {
-            if (! file_exists($link)) {
-                return false;
-            }
-        }
-
-        return true;
+        return collect($links)->keys()->every(fn (string $link): bool => file_exists($link));
     }
 }

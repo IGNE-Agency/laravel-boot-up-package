@@ -123,9 +123,9 @@ final class ShutdownRunner
         // A persisted key may belong to a custom driver that no longer
         // exists in config — the rest of the teardown already ran, so
         // reporting beats crashing.
-        try {
-            $server = $this->selector->driver($key);
-        } catch (\Throwable) {
+        $server = $this->selector->driverOrNull($key);
+
+        if ($server === null) {
             terminal()->warning("The recorded server [{$key}] is not a known driver — stop it manually if it is still running.");
 
             return;

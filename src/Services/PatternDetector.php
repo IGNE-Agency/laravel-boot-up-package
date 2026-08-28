@@ -4,9 +4,16 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Services;
 
+use Illuminate\Support\Str;
+
 /**
  * Case-insensitive needle matching for classifying tool output — the one
- * loop every "does this error mean X" detector shares.
+ * check every "does this error mean X" detector shares.
+ *
+ * Two Str::contains() caveats the pattern lists must respect: an empty
+ * needle never matches (stripos would have matched it), and case folds via
+ * mb_strtolower — both irrelevant while every pattern is a non-empty ASCII
+ * literal, which is what the detectors' consts hold.
  */
 final class PatternDetector
 {
@@ -15,12 +22,6 @@ final class PatternDetector
      */
     public static function matchesAny(string $haystack, array $patterns): bool
     {
-        foreach ($patterns as $pattern) {
-            if (stripos($haystack, $pattern) !== false) {
-                return true;
-            }
-        }
-
-        return false;
+        return Str::contains($haystack, $patterns, ignoreCase: true);
     }
 }

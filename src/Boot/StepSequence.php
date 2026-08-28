@@ -78,52 +78,37 @@ final readonly class StepSequence
      */
     public function summary(): array
     {
-        $present = [];
+        // The first occurrence of a #[Group] speaks for the whole group;
+        // ungrouped steps get a per-index key so they never merge.
+        return collect($this->steps)
+            ->unique(fn (StepDescriptor $step): string => self::groupFor($step->class) ?? "unknown-{$step->index}", strict: true)
+            ->map(function (StepDescriptor $step): ?string {
+                $declared = self::groupFor($step->class);
 
-        foreach ($this->steps as $step) {
-            $present[$step->class] = true;
-        }
+                return $declared !== null ? $this->groupLine($declared, $step) : $step->label;
+            })
+            ->filter(fn (?string $line): bool => $line !== null)
+            ->values()
+            ->all();
+    }
 
-        $lines = [];
-        $emitted = [];
-
-        foreach ($this->steps as $step) {
-            $declared = self::groupFor($step->class);
-            $group = $declared ?? "unknown-{$step->index}";
-
-            if (isset($emitted[$group])) {
-                continue;
-            }
-
-            $emitted[$group] = true;
-
-            $line = $declared !== null
-                ? $this->groupLine($declared, $present, $step)
-                : $step->label;
-
-            if ($line !== null) {
-                $lines[] = $line;
-            }
-        }
-
-        return $lines;
+    /**
+     * Whether the pipeline contains the given step class, so the summary
+     * lines can name only the parts that will actually run.
+     */
+    private function includes(string $class): bool
+    {
+        return collect($this->steps)->contains(fn (StepDescriptor $step): bool => $step->class === $class);
     }
 
     /**
      * The #[Stage] a step class declares, or null — reflection instead of a
      * hand-maintained class-string map, so third-party steps can join a
-     * stage. class_exists() guards reflection on typo'd config entries,
-     * which must stay a pipeline-time error, not a summary-time one.
+     * stage.
      */
     private static function stageFor(string $class): ?BootStage
     {
-        if (! class_exists($class)) {
-            return null;
-        }
-
-        $attributes = (new ReflectionClass($class))->getAttributes(Stage::class);
-
-        return $attributes === [] ? null : $attributes[0]->newInstance()->stage;
+        return self::attribute($class, Stage::class)?->stage;
     }
 
     /**
@@ -132,29 +117,41 @@ final readonly class StepSequence
      */
     private static function groupFor(string $class): ?string
     {
+        return self::attribute($class, Group::class)?->name;
+    }
+
+    /**
+     * The first instance of the given attribute on the class, or null when
+     * there is none. class_exists() guards reflection on typo'd config
+     * entries, which must stay a pipeline-time error, not a summary-time one.
+     *
+     * @template TAttribute of object
+     *
+     * @param  class-string<TAttribute>  $attribute
+     * @return TAttribute|null
+     */
+    private static function attribute(string $class, string $attribute): ?object
+    {
         if (! class_exists($class)) {
             return null;
         }
 
-        $attributes = (new ReflectionClass($class))->getAttributes(Group::class);
+        $attributes = (new ReflectionClass($class))->getAttributes($attribute);
 
-        return $attributes === [] ? null : $attributes[0]->newInstance()->name;
+        return $attributes === [] ? null : $attributes[0]->newInstance();
     }
 
-    /**
-     * @param  array<string, true>  $present
-     */
-    private function groupLine(string $group, array $present, StepDescriptor $step): ?string
+    private function groupLine(string $group, StepDescriptor $step): ?string
     {
         $options = $this->options;
 
         return match ($group) {
-            'prepare' => $this->prepareLine($present),
+            'prepare' => $this->prepareLine(),
             'tools' => 'Check required tools are installed',
             'server' => $this->serverLabel !== null
                 ? "Start the {$this->serverLabel} development server"
                 : 'Start the development server',
-            'dependencies' => $this->dependenciesLine($present),
+            'dependencies' => $this->dependenciesLine(),
             'database' => 'Prepare the database and verify the connection',
             'deploy-tasks' => "Run the project's configured commands",
             'migrations' => $this->migrationsLine(),
@@ -167,28 +164,22 @@ final readonly class StepSequence
         };
     }
 
-    /**
-     * @param  array<string, true>  $present
-     */
-    private function prepareLine(array $present): string
+    private function prepareLine(): string
     {
         $parts = collect([
-            isset($present[EnsureEnvFile::class]) ? '.env file' : null,
-            isset($present[EnsureLocalEnvironment::class]) ? 'local environment' : null,
-            isset($present[GenerateAppKey::class]) ? 'application key' : null,
+            $this->includes(EnsureEnvFile::class) ? '.env file' : null,
+            $this->includes(EnsureLocalEnvironment::class) ? 'local environment' : null,
+            $this->includes(GenerateAppKey::class) ? 'application key' : null,
         ])->filter()->implode(', ');
 
         return "Prepare the project ({$parts})";
     }
 
-    /**
-     * @param  array<string, true>  $present
-     */
-    private function dependenciesLine(array $present): ?string
+    private function dependenciesLine(): ?string
     {
         $kinds = collect([
-            isset($present[InstallComposerDependencies::class]) ? 'Composer' : null,
-            isset($present[InstallFrontendDependencies::class]) && $this->options->withAssets ? 'frontend' : null,
+            $this->includes(InstallComposerDependencies::class) ? 'Composer' : null,
+            $this->includes(InstallFrontendDependencies::class) && $this->options->withAssets ? 'frontend' : null,
         ])->filter();
 
         if ($kinds->isEmpty()) {
@@ -232,11 +223,7 @@ final readonly class StepSequence
             return $class::progressLabel($options, $parameters);
         }
 
-        $attributes = (new ReflectionClass($class))->getAttributes(Label::class);
-
-        return $attributes === []
-            ? self::fallbackLabel($class, $parameters)
-            : $attributes[0]->newInstance()->text;
+        return self::attribute($class, Label::class)->text ?? self::fallbackLabel($class, $parameters);
     }
 
     /**

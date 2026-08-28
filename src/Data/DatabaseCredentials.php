@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Data;
 
+use Illuminate\Support\Arr;
+
 /**
  * A partial set of DB_* values headed for the .env file — null means
  * "leave that key untouched". Field names mirror the connection config
@@ -31,13 +33,13 @@ final readonly class DatabaseCredentials
      */
     public function toEnvMap(): array
     {
-        return array_filter([
+        return Arr::whereNotNull([
             'DB_HOST' => $this->host,
             'DB_PORT' => $this->port,
             'DB_DATABASE' => $this->database,
             'DB_USERNAME' => $this->username,
             'DB_PASSWORD' => $this->password,
-        ], static fn (?string $value): bool => $value !== null);
+        ]);
     }
 
     /**
@@ -47,13 +49,13 @@ final readonly class DatabaseCredentials
      */
     public function toConnectionFields(): array
     {
-        return array_filter([
+        return Arr::whereNotNull([
             'host' => $this->host,
             'port' => $this->port,
             'database' => $this->database,
             'username' => $this->username,
             'password' => $this->password,
-        ], static fn (?string $value): bool => $value !== null);
+        ]);
     }
 
     /**

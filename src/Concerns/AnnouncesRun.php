@@ -10,6 +10,8 @@ namespace Igne\LaravelBootUp\Concerns;
  * Deliberately explicit calls instead of an automatic wrapper — intros may
  * come after pre-flight checks and commands can have several distinct
  * endings.
+ *
+ * @phpstan-require-extends \Illuminate\Console\Command
  */
 trait AnnouncesRun
 {

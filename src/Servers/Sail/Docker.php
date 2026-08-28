@@ -33,9 +33,9 @@ final class Docker
 
         terminal()->info('Starting Docker...');
 
-        $this->platform->isMacos()
-            ? $this->runner->runSilently(CommandLine::make(['open', '-a', 'Docker']))
-            : $this->runner->runSilently(CommandLine::make(['systemctl', 'start', 'docker']));
+        $this->runner->runSilently(CommandLine::make(
+            $this->platform->isMacos() ? ['open', '-a', 'Docker'] : ['systemctl', 'start', 'docker'],
+        ));
 
         $started = $this->poller->until(
             fn (): bool => $this->isRunning(),

@@ -285,9 +285,7 @@ test('package-manager project commands use the runtime $PM with a frontend and t
         ->toContain('pnpm run generate');
 });
 
-test('branchList renders the branches as prose', function (): void {
-    $scripts = new CiScripts;
-
-    expect($scripts->branchList(ciScriptsPlan()))->toBe('develop, staging and main')
-        ->and($scripts->branchList(ciScriptsPlan(['branchEnvironments' => ['main' => 'production']])))->toBe('main');
+test('the plan renders its branches as prose', function (): void {
+    expect(ciScriptsPlan()->branchList())->toBe('develop, staging and main')
+        ->and(ciScriptsPlan(['branchEnvironments' => ['main' => 'production']])->branchList())->toBe('main');
 });

@@ -42,19 +42,20 @@ final class PipelineCommand extends BootUpCommand
         PipelineConfig $config,
         PipelineEnvFile $envFile,
         GeneratedFilePublisher $publisher,
+        PipelineExtensionValidator $validator,
     ): int {
         $this->announce('Generating the CI/CD pipeline...');
 
-        $provider = $this->choose('provider', 'Which git provider should the pipeline target?');
+        $provider = $this->choose('provider', 'Which git provider should the pipeline target?', $this->providerOptions());
 
         /** @var PipelineGenerator $generator */
         $generator = $this->laravel->make($this->generators()[$provider]);
 
         $host = DeployHookHost::from(
-            $this->choose('host', 'Which host receives the deploy hook?', DeployHookHost::Fortrabbit->value),
+            $this->choose('host', 'Which host receives the deploy hook?', $this->hostOptions(), DeployHookHost::Fortrabbit->value),
         );
 
-        $plan = $this->validatedPlan($planner->plan($host), $config, $generator);
+        $plan = $this->validatedPlan($planner->plan($host), $config, $generator, $validator);
 
         $files = $this->generatedFiles($generator, $plan, $envFile, $provider);
 
@@ -70,9 +71,13 @@ final class PipelineCommand extends BootUpCommand
     /**
      * The plan with the project's validated step/file extensions applied.
      */
-    private function validatedPlan(PipelinePlan $plan, PipelineConfig $config, PipelineGenerator $generator): PipelinePlan
-    {
-        $extensions = (new PipelineExtensionValidator($this->laravel->basePath()))
+    private function validatedPlan(
+        PipelinePlan $plan,
+        PipelineConfig $config,
+        PipelineGenerator $generator,
+        PipelineExtensionValidator $validator,
+    ): PipelinePlan {
+        $extensions = $validator
             ->validate($config->steps, $config->files, new PipelineContext($generator, $plan, array_keys($this->generators())));
 
         return $plan->withExtensions($extensions);
@@ -111,7 +116,7 @@ final class PipelineCommand extends BootUpCommand
     /**
      * @return array<string, string>
      */
-    protected function providerOptions(): array
+    private function providerOptions(): array
     {
         return $this->generatorLabels($this->generators());
     }
@@ -123,7 +128,7 @@ final class PipelineCommand extends BootUpCommand
      *
      * @return array<string, string>
      */
-    protected function hostOptions(): array
+    private function hostOptions(): array
     {
         return collect(DeployHookHost::cases())
             ->mapWithKeys(fn (DeployHookHost $host): array => [$host->value => $host->label()])

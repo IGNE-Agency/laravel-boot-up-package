@@ -113,20 +113,28 @@ final class CiScripts
 
         $script->lineWithBreak('echo "==> Running the test suite"')
             ->line('php artisan config:clear')
-            ->each($plan->deployment->beforeDeploy, fn (Lines $script, DeployTask $command) => $script
-                ->lines($this->projectCommand($command, $plan)))
+            ->lines($this->projectCommands($plan->deployment->beforeDeploy, $plan))
             ->each($plan->deployment->finalize, fn (Lines $script, string $command) => $script
                 ->line("php artisan {$command}"))
-            ->each($plan->deployment->beforeMigrations, fn (Lines $script, DeployTask $command) => $script
-                ->lines($this->projectCommand($command, $plan)))
+            ->lines($this->projectCommands($plan->deployment->beforeMigrations, $plan))
             ->lineIf($plan->deployment->migrate, 'php artisan migrate --force')
-            ->each($plan->deployment->afterMigrations, fn (Lines $script, DeployTask $command) => $script
-                ->lines($this->projectCommand($command, $plan)))
-            ->each($plan->deployment->afterDeploy, fn (Lines $script, DeployTask $command) => $script
-                ->lines($this->projectCommand($command, $plan)))
+            ->lines($this->projectCommands($plan->deployment->afterMigrations, $plan))
+            ->lines($this->projectCommands($plan->deployment->afterDeploy, $plan))
             ->line('php artisan test');
 
         return $this->script('test.sh', $script);
+    }
+
+    /**
+     * One deploy phase's project commands as appendable lines — empty for an
+     * empty phase, which lines() absorbs without leaving a separator behind.
+     *
+     * @param  list<DeployTask>  $tasks
+     */
+    private function projectCommands(array $tasks, PipelinePlan $plan): Lines
+    {
+        return Lines::make()->each($tasks, fn (Lines $script, DeployTask $command) => $script
+            ->lines($this->projectCommand($command, $plan)));
     }
 
     /**
@@ -179,16 +187,6 @@ final class CiScripts
             ->line('esac');
 
         return $this->script('deploy-hook.sh', $script);
-    }
-
-    /**
-     * The configured branches as prose for generated header comments — the
-     * plan's branchEnvironments keys, e.g. "develop, staging and main" for
-     * the default map.
-     */
-    public function branchList(PipelinePlan $plan): string
-    {
-        return collect($plan->branchEnvironments)->keys()->join(', ', ' and ');
     }
 
     private function header(string $purpose, string ...$notes): Lines

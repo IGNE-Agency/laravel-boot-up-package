@@ -7,6 +7,7 @@ namespace Igne\LaravelBootUp\Concerns;
 use Composer\Semver\VersionParser;
 use Igne\LaravelBootUp\Data\StepEntry;
 use Igne\LaravelBootUp\Exceptions\ConfigException;
+use Illuminate\Contracts\Config\Repository;
 use Throwable;
 
 /**
@@ -21,6 +22,39 @@ use Throwable;
  */
 trait ValidatesConfig
 {
+    /**
+     * The *From/int* readers below read AND check in one call, so the config
+     * key is written once instead of twice — once for the read and again for
+     * the error label, where the two literals could silently drift apart.
+     */
+    private static function intAtLeast(Repository $config, string $key, int $default, int $minimum): int
+    {
+        return self::atLeast($config->get($key, $default), $minimum, $key);
+    }
+
+    private static function intWithinRange(Repository $config, string $key, int $default, int $minimum, int $maximum): int
+    {
+        return self::withinRange($config->get($key, $default), $minimum, $maximum, $key);
+    }
+
+    /**
+     * @param  class-string  $contract
+     * @return list<string>
+     */
+    private static function stepsFrom(Repository $config, string $key, string $contract): array
+    {
+        return self::validatedSteps((array) $config->get($key, []), $key, $contract);
+    }
+
+    /**
+     * @param  array<string, string>  $default
+     * @return array<string, string>
+     */
+    private static function constraintsFrom(Repository $config, string $key, array $default): array
+    {
+        return self::validatedConstraints((array) $config->get($key, $default), $key);
+    }
+
     /**
      * @param  list<string>  $entries  raw pipeline entries, "Class" or "Class:a,b"
      * @param  class-string  $contract
@@ -89,7 +123,7 @@ trait ValidatesConfig
             try {
                 $parser->parseConstraints($value);
             } catch (Throwable) {
-                throw ConfigException::invalidType("{$key}.{$tool}", "[{$value}]", 'a version constraint such as ^8.3');
+                throw ConfigException::invalidValue("{$key}.{$tool}", $value, 'a version constraint such as ^8.3');
             }
         }
 

@@ -23,6 +23,18 @@ final readonly class ActiveServerRecord
     ) {}
 
     /**
+     * Whether a decoded payload carries every key fromArray() reads — kept
+     * next to the constructor it feeds, so adding a field cannot leave the
+     * persistence guard silently accepting incomplete payloads.
+     *
+     * @phpstan-assert-if-true array{key: mixed, started_by_us: mixed, setup_pid: mixed, started_at: mixed} $data
+     */
+    public static function hydratable(mixed $data): bool
+    {
+        return \is_array($data) && isset($data['key'], $data['started_by_us'], $data['setup_pid'], $data['started_at']);
+    }
+
+    /**
      * @param  array{key: string, started_by_us: bool, setup_pid: int, started_at: string}  $data
      */
     public static function fromArray(array $data): self

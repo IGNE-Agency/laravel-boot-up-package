@@ -27,9 +27,9 @@ final readonly class HerdConfig
 
         return new self(
             site: $site === null ? null : (string) $site,
-            healthAttempts: self::atLeast($config->get('boot-up.herd.health.attempts', 10), 1, 'boot-up.herd.health.attempts'),
-            healthDelayMs: self::atLeast($config->get('boot-up.herd.health.delay_ms', 500), 0, 'boot-up.herd.health.delay_ms'),
-            healthTimeoutSeconds: self::atLeast($config->get('boot-up.herd.health.timeout_seconds', 5), 1, 'boot-up.herd.health.timeout_seconds'),
+            healthAttempts: self::intAtLeast($config, 'boot-up.herd.health.attempts', 10, 1),
+            healthDelayMs: self::intAtLeast($config, 'boot-up.herd.health.delay_ms', 500, 0),
+            healthTimeoutSeconds: self::intAtLeast($config, 'boot-up.herd.health.timeout_seconds', 5, 1),
         );
     }
 }

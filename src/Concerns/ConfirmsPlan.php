@@ -9,6 +9,8 @@ use Igne\LaravelBootUp\Boot\StepSequence;
 /**
  * The standard "show the plan, then ask" gate for commands that run a step
  * sequence. The using command must declare a --yes option.
+ *
+ * @phpstan-require-extends \Illuminate\Console\Command
  */
 trait ConfirmsPlan
 {

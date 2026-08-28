@@ -33,6 +33,8 @@ afterEach(function (): void {
 
 function herdServer(string $workDir, ?string $projectPath = null, ?string $site = null): HerdServer
 {
+    $projectPath ??= $workDir;
+
     $runner = new ProcessRunner(
         processes: app(Factory::class),
         ledger: new ProcessLedger($workDir.'/processes.json'),
@@ -54,7 +56,9 @@ test('start links the project under the configured site name and secures it', fu
 
     herdServer($this->workDir, $this->projectDir, site: 'dashboard')->start(new BootContext(new BootOptions));
 
-    ProcessFaker::assertRan('herd link dashboard');
+    // In the project directory: `herd link` links whatever directory it
+    // runs in, so the cwd IS the link target.
+    ProcessFaker::assertRanIn('herd link dashboard', $this->projectDir);
     ProcessFaker::assertRan('herd secure dashboard');
     Prompt::assertStrippedOutputContains('Project linked to Laravel Herd as https://dashboard.test.');
     Prompt::assertStrippedOutputContains('HTTPS certificate configured.');
@@ -269,4 +273,11 @@ test('identity, tools and rewrites', function (): void {
         ->and($rewrites->replaces)->toBe([])
         ->and($rewrites->prefixes)->toBe(['php', 'composer', 'tinker'])
         ->and($rewrites->prefix)->toBe('herd');
+});
+
+test('the container binds the project path to the application root, not the working directory', function (): void {
+    $server = app(HerdServer::class);
+    $path = (new ReflectionProperty($server, 'projectPath'))->getValue($server);
+
+    expect($path)->toBe(app()->basePath());
 });

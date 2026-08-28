@@ -11,7 +11,6 @@ use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\ServerSelector;
-use Throwable;
 
 /**
  * Read-only view of everything boot-up is running: the active server and
@@ -62,12 +61,8 @@ final class StatusCommand extends BootUpCommand
     {
         // The driver key may belong to a custom driver that no longer
         // exists in config — the record itself is still worth showing.
-        try {
-            $server = $selector->driver($active->key);
-            $name = "{$server->label()} at {$server->url()}";
-        } catch (Throwable) {
-            $name = $active->key;
-        }
+        $server = $selector->driverOrNull($active->key);
+        $name = $server === null ? $active->key : "{$server->label()} at {$server->url()}";
 
         // One Terminal call per line: artisan output expectations can match
         // at most one assertion per write.

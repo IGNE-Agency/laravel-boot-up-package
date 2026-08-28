@@ -30,7 +30,7 @@ final readonly class ToolsConfig
         return new self(
             autoInstall: (bool) $config->get('boot-up.tools.auto_install', true),
             autoUpdate: (bool) $config->get('boot-up.tools.auto_update', true),
-            required: self::validatedConstraints((array) $config->get('boot-up.tools.required', self::DEFAULT_REQUIRED), 'boot-up.tools.required'),
+            required: self::constraintsFrom($config, 'boot-up.tools.required', self::DEFAULT_REQUIRED),
             installers: (array) $config->get('boot-up.tools.installers', []),
         );
     }

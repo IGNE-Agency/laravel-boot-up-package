@@ -23,7 +23,7 @@ final class HerdServer implements RequiresTools, RewritesCommands, Server, Warns
         private readonly HerdServices $services,
         private readonly HerdSites $sites,
         private readonly HerdConfig $config,
-        private readonly ?string $projectPath = null,
+        private readonly string $projectPath,
     ) {}
 
     public function key(): string
@@ -59,7 +59,7 @@ final class HerdServer implements RequiresTools, RewritesCommands, Server, Warns
 
     public function start(BootContext $context): void
     {
-        $project = $this->project();
+        $project = $this->projectPath;
 
         $linked = $this->sites->nameFor($project);
 
@@ -117,15 +117,10 @@ final class HerdServer implements RequiresTools, RewritesCommands, Server, Warns
      */
     public function url(): string
     {
-        $project = $this->project();
+        $project = $this->projectPath;
         $name = $this->sites->nameFor($project) ?? basename($project);
 
         return "https://{$name}.test";
-    }
-
-    private function project(): string
-    {
-        return $this->projectPath ?? (getcwd() ?: '');
     }
 
     /**
@@ -189,11 +184,15 @@ final class HerdServer implements RequiresTools, RewritesCommands, Server, Warns
     }
 
     /**
+     * Run in the project directory, not the process's cwd: `herd link` links
+     * whatever directory it runs in, so this is what makes the injected
+     * project path hold when artisan is invoked from elsewhere.
+     *
      * @param  list<string>  $command
      */
     private function runOrFail(array $command): void
     {
-        $result = $this->runner->runSilently(CommandLine::make($command));
+        $result = $this->runner->runSilently(CommandLine::make($command)->inDirectory($this->projectPath));
 
         if (! $result->successful()) {
             $line = implode(' ', $command);

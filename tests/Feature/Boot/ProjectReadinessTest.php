@@ -8,6 +8,7 @@ use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Environment\LocalEnvironment;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 
 beforeEach(function (): void {
@@ -29,13 +30,14 @@ afterEach(function (): void {
  */
 function readiness(string $dir, ?AssetMode $assets = null, array $serverVars = []): ProjectReadiness
 {
+    $envFile = new EnvFile($dir.'/.env', $dir.'/.env.example');
+
     return new ProjectReadiness(
-        envFile: new EnvFile($dir.'/.env', $dir.'/.env.example'),
+        envFile: $envFile,
         packageJson: new PackageJson($dir.'/package.json'),
         frontendConfig: new FrontendConfig(assets: $assets ?? AssetMode::Watch),
-        environmentConfig: new EnvironmentConfig,
+        localEnvironment: new LocalEnvironment($envFile, new EnvironmentConfig, $serverVars),
         basePath: $dir,
-        serverVars: $serverVars,
     );
 }
 

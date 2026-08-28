@@ -32,13 +32,13 @@ final class DeployScriptCommand extends BootUpCommand
 
     public function handle(DeploymentPlanner $planner): int
     {
-        $platform = $this->choose('platform', 'Which platform should the deployment script target?');
+        $platform = $this->choose('platform', 'Which platform should the deployment script target?', $this->platformOptions());
 
         /** @var ScriptGenerator $generator */
         $generator = $this->laravel->make($this->generators()[$platform]);
 
         $environment = DeploymentEnvironment::from(
-            $this->choose('environment', 'Which environment is this script for?', DeploymentEnvironment::Production->value),
+            $this->choose('environment', 'Which environment is this script for?', $this->environmentOptions(), DeploymentEnvironment::Production->value),
         );
 
         $script = $generator->generate($planner->plan(
@@ -76,7 +76,7 @@ final class DeployScriptCommand extends BootUpCommand
     /**
      * @return array<string, string>
      */
-    protected function platformOptions(): array
+    private function platformOptions(): array
     {
         return $this->generatorLabels($this->generators());
     }
@@ -84,7 +84,7 @@ final class DeployScriptCommand extends BootUpCommand
     /**
      * @return array<string, string>
      */
-    protected function environmentOptions(): array
+    private function environmentOptions(): array
     {
         return collect(DeploymentEnvironment::cases())
             ->mapWithKeys(fn (DeploymentEnvironment $environment): array => [
@@ -101,23 +101,22 @@ final class DeployScriptCommand extends BootUpCommand
      */
     private function printScript(Lines $script): void
     {
-        if (! $this->output->isDecorated()) {
-            foreach (explode("\n", rtrim($script->render(), "\n")) as $line) {
-                $this->line($line);
-            }
+        $lines = $this->output->isDecorated()
+            ? $script->toStyledArray($this->styleLine(...))
+            : explode("\n", rtrim($script->render(), "\n"));
 
-            return;
+        foreach ($lines as $line) {
+            $this->line($line);
         }
+    }
 
-        $styler = fn (string $kind, string $text): string => match ($kind) {
+    private function styleLine(string $kind, string $text): string
+    {
+        return match ($kind) {
             Lines::KIND_HEADING => terminal()->bold(terminal()->cyan($text)),
             Lines::KIND_WARNING => terminal()->orange($text),
             Lines::KIND_COMMENT => terminal()->dim($text),
             default => $text,
         };
-
-        foreach ($script->toStyledArray($styler) as $line) {
-            $this->line($line);
-        }
     }
 }

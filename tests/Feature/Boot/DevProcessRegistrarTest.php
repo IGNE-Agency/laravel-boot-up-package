@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Boot\DevProcessDecisions;
 use Igne\LaravelBootUp\Boot\DevProcessRegistrar;
 use Igne\LaravelBootUp\Boot\HorizonPresence;
 use Igne\LaravelBootUp\Config\DevConfig;
@@ -70,17 +71,19 @@ function devRegistrar(
     $packageJson = new PackageJson($dir.'/package.json');
 
     return new DevProcessRegistrar(
-        queueConfig: $queue ?? new QueueConfig,
-        reverbConfig: $reverb ?? new ReverbConfig,
-        schedulerConfig: $scheduler ?? new SchedulerConfig,
-        frontendConfig: $frontend,
-        devConfig: $dev ?? new DevConfig,
-        horizonPresence: new HorizonPresence($horizon ?? new HorizonConfig, $composerJson),
-        composerJson: $composerJson,
-        packageJson: $packageJson,
-        packageManagers: new PackageManagerSelector($frontend, $packageJson),
-        envFile: new EnvFile($dir.'/.env', $dir.'/.env.example'),
-        laravelConfig: new Repository(['queue' => ['default' => $defaultConnection]]),
+        decisions: new DevProcessDecisions(
+            queueConfig: $queue ?? new QueueConfig,
+            reverbConfig: $reverb ?? new ReverbConfig,
+            schedulerConfig: $scheduler ?? new SchedulerConfig,
+            frontendConfig: $frontend,
+            devConfig: $dev ?? new DevConfig,
+            horizonPresence: new HorizonPresence($horizon ?? new HorizonConfig, $composerJson),
+            composerJson: $composerJson,
+            packageJson: $packageJson,
+            packageManagers: new PackageManagerSelector($frontend, $packageJson),
+            envFile: new EnvFile($dir.'/.env', $dir.'/.env.example'),
+            laravelConfig: new Repository(['queue' => ['default' => $defaultConnection]]),
+        ),
         rewriter: new CommandRewriter,
     );
 }
