@@ -93,6 +93,57 @@ final class EnvFile
     }
 
     /**
+     * Remove these keys entirely. A key that is not there is not an error —
+     * the caller wants it gone, and it is.
+     *
+     * @param  list<string>  $keys
+     */
+    public function remove(array $keys): void
+    {
+        if ($keys === [] || ! $this->exists()) {
+            return;
+        }
+
+        $content = (string) file_get_contents($this->path);
+
+        foreach ($keys as $key) {
+            // The line's own newline goes with it, so removing a key does not
+            // leave a blank line where it was.
+            $content = (string) preg_replace($this->keyPattern($key, wholeLine: true), '', $content, 1);
+        }
+
+        $this->write($content);
+    }
+
+    /**
+     * Every key in the file with its value, for callers that have to compare
+     * the whole environment before and after something else wrote to it.
+     *
+     * @return array<string, string>
+     */
+    public function all(): array
+    {
+        if (! $this->exists()) {
+            return [];
+        }
+
+        preg_match_all(
+            '/^[ \t]*([A-Za-z_][A-Za-z0-9_.]*)[ \t]*=[ \t]*(.*)$/m',
+            (string) file_get_contents($this->path),
+            $matches,
+            PREG_SET_ORDER,
+        );
+
+        $values = [];
+
+        foreach ($matches as $match) {
+            $values[$match[1]] = $this->unquote(trim($match[2]));
+        }
+
+        return $values;
+    }
+
+    /**
      * Keys that are absent from the file OR present with an empty value.
      *
      * @param  list<string>  $keys
@@ -128,11 +179,12 @@ final class EnvFile
         return "{$content}{$line}\n";
     }
 
-    private function keyPattern(string $key): string
+    private function keyPattern(string $key, bool $wholeLine = false): string
     {
         $quotedKey = preg_quote($key, '/');
+        $line = "^{$quotedKey}[ \\t]*=[ \\t]*(.*)";
 
-        return "/^{$quotedKey}[ \\t]*=[ \\t]*(.*)$/m";
+        return $wholeLine ? "/{$line}\\R?/m" : "/{$line}$/m";
     }
 
     private function quoteIfNeeded(string $value): string

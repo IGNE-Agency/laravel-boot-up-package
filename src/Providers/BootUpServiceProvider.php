@@ -38,6 +38,7 @@ use Igne\LaravelBootUp\Console\StatusCommand;
 use Igne\LaravelBootUp\Console\UpCommand;
 use Igne\LaravelBootUp\Deploy\Composer;
 use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Environment\EnvRestorePoint;
 use Igne\LaravelBootUp\Environment\ShellProfile;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
@@ -197,6 +198,13 @@ final class BootUpServiceProvider extends ServiceProvider
         $this->app->singleton(EnvFile::class, fn (Application $app) => new EnvFile(
             $app->basePath('.env'),
             $app->basePath('.env.example'),
+        ));
+
+        // Beside the process ledger and active-server record: app:down has to
+        // read what app:up recorded, from another process.
+        $this->app->singleton(EnvRestorePoint::class, fn (Application $app) => new EnvRestorePoint(
+            envFile: $app->make(EnvFile::class),
+            path: $app->storagePath('framework/boot-up/env-restore.json'),
         ));
 
         $this->app->singleton(ShellProfile::class, fn () => new ShellProfile);

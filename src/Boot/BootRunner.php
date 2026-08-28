@@ -8,6 +8,7 @@ use Closure;
 use Igne\LaravelBootUp\Config\SetupConfig;
 use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\BootOptions;
+use Igne\LaravelBootUp\Environment\EnvRestorePoint;
 use Igne\LaravelBootUp\Process\ProcessReaper;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\ServerSelector;
@@ -42,6 +43,7 @@ final class BootRunner
         private readonly ProcessReaper $reaper,
         private readonly Pipeline $pipeline,
         private readonly StageReporter $reporter,
+        private readonly EnvRestorePoint $envRestore,
     ) {}
 
     /**
@@ -121,10 +123,15 @@ final class BootRunner
      * reached through the SAME instance handle() received, because the
      * funnel runs outside handle() where re-resolving would produce a
      * fresh runner with a fresh, unbound reporter.
+     *
+     * The .env goes back too: a boot that got as far as pointing the
+     * application at containers it never started must not leave it pointing
+     * there.
      */
     public function fail(): void
     {
         $this->reporter->fail();
+        $this->envRestore->restore();
     }
 
     private function anotherServeIsRunning(): bool

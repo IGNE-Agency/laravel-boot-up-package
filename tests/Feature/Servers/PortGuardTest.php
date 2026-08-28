@@ -49,6 +49,7 @@ function portGuard(string $workDir, bool $checkPorts = true, bool $autoAccept = 
     return new PortGuard(
         probe: new PortProbe($runner),
         envFile: new EnvFile($workDir.'/.env', $workDir.'/.env.example'),
+        envRestore: envRestorePoint($workDir),
         serverConfig: new DevServerConfig(checkPorts: $checkPorts),
         setupConfig: new SetupConfig(autoAccept: $autoAccept),
     );
@@ -102,16 +103,28 @@ function portServer(ReservedPort ...$ports): Server
     };
 }
 
+/**
+ * Hold a real port the guard has to notice.
+ *
+ * Deliberately not an OS-assigned ephemeral port: those land in 49152-65535,
+ * and one near the top leaves fewer free ports above it than the search
+ * window looks at — so the guard would sometimes find nowhere to move to and
+ * the test would fail for a reason it is not about. A quiet mid-range port
+ * has room above it, like the real FORWARD_* and APP_PORT values do.
+ */
 function heldPort(object $test): int
 {
-    $socket = stream_socket_server('tcp://0.0.0.0:0', $errno, $error);
+    for ($port = 20_000; $port < 30_000; $port++) {
+        $socket = @stream_socket_server("tcp://0.0.0.0:{$port}");
 
-    expect($socket)->not->toBeFalse("could not bind a test port: {$error}");
+        if ($socket !== false) {
+            $test->sockets[] = $socket;
 
-    $test->sockets[] = $socket;
-    $name = (string) stream_socket_get_name($socket, false);
+            return $port;
+        }
+    }
 
-    return (int) substr($name, (int) strrpos($name, ':') + 1);
+    throw new RuntimeException('no free port in 20000-30000 to stage a conflict with');
 }
 
 function guardContext(Server $server, bool $autoAccept = false): BootContext
@@ -181,7 +194,122 @@ test('a movable port is moved in the .env once confirmed', function (): void {
         ->and($env)->toContain('DB_HOST=mysql')
         ->and((int) explode('=', (string) preg_split('/\R/', $env)[2])[1])->toBeGreaterThan($taken);
     Prompt::assertStrippedOutputContains('Double Server needs host ports that are already in use');
-    Prompt::assertStrippedOutputContains('Port forwards updated in .env.');
+    Prompt::assertStrippedOutputContains('Ports updated in .env.');
+});
+
+test('a port with a URL to match moves both, in one write', function (): void {
+    Prompt::fake([Key::ENTER]);
+    ProcessFaker::fake();
+    file_put_contents($this->envPath, "APP_URL=http://localhost\nDB_HOST=mysql\n");
+    $taken = heldPort($this);
+    $server = portServer(new ReservedPort(
+        port: $taken,
+        purpose: 'laravel.test',
+        envKey: 'APP_PORT',
+        urlKey: 'APP_URL',
+    ));
+
+    portGuard($this->workDir)->guard(guardContext($server));
+
+    $envFile = new EnvFile($this->envPath, $this->workDir.'/.env.example');
+    $moved = (int) $envFile->get('APP_PORT');
+
+    // A port the application advertises is only moved once the address it
+    // advertises moves with it.
+    expect($moved)->toBeGreaterThan($taken)
+        ->and($envFile->get('APP_URL'))->toBe("http://localhost:{$moved}");
+});
+
+test('an existing port and path in the URL are replaced and kept', function (): void {
+    Prompt::fake([Key::ENTER]);
+    ProcessFaker::fake();
+    file_put_contents($this->envPath, "APP_URL=https://dashboard.test:80/app\n");
+    $taken = heldPort($this);
+    $server = portServer(new ReservedPort(
+        port: $taken,
+        purpose: 'laravel.test',
+        envKey: 'APP_PORT',
+        urlKey: 'APP_URL',
+    ));
+
+    portGuard($this->workDir)->guard(guardContext($server));
+
+    $envFile = new EnvFile($this->envPath, $this->workDir.'/.env.example');
+
+    expect($envFile->get('APP_URL'))->toBe('https://dashboard.test:'.$envFile->get('APP_PORT').'/app');
+});
+
+test('a URL with nothing worth keeping is replaced outright', function (): void {
+    Prompt::fake([Key::ENTER]);
+    ProcessFaker::fake();
+    file_put_contents($this->envPath, "APP_URL=\n");
+    $taken = heldPort($this);
+    $server = portServer(new ReservedPort(
+        port: $taken,
+        purpose: 'laravel.test',
+        envKey: 'APP_PORT',
+        urlKey: 'APP_URL',
+    ));
+
+    portGuard($this->workDir)->guard(guardContext($server));
+
+    $envFile = new EnvFile($this->envPath, $this->workDir.'/.env.example');
+
+    expect($envFile->get('APP_URL'))->toBe('http://localhost:'.$envFile->get('APP_PORT'));
+});
+
+test('the replacement is looked for where the port itself says', function (): void {
+    Prompt::fake([Key::ENTER]);
+    ProcessFaker::fake();
+    $taken = heldPort($this);
+    $server = portServer(new ReservedPort(port: $taken, purpose: 'mysql', envKey: 'FORWARD_DB_PORT'));
+
+    portGuard($this->workDir)->guard(guardContext($server));
+
+    $envFile = new EnvFile($this->envPath, $this->workDir.'/.env.example');
+
+    expect((int) $envFile->get('FORWARD_DB_PORT'))
+        ->toBeGreaterThanOrEqual((new ReservedPort(port: $taken, purpose: 'mysql'))->searchFrom());
+});
+
+test('a moved forward is kept — the machine still owns that port next boot', function (): void {
+    Prompt::fake([Key::ENTER]);
+    ProcessFaker::fake();
+    $taken = heldPort($this);
+    $server = portServer(new ReservedPort(port: $taken, purpose: 'mysql', envKey: 'FORWARD_DB_PORT'));
+
+    portGuard($this->workDir)->guard(guardContext($server));
+
+    $envFile = new EnvFile($this->envPath, $this->workDir.'/.env.example');
+    $moved = $envFile->get('FORWARD_DB_PORT');
+
+    envRestorePoint($this->workDir)->restore();
+
+    // Undoing it would only ask the same question again on the next boot.
+    expect($envFile->get('FORWARD_DB_PORT'))->toBe($moved);
+});
+
+test('the moved ports are recorded so the teardown can put them back', function (): void {
+    Prompt::fake([Key::ENTER]);
+    ProcessFaker::fake();
+    file_put_contents($this->envPath, "APP_URL=http://localhost\n");
+    $taken = heldPort($this);
+    $server = portServer(new ReservedPort(
+        port: $taken,
+        purpose: 'laravel.test',
+        envKey: 'APP_PORT',
+        urlKey: 'APP_URL',
+    ));
+
+    portGuard($this->workDir)->guard(guardContext($server));
+    envRestorePoint($this->workDir)->restore();
+
+    $env = (string) file_get_contents($this->envPath);
+
+    // APP_URL describes how one server served the project; the next run may
+    // serve it another way.
+    expect($env)->toContain('APP_URL=http://localhost')
+        ->and($env)->not->toContain('APP_PORT');
 });
 
 test('declining the move stops the boot instead', function (): void {

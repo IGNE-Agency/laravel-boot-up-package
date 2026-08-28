@@ -21,6 +21,7 @@ beforeEach(function (): void {
     $this->step = fn (?DatabaseConfig $config = null): EnsureDatabaseCredentials => new EnsureDatabaseCredentials(
         $config ?? new DatabaseConfig,
         $this->envFile,
+        envRestorePoint($this->dir),
         config(),
     );
 
@@ -247,6 +248,21 @@ test('a loopback host under sail is reconciled to the container hostname', funct
 
     expect($this->envFile->get('DB_HOST'))->toBe('mysql')
         ->and($this->envFile->get('DB_USERNAME'))->toBe('sail');
+});
+
+test('reconciled credentials are recorded so the teardown can put them back', function (): void {
+    Prompt::fake([Key::ENTER]);
+    file_put_contents($this->dir.'/.env', ($this->completeEnv)('127.0.0.1', 'root'));
+
+    ($this->step)()->handle(new BootContext(new BootOptions, $this->sailServer), fn ($passed) => $passed);
+
+    expect($this->envFile->get('DB_HOST'))->toBe('mysql');
+
+    // Credentials pointed at a container are only right while it runs.
+    envRestorePoint($this->dir)->restore();
+
+    expect($this->envFile->get('DB_HOST'))->toBe('127.0.0.1')
+        ->and($this->envFile->get('DB_USERNAME'))->toBe('root');
 });
 
 test('the pgsql driver reconciles to the pgsql container hostname under sail', function (): void {

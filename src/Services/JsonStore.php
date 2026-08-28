@@ -14,10 +14,13 @@ final class JsonStore
 {
     /**
      * @param  string  $corruptWarning  sprintf template; %s receives the .corrupt file name
+     * @param  int|null  $permissions  file mode, for a store whose contents are nobody
+     *                                 else's business (0600); null takes the umask default
      */
     public function __construct(
         private readonly string $path,
         private readonly string $corruptWarning,
+        private readonly ?int $permissions = null,
     ) {}
 
     /**
@@ -48,7 +51,11 @@ final class JsonStore
      */
     public function write(array $payload): void
     {
-        AtomicFile::write($this->path, (string) json_encode($payload, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+        AtomicFile::write(
+            $this->path,
+            (string) json_encode($payload, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR),
+            $this->permissions,
+        );
     }
 
     public function clear(): void

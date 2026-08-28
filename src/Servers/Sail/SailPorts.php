@@ -45,14 +45,21 @@ final class SailPorts
     ];
 
     /**
-     * Ports whose variable the application reads as well, so moving it here
-     * would only half-move it. Keyed by container port: the app service's
-     * name is configurable, and nothing else publishes these.
+     * The application's own HTTP port. Movable, but only together with
+     * APP_URL — the container keeps listening on 80 either way, so the port
+     * the outside world uses is the one the application has to advertise.
+     * Keyed by container port because the app service's name is
+     * configurable.
+     */
+    private const int APP_TARGET = 80;
+
+    /**
+     * Ports the container listens on itself, so the host side cannot move
+     * alone. Explained rather than offered.
      *
      * @var array<int, string>
      */
     private const array FIXED = [
-        80 => 'set APP_PORT in your .env (and APP_URL to match)',
         5173 => 'set VITE_PORT in your .env (Vite has to listen on it too)',
         6001 => 'set PUSHER_PORT in your .env (the container listens on it too)',
         9601 => 'set PUSHER_METRICS_PORT in your .env (the container listens on it too)',
@@ -145,6 +152,15 @@ final class SailPorts
         // range ("8000-8005") is not a port this can reason about.
         if (($mapping['protocol'] ?? 'tcp') !== 'tcp' || ! ctype_digit($published)) {
             return null;
+        }
+
+        if ($target === self::APP_TARGET) {
+            return new ReservedPort(
+                port: (int) $published,
+                purpose: $service,
+                envKey: 'APP_PORT',
+                urlKey: 'APP_URL',
+            );
         }
 
         $envKey = self::FORWARDS[$service][$target] ?? null;

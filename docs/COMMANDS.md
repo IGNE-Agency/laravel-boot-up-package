@@ -58,15 +58,56 @@ to get it back:
  Free them or move them, then run php artisan app:up again.
 ```
 
-Where the port is only a host-side forward — Sail's `FORWARD_*` variables, which
-publish a container port to your machine for tools like TablePlus — nothing in
-the application depends on its number, so `app:up` offers to move it to a free
-one and write that to your `.env` instead of stopping. `--yes` moves them
-without asking. `APP_PORT`, `VITE_PORT` and `PUSHER_PORT` are reported but never
-moved: the application and the container read them too, so half-moving one would
-break more than it fixed.
+A port `app:up` can move for you it offers to move instead of stopping, writing
+the new value to your `.env` and carrying on. `--yes` moves them without asking.
+That covers Sail's `FORWARD_*` variables, which only publish a container port to
+your machine for tools like TablePlus, and `APP_PORT` — which moves together
+with `APP_URL`, because the port the outside world uses is the one the
+application has to advertise. `VITE_PORT` and `PUSHER_PORT` are reported but
+never moved: the container listens on them too, so moving the host side alone
+would break more than it fixed.
 
 Turn the whole check off with `server.check_ports`.
+
+### What the boot changes in your .env, and gives back
+
+Serving with Sail rewrites the environment. `sail:install` points `DB_HOST` at a
+container, `DB_USERNAME` at `sail` and `DB_PASSWORD` at `password`, and sets
+`REDIS_HOST` / `SCOUT_DRIVER` for whatever else it scaffolds; the database step
+reconciles credentials left over from another server; the port check moves
+`APP_PORT` and `APP_URL`. Those values are only true while these containers run.
+
+A moved `FORWARD_*` port is the exception and is kept: something else on your
+machine owns 3306 whichever server serves the project, so undoing it would only
+ask you the same question on the next boot.
+
+So the boot records what it changed and undoes it — on a boot that fails, on
+Ctrl+C, and on `app:down` when you quit the dev terminal:
+
+```text
+ Restored DB_HOST, DB_USERNAME, DB_PASSWORD in .env.
+```
+
+Your `.env` therefore ends a Sail session as it started it, which is what makes
+alternating between Sail and a Herd site with a local database work. Values the
+boot never touched are never touched, and a value you edited by hand during the
+session is kept — it says which:
+
+```text
+ Left DB_PASSWORD alone in .env — changed by hand since the boot wrote it.
+```
+
+`APP_KEY` and `.env` itself are not part of this: a key generated for a project
+that had none, and a `.env` created from `.env.example`, belong to the project
+from then on.
+
+The record lives in `storage/framework/boot-up/env-restore.json`. It holds the
+values it is undoing, so it is as sensitive as your `.env`: it keeps only the
+keys that actually changed, is written `0600`, is deleted the moment it is used,
+and its directory is created with a `.gitignore` of its own — Laravel's
+`storage/framework/.gitignore` lists filenames rather than a wildcard, so a new
+subdirectory of it would otherwise be offered up by `git status`. Nothing is
+ever printed but key names.
 
 ### The browser
 
@@ -130,7 +171,9 @@ processes without it.
 
 Stop tracked processes and the server `php artisan app:up` started — and nothing
 it didn't. After a failed Sail boot it also offers `sail down` to clear leftover
-Docker resources (stopped containers, networks, half-pulled images).
+Docker resources (stopped containers, networks, half-pulled images), and it puts
+back the `.env` values the boot changed for that server — see
+[What the boot changes in your .env](#what-the-boot-changes-in-your-env-and-gives-back).
 
 ```bash
 php artisan app:down

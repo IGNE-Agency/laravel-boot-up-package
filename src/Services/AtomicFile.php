@@ -12,7 +12,20 @@ use Igne\LaravelBootUp\Exceptions\FileException;
  */
 final class AtomicFile
 {
-    public static function write(string $path, string $content): void
+    /**
+     * What Laravel puts in its own storage state directories, and for the same
+     * reason: nothing written there belongs in version control, and the
+     * framework's storage/framework/.gitignore lists filenames rather than a
+     * wildcard, so a new subdirectory of it is not covered.
+     */
+    private const string DIRECTORY_GITIGNORE = "*\n!.gitignore\n";
+
+    /**
+     * $permissions applies to the file before it is moved into place, so it
+     * is never briefly readable at the umask default — for content that
+     * should not be world-readable at any point.
+     */
+    public static function write(string $path, string $content, ?int $permissions = null): void
     {
         self::ensureDirectory(\dirname($path));
 
@@ -25,6 +38,10 @@ final class AtomicFile
             throw FileException::writeFailed($temporary);
         }
 
+        if ($permissions !== null) {
+            chmod($temporary, $permissions);
+        }
+
         if (! rename($temporary, $path)) {
             @unlink($temporary);
 
@@ -32,11 +49,20 @@ final class AtomicFile
         }
     }
 
+    /**
+     * Directories this package creates are for machine-local state, so each
+     * one is born ignored. Only on creation: a directory that already exists
+     * is the project's to organise.
+     */
     private static function ensureDirectory(string $directory): void
     {
-        if (! is_dir($directory)) {
-            mkdir($directory, 0755, true);
+        if (is_dir($directory)) {
+            return;
         }
+
+        mkdir($directory, 0755, true);
+
+        @file_put_contents("{$directory}/.gitignore", self::DIRECTORY_GITIGNORE);
     }
 
     public static function delete(string $path): void

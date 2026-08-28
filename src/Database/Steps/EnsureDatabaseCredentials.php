@@ -14,6 +14,7 @@ use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\DatabaseCredentials;
 use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Environment\EnvRestorePoint;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -38,6 +39,7 @@ final class EnsureDatabaseCredentials implements Step
     public function __construct(
         private readonly DatabaseConfig $config,
         private readonly EnvFile $envFile,
+        private readonly EnvRestorePoint $envRestore,
         private readonly Repository $laravelConfig,
     ) {}
 
@@ -162,10 +164,14 @@ final class EnsureDatabaseCredentials implements Step
     /**
      * Write the answers to .env and refresh the loaded connection config so
      * later steps in this same process see fresh values.
+     *
+     * Recorded for the teardown to undo: credentials pointed at a container
+     * are only correct while that container runs, so leaving them behind
+     * would break the next run against a local database.
      */
     private function applyAnswers(DatabaseCredentials $answers, string $connection): void
     {
-        $this->envFile->setMany($answers->toEnvMap());
+        $this->envRestore->around(fn () => $this->envFile->setMany($answers->toEnvMap()));
 
         foreach ($answers->toConnectionFields() as $field => $value) {
             $this->laravelConfig->set("database.connections.{$connection}.{$field}", $value);

@@ -7,6 +7,7 @@ use Igne\LaravelBootUp\Config\DevServerConfig;
 use Igne\LaravelBootUp\Config\ShutdownConfig;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\ProcessRecord;
+use Igne\LaravelBootUp\Environment\EnvFile;
 use Igne\LaravelBootUp\Frontend\ViteHotFile;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
@@ -39,8 +40,13 @@ afterEach(function (): void {
  * Build the runner AFTER Process/Prompt fakes are active so the reaper
  * receives the fake process factory.
  */
-function shutdownRunner(ProcessLedger $ledger, ActiveServerStore $store, bool $promptStop, bool $stopDefault): ShutdownRunner
-{
+function shutdownRunner(
+    ProcessLedger $ledger,
+    ActiveServerStore $store,
+    bool $promptStop,
+    bool $stopDefault,
+    ?string $envDirectory = null,
+): ShutdownRunner {
     $drivers = new DevServerConfig(drivers: ['double' => RecordingServer::class, 'residual' => ResidualServer::class]);
     $shutdown = new ShutdownConfig(promptStopServer: $promptStop, stopServerByDefault: $stopDefault);
 
@@ -51,6 +57,7 @@ function shutdownRunner(ProcessLedger $ledger, ActiveServerStore $store, bool $p
         new ServerSelector(app(), $drivers, activeServerStore()),
         new StopServerPrompt($shutdown),
         app(ViteHotFile::class),
+        envRestorePoint($envDirectory),
     );
 }
 
@@ -73,6 +80,41 @@ test('is a friendly no-op when nothing was started', function (): void {
     Prompt::assertStrippedOutputContains('Nothing to shut down.');
     Process::assertNothingRan();
     expect($this->server->stops)->toBe(0);
+});
+
+test('the .env the boot rewrote is put back once the server is down', function (): void {
+    Prompt::fake();
+    ProcessFaker::fake();
+    file_put_contents($this->workDir.'/.env', "DB_HOST=127.0.0.1\nDB_USERNAME=root\n");
+    $this->store->remember(activeDouble(startedByUs: true));
+
+    $restore = envRestorePoint($this->workDir);
+    $envFile = new EnvFile($this->workDir.'/.env', $this->workDir.'/.env.example');
+    $restore->around(fn () => $envFile->setMany(['DB_HOST' => 'mysql', 'DB_USERNAME' => 'sail']));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: false, stopDefault: true, envDirectory: $this->workDir)->run();
+
+    // The values described how that server reached its database; the next run
+    // may not use that server at all.
+    expect($envFile->get('DB_HOST'))->toBe('127.0.0.1')
+        ->and($envFile->get('DB_USERNAME'))->toBe('root')
+        ->and($this->server->stops)->toBe(1);
+    Prompt::assertStrippedOutputContains('Restored DB_HOST, DB_USERNAME in .env.');
+});
+
+test('a boot that rewrote the .env and started nothing else is still undone', function (): void {
+    Prompt::fake();
+    ProcessFaker::fake();
+    file_put_contents($this->workDir.'/.env', "DB_HOST=127.0.0.1\n");
+
+    $restore = envRestorePoint($this->workDir);
+    $envFile = new EnvFile($this->workDir.'/.env', $this->workDir.'/.env.example');
+    $restore->around(fn () => $envFile->set('DB_HOST', 'mysql'));
+
+    shutdownRunner($this->ledger, $this->store, promptStop: false, stopDefault: true, envDirectory: $this->workDir)->run();
+
+    expect($envFile->get('DB_HOST'))->toBe('127.0.0.1');
+    Prompt::assertStrippedOutputContains('Nothing to shut down.');
 });
 
 test('reaps tracked processes with TERM and clears the ledger', function (): void {
@@ -153,6 +195,7 @@ test('keeps the ledger entry when a process cannot be stopped', function (): voi
         new ServerSelector(app(), new DevServerConfig(drivers: ['double' => RecordingServer::class]), activeServerStore()),
         new StopServerPrompt(new ShutdownConfig(promptStopServer: false, stopServerByDefault: true)),
         app(ViteHotFile::class),
+        envRestorePoint(),
     ))->run();
 
     expect($this->ledger->all())->toHaveCount(1);

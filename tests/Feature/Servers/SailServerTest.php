@@ -44,6 +44,7 @@ function sailServer(
     ?SailAliasInstaller $alias = null,
     int $dockerTimeout = 60,
     int $readyTimeout = 120,
+    ?string $envDirectory = null,
 ): SailServer {
     $runner = new ProcessRunner(
         processes: app(Factory::class),
@@ -66,6 +67,7 @@ function sailServer(
         envFile: new EnvFile($workDir.'/app/.env', $workDir.'/app/.env.example'),
         detector: new SailUpFailureDetector,
         ports: new SailPorts($runner, $sail),
+        envRestore: envRestorePoint($envDirectory ?? $workDir),
         config: $config,
     );
 }
@@ -107,6 +109,30 @@ test('start scaffolds sail when no compose file exists', function (): void {
     sailServer($this->workDir)->start(new BootContext(new BootOptions));
 
     ProcessFaker::assertRan('php artisan sail:install');
+});
+
+test('what sail:install rewrites in the .env is recorded for the teardown', function (): void {
+    // sail:install points DB_* at its containers in place. Those values only
+    // work while the containers run, so the undo has to survive the boot.
+    file_put_contents($this->basePath.'/.env', "DB_HOST=127.0.0.1\nDB_USERNAME=root\n");
+    ProcessFaker::fake([
+        'php artisan sail:install' => function () {
+            file_put_contents($this->basePath.'/.env', "DB_HOST=mysql\nDB_USERNAME=sail\nREDIS_HOST=redis\n");
+
+            return Process::result();
+        },
+        './vendor/bin/sail ps -q' => Process::result(output: "abc123\n"),
+    ]);
+
+    sailServer($this->workDir, envDirectory: $this->basePath)->start(new BootContext(new BootOptions));
+
+    envRestorePoint($this->basePath)->restore();
+
+    $env = (string) file_get_contents($this->basePath.'/.env');
+
+    expect($env)->toContain('DB_HOST=127.0.0.1')
+        ->and($env)->toContain('DB_USERNAME=root')
+        ->and($env)->not->toContain('REDIS_HOST');
 });
 
 test('start throws when docker never becomes available', function (): void {

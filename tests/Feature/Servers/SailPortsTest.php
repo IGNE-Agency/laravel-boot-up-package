@@ -67,18 +67,22 @@ test('reads the published ports a real Sail project resolves to', function (): v
     $ports = sailPorts($this->workDir)->published();
 
     expect($ports)->toHaveCount(3)
-        // The app's own ports are reported but not offered as movable: their
-        // variables are read on both sides of the mapping.
+        // The application's own port moves only together with the address it
+        // advertises.
         ->and($ports[0]->port)->toBe(80)
         ->and($ports[0]->purpose)->toBe('laravel.test')
-        ->and($ports[0]->isRemappable())->toBeFalse()
-        ->and($ports[0]->remedy())->toContain('APP_PORT')
-        ->and($ports[0]->remedy())->toContain('APP_URL')
-        ->and($ports[1]->remedy())->toContain('VITE_PORT')
+        ->and($ports[0]->envKey)->toBe('APP_PORT')
+        ->and($ports[0]->urlKey)->toBe('APP_URL')
+        ->and($ports[0]->isRemappable())->toBeTrue()
+        ->and($ports[0]->remedy())->toBe('set APP_PORT in your .env (and APP_URL to match)')
+        // Vite listens on VITE_PORT inside the container too, so the host
+        // side cannot move alone.
         ->and($ports[1]->isRemappable())->toBeFalse()
-        // The database forward is host-side only, so it can move.
+        ->and($ports[1]->remedy())->toContain('VITE_PORT')
+        // The database forward is host-side only, so it can move on its own.
         ->and($ports[2]->port)->toBe(3306)
         ->and($ports[2]->envKey)->toBe('FORWARD_DB_PORT')
+        ->and($ports[2]->urlKey)->toBeNull()
         ->and($ports[2]->isRemappable())->toBeTrue()
         ->and($ports[2]->remedy())->toBe('set FORWARD_DB_PORT in your .env');
 });

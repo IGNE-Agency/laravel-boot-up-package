@@ -12,6 +12,7 @@ use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\PortConflict;
 use Igne\LaravelBootUp\Data\ReservedPort;
 use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Environment\EnvRestorePoint;
 use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Services\PortProbe;
 
@@ -29,6 +30,7 @@ final class PortGuard
     public function __construct(
         private readonly PortProbe $probe,
         private readonly EnvFile $envFile,
+        private readonly EnvRestorePoint $envRestore,
         private readonly DevServerConfig $serverConfig,
         private readonly SetupConfig $setupConfig,
     ) {}
@@ -87,12 +89,18 @@ final class PortGuard
      */
     private function offerToMove(Server $server, array $conflicts, bool $autoAccept): void
     {
-        $moves = [];
+        // Two kinds of move. A forward to your machine is true of the machine,
+        // not of this server — something else owns 3306 whoever serves the
+        // project — so it is kept. The address the application answers on
+        // describes this server, and the teardown puts it back.
+        $keep = [];
+        $forThisServer = [];
         $lines = [];
         $assigned = [];
 
         foreach ($conflicts as $conflict) {
-            $free = $this->firstFree($conflict->port->port + 1, $assigned);
+            $port = $conflict->port;
+            $free = $this->firstFree($port->searchFrom(), $assigned);
 
             // Nowhere to move to is the same dead end as not being movable.
             if ($free === null) {
@@ -100,14 +108,25 @@ final class PortGuard
             }
 
             $assigned[] = $free;
-            $moves[(string) $conflict->port->envKey] = (string) $free;
-            $lines[] = "{$conflict->held()} → {$conflict->port->envKey}={$free}";
+            $lines[] = "{$conflict->held()} → {$port->envKey}={$free}";
+
+            if ($port->urlKey === null) {
+                $keep[(string) $port->envKey] = (string) $free;
+
+                continue;
+            }
+
+            // The port only counts as moved once everything advertising it
+            // agrees, so the URL moves with it or not at all.
+            $forThisServer[(string) $port->envKey] = (string) $free;
+            $forThisServer[$port->urlKey] = $url = $this->urlOnPort($port->urlKey, $free);
+            $lines[] = "{$port->urlKey}={$url}";
         }
 
         terminal()->summary(
             "{$server->label()} needs host ports that are already in use",
             $lines,
-            'These only forward a container port to your machine — the application reaches the service over the container network either way.',
+            'Only where the port is yours to move: a forward to your machine, or the address the application answers on.',
         );
 
         if ($autoAccept) {
@@ -116,9 +135,28 @@ final class PortGuard
             throw ServerException::portsUnavailable($server->label(), $conflicts);
         }
 
-        $this->envFile->setMany($moves);
+        $this->envFile->setMany($keep);
+        $this->envRestore->around(fn () => $this->envFile->setMany($forThisServer));
 
-        terminal()->success('Port forwards updated in .env.');
+        terminal()->success('Ports updated in .env.');
+    }
+
+    /**
+     * The URL in $key with its port replaced. A URL that names no host at all
+     * is replaced outright — there is nothing in it worth preserving.
+     */
+    private function urlOnPort(string $key, int $port): string
+    {
+        $parts = parse_url($this->envFile->valueOr($key, ''));
+
+        if ($parts === false || ! isset($parts['host'])) {
+            return "http://localhost:{$port}";
+        }
+
+        $scheme = $parts['scheme'] ?? 'http';
+        $path = rtrim($parts['path'] ?? '', '/');
+
+        return "{$scheme}://{$parts['host']}:{$port}{$path}";
     }
 
     /**

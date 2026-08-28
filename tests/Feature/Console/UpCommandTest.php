@@ -14,6 +14,7 @@ use Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks;
 use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Enums\OperatingSystem;
 use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Environment\EnvRestorePoint;
 use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\ViteHotFile;
 use Igne\LaravelBootUp\Process\ProcessLedger;
@@ -62,6 +63,10 @@ beforeEach(function (): void {
     // own directory instead, so the baseline project has nothing for the dev
     // processes to do and each test only fakes what it asks for.
     app()->instance(EnvFile::class, new EnvFile($this->workDir.'/.env', $this->workDir.'/.env.example'));
+    app()->instance(EnvRestorePoint::class, new EnvRestorePoint(
+        app(EnvFile::class),
+        $this->workDir.'/env-restore.json',
+    ));
     config()->set('queue.default', 'sync');
 
     // The boot now ends in the dev session, and a test has no terminal for
@@ -286,6 +291,22 @@ test('a taken server port fails with guidance rather than a bind crash', functio
         // The guard runs ahead of the write-ahead record, so the failed boot
         // leaves nothing behind to clean up.
         ->and($this->store->current())->toBeNull();
+});
+
+test('a failed boot puts the .env back before it reports', function (): void {
+    ProcessFaker::fake();
+    config()->set('boot-up.setup.steps', [ExplodingStep::class]);
+
+    // Standing in for sail:install: something rewrote the environment for a
+    // server this boot never finished starting.
+    $restore = app(EnvRestorePoint::class);
+    $envFile = app(EnvFile::class);
+    $envFile->set('DB_HOST', '127.0.0.1');
+    $restore->around(fn () => $envFile->set('DB_HOST', 'mysql'));
+
+    $this->artisan('app:up', ['server' => 'artisan'])->assertFailed();
+
+    expect($envFile->get('DB_HOST'))->toBe('127.0.0.1');
 });
 
 test('a known mid-boot failure also shows the app:down hint', function (): void {

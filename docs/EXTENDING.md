@@ -89,6 +89,19 @@ so your output plays nicely with the boot progress bar. A
 `Igne\LaravelBootUp\Facades\Platform` facade (`Platform::isWindows()`) exists
 too.
 
+A step that writes `.env` values belonging to the server rather than to the
+project should wrap the write in `EnvRestorePoint::around()`, so a failed boot
+and `app:down` put them back:
+
+```php
+$this->envRestore->around(fn () => $this->envFile->setMany([
+    'SEARCH_HOST' => 'meilisearch',
+]));
+```
+
+Anything the project keeps — a generated key, a port the user agreed to move for
+good — should just use `EnvFile` directly.
+
 ## Custom servers
 
 1. Implement `Igne\LaravelBootUp\Contracts\Server`.
@@ -116,11 +129,12 @@ driver into extra behaviour:
 - `ReservesPorts` — `reservedPorts()` lists the host ports the server binds, so
   a clash is caught before it starts and reported with the process holding it
   rather than as a raw bind error. Give a `ReservedPort` an `envKey` only when
-  moving it is genuinely harmless — a host-side forward nothing else reads, as
-  Sail's `FORWARD_*` variables are — and boot-up will offer to move it to a free
-  port. Anything the application itself reads takes a `fix` sentence instead.
-  Return `[]` whenever the list cannot be worked out cheaply: an unknown list
-  means "do not check", never "nothing to check".
+  the move can be completed: a host-side forward nothing else reads (Sail's
+  `FORWARD_*` variables), or a port whose only other appearance the same object
+  names through `urlKey` (`APP_PORT` moves with `APP_URL`). boot-up then offers
+  to move it to a free port. A port the container listens on itself takes a
+  `fix` sentence instead. Return `[]` whenever the list cannot be worked out
+  cheaply: an unknown list means "do not check", never "nothing to check".
 - `RewritesCommands` — `commandRewrites()` reroutes project commands through the
   server (like Sail's `./vendor/bin/sail` prefix).
 - `ProvidesDevProcess` — `devProcess()` gives the command that runs as the

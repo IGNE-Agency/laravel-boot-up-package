@@ -20,6 +20,7 @@ use Igne\LaravelBootUp\Data\PortConflict;
 use Igne\LaravelBootUp\Data\ReservedPort;
 use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Environment\EnvFile;
+use Igne\LaravelBootUp\Environment\EnvRestorePoint;
 use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Contracts\Config\Repository;
@@ -38,6 +39,7 @@ final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDe
         private readonly EnvFile $envFile,
         private readonly SailUpFailureDetector $detector,
         private readonly SailPorts $ports,
+        private readonly EnvRestorePoint $envRestore,
         private readonly SailConfig $config,
     ) {}
 
@@ -94,7 +96,12 @@ final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDe
 
         if (! $this->sail->isConfigured()) {
             terminal()->info('Scaffolding Sail configuration...');
-            $this->sail->scaffold();
+
+            // `sail:install` rewrites the .env in place — DB_HOST, DB_USERNAME,
+            // DB_PASSWORD, and REDIS_HOST / SCOUT_DRIVER for whatever else it
+            // scaffolds. Those values only work while these containers run, so
+            // record them for the teardown to put back.
+            $this->envRestore->around($this->sail->scaffold(...));
         }
 
         try {

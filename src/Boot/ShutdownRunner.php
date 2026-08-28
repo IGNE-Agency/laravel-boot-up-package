@@ -9,6 +9,7 @@ use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\ProcessRecord;
 use Igne\LaravelBootUp\Enums\BuiltInProcess;
+use Igne\LaravelBootUp\Environment\EnvRestorePoint;
 use Igne\LaravelBootUp\Frontend\ViteHotFile;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
@@ -38,6 +39,7 @@ final class ShutdownRunner
         private readonly ServerSelector $selector,
         private readonly StopServerPrompt $prompt,
         private readonly ViteHotFile $hotFile,
+        private readonly EnvRestorePoint $envRestore,
     ) {}
 
     public function run(): void
@@ -52,6 +54,10 @@ final class ShutdownRunner
 
         if ($active === null && $this->ledger->isEmpty()) {
             terminal()->info('Nothing to shut down.');
+
+            // Still put the .env back: a boot can rewrite it and then fail
+            // before it has a server or a process to its name.
+            $this->envRestore->restore();
 
             return;
         }
@@ -93,6 +99,11 @@ final class ShutdownRunner
         if ($active !== null) {
             $this->stopServer($active->key, $active->startedByUs);
         }
+
+        // Last, and after the server is down: the values describe how that
+        // server served the project, so they outlive it by as little as
+        // possible.
+        $this->envRestore->restore();
     }
 
     /**

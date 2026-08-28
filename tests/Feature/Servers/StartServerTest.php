@@ -50,6 +50,7 @@ function startServerStep(object $test): StartServer
     return new StartServer($test->store, new PortGuard(
         probe: new PortProbe($runner),
         envFile: new EnvFile($test->workDir.'/.env', $test->workDir.'/.env.example'),
+        envRestore: envRestorePoint($test->workDir),
         serverConfig: new DevServerConfig,
         setupConfig: new SetupConfig,
     ));
