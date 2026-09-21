@@ -1,8 +1,8 @@
 # Deployment scripts
 
-`generate:deploy-script` turns this package's config (package manager, migrations,
-finalize commands, queue usage, and your bound project commands) into a
-paste-ready deployment script for your hosting platform:
+`generate:deploy-script` turns this package's config (package manager,
+migrations, finalize commands, queue usage, and your bound project commands)
+into a paste-ready deployment script for your hosting platform:
 
 ```bash
 php artisan generate:deploy-script forge production
@@ -41,25 +41,27 @@ dashboard instead of one script.
 
 - **Build commands** — dependency installation and the frontend build (your
   configured package manager is installed via `npm i -g` when it isn't npm).
-- **Post deploy commands** — migrations, optimization, finalize commands and the
-  service restarts.
+- **Post deploy commands** — recreating the gitignored `storage/framework`
+  directories (fortrabbit rebuilds the tree from git on every push, so `cache`,
+  `sessions` and `views` are missing on a fresh release), then migrations,
+  optimization, finalize commands and the service restarts.
 
-`generate:deploy-script fortrabbit {environment}` outputs both lists, ready to paste
-into the matching dashboard fields.
+`generate:deploy-script fortrabbit {environment}` outputs both lists, ready to
+paste into the matching dashboard fields.
 
 ## Service restarts
 
 A generated script tells the project's long-running services to pick up the new
 code, matching whatever it actually runs:
 
-| Service | Command | When |
-| --- | --- | --- |
+| Service       | Command                                                                      | When                                                   |
+| ------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------ |
 | Queue workers | `queue:restart` (or Forge's own `$RESTART_QUEUES()` on a zero-downtime site) | `queue.enabled`, and Horizon is not managing the queue |
-| Horizon | `horizon:terminate` | `laravel/horizon` is installed and `horizon.enabled` |
-| Reverb | `reverb:restart` | `laravel/reverb` is installed and `reverb.enabled` |
+| Horizon       | `horizon:terminate`                                                          | `laravel/horizon` is installed and `horizon.enabled`   |
+| Reverb        | `reverb:restart`                                                             | `laravel/reverb` is installed and `reverb.enabled`     |
 
 Horizon supervises its own workers and does not answer `queue:restart`, so a
-Horizon project gets `horizon:terminate` *instead of* the queue restart rather
+Horizon project gets `horizon:terminate` _instead of_ the queue restart rather
 than as well as it. The scheduler is absent on purpose: in production that is
 cron invoking `schedule:run`, not a process a deploy can signal.
 
@@ -68,8 +70,8 @@ target's environment, not from the machine generating the script.
 
 ## Project commands
 
-Your [`ProvidesDeployTasks` binding](CUSTOM_COMMANDS.md) is embedded across
-all four phases (`beforeDeploy` → `beforeMigrations` → `afterMigrations` →
+Your [`ProvidesDeployTasks` binding](CUSTOM_COMMANDS.md) is embedded across all
+four phases (`beforeDeploy` → `beforeMigrations` → `afterMigrations` →
 `afterDeploy`), with each description rendered as a comment above its command.
 On a Forge zero-downtime site, `afterDeploy` commands run after
 `$ACTIVATE_RELEASE()` — once the release is swapped in and serving; on classic
