@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\SailConfig;
+use Igne\LaravelBootUp\Config\SetupConfig;
 use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Enums\OperatingSystem;
@@ -15,6 +16,9 @@ use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\Sail\Docker;
 use Igne\LaravelBootUp\Servers\Sail\Sail;
 use Igne\LaravelBootUp\Servers\Sail\SailAliasInstaller;
+use Igne\LaravelBootUp\Servers\Sail\SailCompose;
+use Igne\LaravelBootUp\Servers\Sail\SailDatabaseCredentials;
+use Igne\LaravelBootUp\Servers\Sail\SailDatabaseVolume;
 use Igne\LaravelBootUp\Servers\Sail\SailPorts;
 use Igne\LaravelBootUp\Servers\Sail\SailServer;
 use Igne\LaravelBootUp\Servers\Sail\SailUpFailureDetector;
@@ -45,6 +49,7 @@ function sailServer(
     int $dockerTimeout = 60,
     int $readyTimeout = 120,
     ?string $envDirectory = null,
+    bool $promptDbCredentials = true,
 ): SailServer {
     $runner = new ProcessRunner(
         processes: app(Factory::class),
@@ -52,11 +57,19 @@ function sailServer(
         logDirectory: $workDir.'/logs',
     );
 
-    $config = new SailConfig(readyTimeoutSeconds: $readyTimeout, dockerStartTimeoutSeconds: $dockerTimeout);
+    $config = new SailConfig(
+        readyTimeoutSeconds: $readyTimeout,
+        dockerStartTimeoutSeconds: $dockerTimeout,
+        promptDatabaseCredentials: $promptDbCredentials,
+    );
     $sail = new Sail($runner);
+    $compose = new SailCompose($runner, $sail);
+    $envFile = new EnvFile($workDir.'/app/.env', $workDir.'/app/.env.example');
+    $docker = new Docker($runner, new Poller, new Platform(OperatingSystem::Darwin), $config);
+    $volume = new SailDatabaseVolume($compose, $docker, $envFile, app('config'));
 
     return new SailServer(
-        docker: new Docker($runner, new Poller, new Platform(OperatingSystem::Darwin), $config),
+        docker: $docker,
         sail: $sail,
         aliasInstaller: $alias ?? new SailAliasInstaller(
             new ShellProfile($workDir.'/no-home', '/bin/zsh'),
@@ -64,12 +77,36 @@ function sailServer(
         ),
         poller: new Poller,
         laravelConfig: app('config'),
-        envFile: new EnvFile($workDir.'/app/.env', $workDir.'/app/.env.example'),
+        envFile: $envFile,
         detector: new SailUpFailureDetector,
-        ports: new SailPorts($runner, $sail),
-        envRestore: envRestorePoint($envDirectory ?? $workDir),
+        ports: new SailPorts($compose),
+        volume: $volume,
+        credentials: new SailDatabaseCredentials(
+            volume: $volume,
+            envFile: $envFile,
+            envRestore: envRestorePoint($envDirectory ?? $workDir),
+            sailConfig: $config,
+            setupConfig: new SetupConfig,
+            laravelConfig: app('config'),
+        ),
         config: $config,
     );
+}
+
+/**
+ * A resolved compose config whose mysql service keeps its data on the
+ * conventional named volume — enough for SailDatabaseVolume to pin the
+ * Docker name down as `app_sail-mysql`.
+ */
+function sailComposeJson(): string
+{
+    return (string) json_encode([
+        'name' => 'app',
+        'services' => ['mysql' => [
+            'volumes' => [['type' => 'volume', 'source' => 'sail-mysql', 'target' => '/var/lib/mysql']],
+        ]],
+        'volumes' => ['sail-mysql' => []],
+    ]);
 }
 
 test('start boots docker, brings containers up and waits until they report', function (): void {
@@ -111,9 +148,11 @@ test('start scaffolds sail when no compose file exists', function (): void {
     ProcessFaker::assertRan('php artisan sail:install');
 });
 
-test('what sail:install rewrites in the .env is recorded for the teardown', function (): void {
-    // sail:install points DB_* at its containers in place. Those values only
-    // work while the containers run, so the undo has to survive the boot.
+test('what sail:install rewrites in the .env is permanent — the teardown leaves it alone', function (): void {
+    // sail:install points DB_* at its containers in place, and the database
+    // container bakes those values into its volume at first start. Restoring
+    // the old ones at teardown is exactly what desyncs .env from the volume,
+    // so nothing is recorded.
     file_put_contents($this->basePath.'/.env', "DB_HOST=127.0.0.1\nDB_USERNAME=root\n");
     ProcessFaker::fake([
         'php artisan sail:install' => function () {
@@ -130,9 +169,160 @@ test('what sail:install rewrites in the .env is recorded for the teardown', func
 
     $env = (string) file_get_contents($this->basePath.'/.env');
 
-    expect($env)->toContain('DB_HOST=127.0.0.1')
-        ->and($env)->toContain('DB_USERNAME=root')
-        ->and($env)->not->toContain('REDIS_HOST');
+    expect($env)->toContain('DB_HOST=mysql')
+        ->and($env)->toContain('DB_USERNAME=sail')
+        ->and($env)->toContain('REDIS_HOST=redis');
+});
+
+test('a fresh database volume prompts for credentials and writes them before sail up', function (): void {
+    Prompt::fake([Key::ENTER, Key::ENTER, Key::ENTER]);
+    touch($this->basePath.'/docker-compose.yml');
+    file_put_contents(
+        $this->basePath.'/.env',
+        "DB_CONNECTION=mysql\nDB_HOST=127.0.0.1\nDB_USERNAME=root\nDB_PASSWORD=secret\n",
+    );
+
+    ProcessFaker::fake([
+        './vendor/bin/sail config --format json' => Process::result(output: sailComposeJson()),
+        'docker volume inspect app_sail-mysql' => Process::result(exitCode: 1),
+        // The volume is created FROM the .env at up-time, so the answers must
+        // already be on disk when `sail up` runs.
+        './vendor/bin/sail up -d' => function () {
+            expect((string) file_get_contents($this->basePath.'/.env'))
+                ->toContain('DB_USERNAME=sail')
+                ->toContain('DB_DATABASE=app');
+
+            return Process::result();
+        },
+        './vendor/bin/sail ps -q' => Process::result(output: "abc123\n"),
+    ]);
+
+    sailServer($this->workDir, envDirectory: $this->basePath)->start(new BootContext(new BootOptions));
+
+    Prompt::assertStrippedOutputContains('Sail is about to create the [mysql] database volume');
+
+    $env = (string) file_get_contents($this->basePath.'/.env');
+
+    // Enter accepted every default: a root username is normalized to `sail`
+    // (the MySQL image refuses MYSQL_USER=root) and the password kept.
+    expect($env)->toContain('DB_USERNAME=sail')
+        ->and($env)->toContain('DB_DATABASE=app')
+        ->and($env)->toContain('DB_PASSWORD=secret');
+});
+
+test('fresh-volume credentials survive the teardown restore, even over stale records', function (): void {
+    // A boot from an older version recorded DB_USERNAME as session-scoped.
+    // Once the volume is created with these values, that record must die
+    // with the write — restoring it would desync .env from the volume.
+    file_put_contents($this->basePath.'/.env', "DB_CONNECTION=mysql\nDB_USERNAME=root\nDB_PASSWORD=secret\n");
+    envRestorePoint($this->basePath)->around(function (): void {
+        (new EnvFile($this->basePath.'/.env', $this->basePath.'/.env.example'))->set('DB_USERNAME', 'sail');
+    });
+
+    Prompt::fake([Key::ENTER, Key::ENTER, Key::ENTER]);
+    touch($this->basePath.'/docker-compose.yml');
+    ProcessFaker::fake([
+        './vendor/bin/sail config --format json' => Process::result(output: sailComposeJson()),
+        'docker volume inspect app_sail-mysql' => Process::result(exitCode: 1),
+        './vendor/bin/sail ps -q' => Process::result(output: "abc123\n"),
+    ]);
+
+    sailServer($this->workDir, envDirectory: $this->basePath)->start(new BootContext(new BootOptions));
+
+    envRestorePoint($this->basePath)->restore();
+
+    expect((string) file_get_contents($this->basePath.'/.env'))->toContain('DB_USERNAME=sail');
+});
+
+test('auto-accept keeps the .env credentials for a fresh volume without prompting', function (): void {
+    // Prompt::fake() with no queued keys makes any prompt fail the test.
+    touch($this->basePath.'/docker-compose.yml');
+    file_put_contents($this->basePath.'/.env', "DB_CONNECTION=mysql\nDB_USERNAME=root\nDB_PASSWORD=secret\n");
+
+    ProcessFaker::fake([
+        './vendor/bin/sail config --format json' => Process::result(output: sailComposeJson()),
+        'docker volume inspect app_sail-mysql' => Process::result(exitCode: 1),
+        './vendor/bin/sail ps -q' => Process::result(output: "abc123\n"),
+    ]);
+
+    sailServer($this->workDir, envDirectory: $this->basePath)
+        ->start(new BootContext(new BootOptions(autoAccept: true)));
+
+    Prompt::assertStrippedOutputContains('Creating it with database');
+
+    expect((string) file_get_contents($this->basePath.'/.env'))->toContain('DB_USERNAME=sail');
+});
+
+test('the fresh-volume prompt stands down when disabled, when the volume exists, and when the config is unreadable', function (): void {
+    touch($this->basePath.'/docker-compose.yml');
+    $env = "DB_CONNECTION=mysql\nDB_USERNAME=root\nDB_PASSWORD=secret\n";
+    $fakes = [
+        './vendor/bin/sail config --format json' => Process::result(output: sailComposeJson()),
+        'docker volume inspect app_sail-mysql' => Process::result(exitCode: 1),
+        './vendor/bin/sail ps -q' => Process::result(output: "abc123\n"),
+    ];
+
+    // Kill switch off.
+    file_put_contents($this->basePath.'/.env', $env);
+    ProcessFaker::fake($fakes);
+    sailServer($this->workDir, envDirectory: $this->basePath, promptDbCredentials: false)
+        ->start(new BootContext(new BootOptions));
+    expect((string) file_get_contents($this->basePath.'/.env'))->toContain('DB_USERNAME=root');
+
+    // Volume already exists — its credentials were decided long ago.
+    file_put_contents($this->basePath.'/.env', $env);
+    ProcessFaker::fake(['docker volume inspect app_sail-mysql' => Process::result()] + $fakes);
+    sailServer($this->workDir, envDirectory: $this->basePath)->start(new BootContext(new BootOptions));
+    expect((string) file_get_contents($this->basePath.'/.env'))->toContain('DB_USERNAME=root');
+
+    // Unreadable compose config — no volume to reason about, stand down.
+    file_put_contents($this->basePath.'/.env', $env);
+    ProcessFaker::fake(['./vendor/bin/sail config --format json' => Process::result(exitCode: 1)] + $fakes);
+    sailServer($this->workDir, envDirectory: $this->basePath)->start(new BootContext(new BootOptions));
+    expect((string) file_get_contents($this->basePath.'/.env'))->toContain('DB_USERNAME=root');
+});
+
+test('prepare is idempotent — start() after prepare() scaffolds and prompts once', function (): void {
+    Prompt::fake([Key::ENTER, Key::ENTER, Key::ENTER]);
+    file_put_contents($this->basePath.'/.env', "DB_CONNECTION=mysql\nDB_PASSWORD=secret\n");
+
+    ProcessFaker::fake([
+        'php artisan sail:install' => function () {
+            touch($this->basePath.'/docker-compose.yml');
+
+            return Process::result();
+        },
+        './vendor/bin/sail config --format json' => Process::result(output: sailComposeJson()),
+        'docker volume inspect app_sail-mysql' => Process::result(exitCode: 1),
+        './vendor/bin/sail ps -q' => Process::result(output: "abc123\n"),
+    ]);
+
+    $server = sailServer($this->workDir, envDirectory: $this->basePath);
+    $context = new BootContext(new BootOptions);
+
+    $server->prepare($context);
+    // Three keys were queued and the prompt ran during prepare(); a second
+    // prompt here would exhaust the fake and fail the test.
+    $server->start($context);
+
+    ProcessFaker::assertRanTimes('php artisan sail:install', 1);
+});
+
+test('resetDatabaseStorage recreates only the database volume', function (): void {
+    touch($this->basePath.'/docker-compose.yml');
+    ProcessFaker::fake([
+        './vendor/bin/sail config --format json' => Process::result(output: sailComposeJson()),
+        './vendor/bin/sail ps -q' => Process::result(output: "abc123\n"),
+    ]);
+
+    sailServer($this->workDir)->resetDatabaseStorage();
+
+    ProcessFaker::assertRan('./vendor/bin/sail down');
+    ProcessFaker::assertRan('docker volume rm app_sail-mysql');
+    ProcessFaker::assertRan('./vendor/bin/sail up -d');
+    // Targeted on purpose: `sail down -v` would also destroy redis,
+    // meilisearch and minio data nobody consented to lose.
+    ProcessFaker::assertDidntRun('*down -v*');
 });
 
 test('start throws when docker never becomes available', function (): void {

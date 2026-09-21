@@ -7,10 +7,12 @@ namespace Igne\LaravelBootUp\Servers\Sail;
 use Igne\LaravelBootUp\Concerns\ReadsProcessFailureOutput;
 use Igne\LaravelBootUp\Config\SailConfig;
 use Igne\LaravelBootUp\Contracts\HasResidualState;
+use Igne\LaravelBootUp\Contracts\PreparesToStart;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
 use Igne\LaravelBootUp\Contracts\ProvidesDevProcess;
 use Igne\LaravelBootUp\Contracts\RequiresTools;
 use Igne\LaravelBootUp\Contracts\ReservesPorts;
+use Igne\LaravelBootUp\Contracts\ResetsDatabaseStorage;
 use Igne\LaravelBootUp\Contracts\RewritesCommands;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\BootContext;
@@ -20,13 +22,12 @@ use Igne\LaravelBootUp\Data\PortConflict;
 use Igne\LaravelBootUp\Data\ReservedPort;
 use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Environment\EnvFile;
-use Igne\LaravelBootUp\Environment\EnvRestorePoint;
 use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 
-final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDevProcess, RequiresTools, ReservesPorts, RewritesCommands, Server
+final class SailServer implements HasResidualState, PreparesToStart, ProvidesDatabase, ProvidesDevProcess, RequiresTools, ReservesPorts, ResetsDatabaseStorage, RewritesCommands, Server
 {
     use ReadsProcessFailureOutput;
 
@@ -39,7 +40,8 @@ final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDe
         private readonly EnvFile $envFile,
         private readonly SailUpFailureDetector $detector,
         private readonly SailPorts $ports,
-        private readonly EnvRestorePoint $envRestore,
+        private readonly SailDatabaseVolume $volume,
+        private readonly SailDatabaseCredentials $credentials,
         private readonly SailConfig $config,
     ) {}
 
@@ -90,7 +92,14 @@ final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDe
         return $this->ports->published();
     }
 
-    public function start(BootContext $context): void
+    /**
+     * Everything that must exist or be decided before the first `sail up`:
+     * the compose file (so the port guard probes real ports instead of
+     * standing down on a missing config) and the credentials the database
+     * container will bake into a fresh volume. Idempotent — start() calls
+     * it again for callers that skip the pipeline.
+     */
+    public function prepare(BootContext $context): void
     {
         $this->docker->ensureRunning();
 
@@ -99,10 +108,21 @@ final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDe
 
             // `sail:install` rewrites the .env in place — DB_HOST, DB_USERNAME,
             // DB_PASSWORD, and REDIS_HOST / SCOUT_DRIVER for whatever else it
-            // scaffolds. Those values only work while these containers run, so
-            // record them for the teardown to put back.
-            $this->envRestore->around($this->sail->scaffold(...));
+            // scaffolds. Those values are the project's configuration from here
+            // on: the database container bakes them into its volume at first
+            // start, so putting the old ones back at teardown would guarantee a
+            // mismatch. Switching servers later is handled by credential
+            // reconciliation, not by restore.
+            $this->sail->scaffold();
         }
+
+        $this->volume->captureExistedBeforeBoot();
+        $this->credentials->ensureBeforeFirstUp($context);
+    }
+
+    public function start(BootContext $context): void
+    {
+        $this->prepare($context);
 
         try {
             $this->sail->up();
@@ -110,6 +130,13 @@ final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDe
             $this->recoverFromFailedUp($exception);
         }
 
+        $this->waitUntilRunning();
+
+        $this->aliasInstaller->ensure();
+    }
+
+    private function waitUntilRunning(): void
+    {
         $ready = $this->poller->until(
             fn (): bool => $this->sail->hasRunningContainers(),
             timeoutSeconds: $this->config->readyTimeoutSeconds,
@@ -122,8 +149,46 @@ final class SailServer implements HasResidualState, ProvidesDatabase, ProvidesDe
                 "containers did not come up within {$this->config->readyTimeoutSeconds} seconds",
             );
         }
+    }
 
-        $this->aliasInstaller->ensure();
+    public function databaseStorageExistedBeforeBoot(): bool
+    {
+        return $this->volume->existedBeforeBoot();
+    }
+
+    public function databaseStorageResettable(): bool
+    {
+        return $this->volume->name() !== null;
+    }
+
+    public function databaseStorageLabel(): string
+    {
+        return 'Docker volume ['.($this->volume->name() ?? 'unknown').']';
+    }
+
+    public function resetDatabaseStorage(): void
+    {
+        terminal()->info('Recreating the database volume with the credentials in .env...');
+
+        $this->sail->down();
+        $this->docker->removeVolume((string) $this->volume->name());
+        $this->sail->up();
+        $this->waitUntilRunning();
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function databaseStorageResetInstructions(): array
+    {
+        $volume = $this->volume->name() ?? '<the database volume>';
+
+        return [
+            './vendor/bin/sail down',
+            "docker volume rm {$volume}",
+            './vendor/bin/sail up -d',
+            'or instead: set DB_USERNAME / DB_PASSWORD in .env back to the values the volume was first created with.',
+        ];
     }
 
     /**
