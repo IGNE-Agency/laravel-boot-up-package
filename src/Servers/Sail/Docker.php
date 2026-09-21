@@ -46,4 +46,17 @@ final class Docker
             throw ServerException::dockerUnavailable();
         }
     }
+
+    public function volumeExists(string $name): bool
+    {
+        return $this->runner->runSilently(CommandLine::make(['docker', 'volume', 'inspect', $name]))->successful();
+    }
+
+    /**
+     * Destroys the volume and everything in it — callers confirm first.
+     */
+    public function removeVolume(string $name): void
+    {
+        $this->runner->run(CommandLine::make(['docker', 'volume', 'rm', $name]));
+    }
 }

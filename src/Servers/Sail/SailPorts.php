@@ -4,16 +4,11 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Sail;
 
-use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Data\ReservedPort;
-use Igne\LaravelBootUp\Process\ProcessRunner;
 
 /**
- * Which host ports this project's compose file will publish.
- *
- * Compose itself is asked rather than the file parsed: it resolves
- * `${FORWARD_DB_PORT:-3306}` against the project's own .env, and it knows
- * about override files and services this package has never heard of.
+ * Which host ports this project's compose file will publish, read from the
+ * resolved compose configuration.
  */
 final class SailPorts
 {
@@ -65,10 +60,7 @@ final class SailPorts
         9601 => 'set PUSHER_METRICS_PORT in your .env (the container listens on it too)',
     ];
 
-    public function __construct(
-        private readonly ProcessRunner $runner,
-        private readonly Sail $sail,
-    ) {}
+    public function __construct(private readonly SailCompose $compose) {}
 
     /**
      * @return list<ReservedPort>
@@ -88,38 +80,14 @@ final class SailPorts
     }
 
     /**
-     * The resolved compose services, or [] whenever that cannot be read: a
-     * pre-flight check has no business failing a boot, and an unreadable
-     * config means "do not check", not "nothing to check".
+     * The resolved compose services, or [] whenever that cannot be read —
+     * an unreadable config means "do not check", not "nothing to check".
      *
      * @return array<array-key, mixed>
      */
     private function services(): array
     {
-        if (! $this->sail->isConfigured()) {
-            return [];
-        }
-
-        // SAIL_SKIP_CHECKS keeps sail's wrapper from running its own
-        // pre-flight, which shuts down exited containers -- a read must not
-        // do that. Only stdout is parsed: compose writes its
-        // "variable is not set" warnings to stderr.
-        $result = $this->runner->runSilently(
-            CommandLine::make('./vendor/bin/sail config --format json')
-                ->withEnv(['SAIL_SKIP_CHECKS' => '1']),
-        );
-
-        if (! $result->successful()) {
-            return [];
-        }
-
-        $config = json_decode($result->output(), true);
-
-        if (! \is_array($config) || ! \is_array($config['services'] ?? null)) {
-            return [];
-        }
-
-        return $config['services'];
+        return $this->compose->services();
     }
 
     /**

@@ -96,6 +96,14 @@ return [
             // How long a cold Docker daemon may take to come up.
             'start_timeout_seconds' => (int) env('BOOT_UP_SAIL_DOCKER_START_TIMEOUT', 60),
         ],
+
+        'database' => [
+            // Before the first `sail up` creates the database volume, ask
+            // which credentials to bake into it — the container reads them
+            // from .env once, at creation, and they are permanent for the
+            // volume's lifetime.
+            'prompt_credentials' => env('BOOT_UP_SAIL_DB_PROMPT', true),
+        ],
     ],
 
     /*
@@ -126,6 +134,10 @@ return [
         // `mysql` host after `sail:install`) and offer to fix them for the
         // server that drives this run.
         'reconcile_credentials' => env('BOOT_UP_DB_RECONCILE', true),
+        // How long the database may take to accept connections once the
+        // server is up — containers initialize their database on first boot.
+        // Rejected credentials fail immediately; 0 means a single attempt.
+        'ready_timeout_seconds' => (int) env('BOOT_UP_DB_READY_TIMEOUT', 60),
         'migrations' => [
             'auto' => env('BOOT_UP_MIGRATIONS_AUTO', true),
         ],

@@ -11,12 +11,12 @@ use Igne\LaravelBootUp\Services\JsonStore;
  * Undo for the .env changes that belong to one boot rather than to the
  * project.
  *
- * Serving with Sail rewrites the environment: `sail:install` points DB_HOST
- * at a container, DB_USERNAME at `sail`, DB_PASSWORD at `password`, and
- * REDIS_HOST / SCOUT_DRIVER at whatever services it scaffolded. Those values
- * only work while the containers run, so a boot that fails -- or a session
- * that ends -- must not leave them behind for the next `php artisan dev`
- * against a Herd site and a local database.
+ * Session-scoped means correct only while this server runs: a moved APP_PORT
+ * is the canonical case. Not everything a boot writes qualifies — Sail's
+ * database credentials are baked into the container's data volume the first
+ * time it is created, so .env has to keep matching them after the session
+ * ends. Those are written permanently and dropped from the record with
+ * forgetKeys() instead of being restored.
  *
  * around() wraps a mutation and records what it actually changed, which is
  * the only way to cover a rewrite this package does not perform itself.
@@ -114,6 +114,37 @@ final class EnvRestorePoint
     public function forget(): void
     {
         $this->store->clear();
+    }
+
+    /**
+     * Drop the named keys from the record without restoring them — for values
+     * a boot has decided belong to the project rather than to the session
+     * (credentials a database volume was created with, most of all). Every
+     * other key keeps restoring exactly as before.
+     *
+     * @param  list<string>  $keys
+     */
+    public function forgetKeys(array $keys): void
+    {
+        $recorded = $this->recorded();
+
+        if ($recorded === []) {
+            return;
+        }
+
+        $remaining = array_diff_key($recorded, array_flip($keys));
+
+        if ($remaining === $recorded) {
+            return;
+        }
+
+        if ($remaining === []) {
+            $this->store->clear();
+
+            return;
+        }
+
+        $this->store->write($remaining);
     }
 
     /**

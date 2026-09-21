@@ -52,11 +52,12 @@ Settings for the `php artisan serve` driver.
 
 ## Sail
 
-| Key                                 | Env var                             | Default | Description                                                       |
-| ----------------------------------- | ----------------------------------- | ------- | ----------------------------------------------------------------- |
-| `sail.manage_alias`                 | `BOOT_UP_SAIL_MANAGE_ALIAS`         | `true`  | Offer (once) to add the `sail` alias to your shell profile.       |
-| `sail.ready_timeout_seconds`        | `BOOT_UP_SAIL_READY_TIMEOUT`        | `120`   | How long `sail up` may take before its containers report running. |
-| `sail.docker.start_timeout_seconds` | `BOOT_UP_SAIL_DOCKER_START_TIMEOUT` | `60`    | How long a cold Docker daemon may take to come up.                |
+| Key                                 | Env var                             | Default | Description                                                                                                                                                      |
+| ----------------------------------- | ----------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sail.manage_alias`                 | `BOOT_UP_SAIL_MANAGE_ALIAS`         | `true`  | Offer (once) to add the `sail` alias to your shell profile.                                                                                                      |
+| `sail.ready_timeout_seconds`        | `BOOT_UP_SAIL_READY_TIMEOUT`        | `120`   | How long `sail up` may take before its containers report running.                                                                                                |
+| `sail.docker.start_timeout_seconds` | `BOOT_UP_SAIL_DOCKER_START_TIMEOUT` | `60`    | How long a cold Docker daemon may take to come up.                                                                                                               |
+| `sail.database.prompt_credentials`  | `BOOT_UP_SAIL_DB_PROMPT`            | `true`  | Ask which credentials to bake into a database volume `sail up` is about to create — read from `.env` once, at creation, and permanent for the volume's lifetime. |
 
 ## Tools
 
@@ -71,12 +72,13 @@ Settings for the `php artisan serve` driver.
 
 ## Database
 
-| Key                                   | Env var                   | Default | Description                                                |
-| ------------------------------------- | ------------------------- | ------- | ---------------------------------------------------------- |
-| `database.create`                     | `BOOT_UP_DB_CREATE`       | `true`  | Create the database when it doesn't exist.                 |
-| `database.prompt_missing_credentials` | `BOOT_UP_DB_PROMPT`       | `true`  | Prompt for missing `DB_*` values and write them to `.env`. |
-| `database.reconcile_credentials`      | `BOOT_UP_DB_RECONCILE`    | `true`  | Offer to fix `DB_*` values another server left behind.     |
-| `database.migrations.auto`            | `BOOT_UP_MIGRATIONS_AUTO` | `true`  | Run pending migrations during boot.                        |
+| Key                                   | Env var                    | Default | Description                                                                                                                                    |
+| ------------------------------------- | -------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `database.create`                     | `BOOT_UP_DB_CREATE`        | `true`  | Create the database when it doesn't exist.                                                                                                     |
+| `database.prompt_missing_credentials` | `BOOT_UP_DB_PROMPT`        | `true`  | Prompt for missing `DB_*` values and write them to `.env`.                                                                                     |
+| `database.reconcile_credentials`      | `BOOT_UP_DB_RECONCILE`     | `true`  | Offer to fix `DB_*` values another server left behind.                                                                                         |
+| `database.ready_timeout_seconds`      | `BOOT_UP_DB_READY_TIMEOUT` | `60`    | How long the database may take to accept connections once the server is up. Rejected credentials fail immediately; `0` means a single attempt. |
+| `database.migrations.auto`            | `BOOT_UP_MIGRATIONS_AUTO`  | `true`  | Run pending migrations during boot.                                                                                                            |
 
 ## Frontend
 

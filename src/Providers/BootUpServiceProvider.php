@@ -53,6 +53,8 @@ use Igne\LaravelBootUp\Servers\ActiveServerStore;
 use Igne\LaravelBootUp\Servers\Herd\HerdServer;
 use Igne\LaravelBootUp\Servers\Herd\HerdServices;
 use Igne\LaravelBootUp\Servers\Herd\HerdSites;
+use Igne\LaravelBootUp\Servers\Sail\SailCompose;
+use Igne\LaravelBootUp\Servers\Sail\SailDatabaseVolume;
 use Igne\LaravelBootUp\Services\GeneratedFilePublisher;
 use Igne\LaravelBootUp\Services\LockfileConflictDetector;
 use Igne\LaravelBootUp\Services\Platform;
@@ -101,6 +103,12 @@ final class BootUpServiceProvider extends ServiceProvider
 
         $this->app->singleton(PackageManagerSelector::class);
         $this->app->singleton(ShutdownRunner::class);
+
+        // Shared so the resolved compose config is read once per process, and
+        // so "did the database volume exist before this boot" is the same
+        // answer wherever it is asked.
+        $this->app->singleton(SailCompose::class);
+        $this->app->singleton(SailDatabaseVolume::class);
 
         // Shared because the claim crosses a command boundary: app:up
         // writes it, `dev` reads it, both in the same artisan process.

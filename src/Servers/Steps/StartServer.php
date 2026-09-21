@@ -8,6 +8,7 @@ use Closure;
 use Igne\LaravelBootUp\Attributes\Group;
 use Igne\LaravelBootUp\Attributes\Label;
 use Igne\LaravelBootUp\Attributes\Stage;
+use Igne\LaravelBootUp\Contracts\PreparesToStart;
 use Igne\LaravelBootUp\Contracts\Step;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\BootContext;
@@ -46,8 +47,15 @@ final class StartServer implements Step
         // Only worth asking of a server that is down: a running one holds its
         // own ports, and would be reported as clashing with itself. Guarding
         // before the record is written keeps the failure clean -- nothing was
-        // started, so there is nothing for app:down to find.
+        // started, so there is nothing for app:down to find. Preparing comes
+        // first of all: the guard can only probe ports a compose file
+        // declares, so a server that scaffolds its own config must have done
+        // that before it is asked.
         if (! $wasRunning) {
+            if ($server instanceof PreparesToStart) {
+                $server->prepare($context);
+            }
+
             $this->ports->guard($context);
         }
 
