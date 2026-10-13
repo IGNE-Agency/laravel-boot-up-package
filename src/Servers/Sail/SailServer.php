@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Servers\Sail;
 
 use Igne\LaravelBootUp\Concerns\ReadsProcessFailureOutput;
+use Igne\LaravelBootUp\Concerns\ServesHttpOnPort;
 use Igne\LaravelBootUp\Config\SailConfig;
+use Igne\LaravelBootUp\Contracts\AdvertisesUrl;
 use Igne\LaravelBootUp\Contracts\HasResidualState;
 use Igne\LaravelBootUp\Contracts\PreparesToStart;
 use Igne\LaravelBootUp\Contracts\ProvidesDatabase;
@@ -27,9 +29,10 @@ use Igne\LaravelBootUp\Services\Poller;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Process\Exceptions\ProcessFailedException;
 
-final class SailServer implements HasResidualState, PreparesToStart, ProvidesDatabase, ProvidesDevProcess, RequiresTools, ReservesPorts, ResetsDatabaseStorage, RewritesCommands, Server
+final class SailServer implements AdvertisesUrl, HasResidualState, PreparesToStart, ProvidesDatabase, ProvidesDevProcess, RequiresTools, ReservesPorts, ResetsDatabaseStorage, RewritesCommands, Server
 {
     use ReadsProcessFailureOutput;
+    use ServesHttpOnPort;
 
     public function __construct(
         private readonly Docker $docker,
@@ -303,5 +306,36 @@ final class SailServer implements HasResidualState, PreparesToStart, ProvidesDat
         $url = $this->envFile->valueOr('APP_URL', (string) $this->laravelConfig->get('app.url'));
 
         return $url !== '' ? $url : 'http://localhost';
+    }
+
+    /**
+     * Where the containers can be reached from this machine, whatever
+     * APP_URL currently claims.
+     */
+    public function servedUrl(): string
+    {
+        return $this->httpUrlOn('localhost', $this->appPort());
+    }
+
+    /**
+     * Compose publishes the application container's port 80 on APP_PORT and
+     * terminates nothing in front of it, so the shared plain-HTTP rule is
+     * the whole of it.
+     */
+    public function serves(string $url): bool
+    {
+        return $this->urlReachesPort($url, $this->appPort());
+    }
+
+    /**
+     * The host port the application answers on. Read from .env rather than
+     * from `sail config`, because that is the knob compose itself reads
+     * (`${APP_PORT:-80}:80`) and the one the port guard moves.
+     */
+    private function appPort(): int
+    {
+        $port = (int) $this->envFile->valueOr('APP_PORT', '');
+
+        return $port > 0 ? $port : self::HTTP_PORT;
     }
 }

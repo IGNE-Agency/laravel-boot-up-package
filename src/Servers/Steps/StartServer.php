@@ -14,6 +14,7 @@ use Igne\LaravelBootUp\Data\ActiveServerRecord;
 use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Enums\BootStage;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
+use Igne\LaravelBootUp\Servers\ApplicationUrlGuard;
 use Igne\LaravelBootUp\Servers\PortGuard;
 
 /**
@@ -29,6 +30,7 @@ final class StartServer implements Step
     public function __construct(
         private readonly ActiveServerStore $store,
         private readonly PortGuard $ports,
+        private readonly ApplicationUrlGuard $urls,
     ) {}
 
     public function handle(BootContext $context, Closure $next): mixed
@@ -67,6 +69,11 @@ final class StartServer implements Step
         ));
 
         $server->start($context);
+
+        // After the start, not before it: a boot that never gets a server up
+        // has no URL worth advertising, and the restore point would have one
+        // more key to undo on the way out.
+        $this->urls->reconcile($context);
 
         terminal()->success("{$server->label()} is running.");
 

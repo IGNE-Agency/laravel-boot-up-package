@@ -87,6 +87,36 @@ test('url derives from the configured bind address, never app.url', function ():
     expect($custom->url())->toBe('http://0.0.0.0:8080');
 });
 
+test('the served url stands in a visitable host for a wildcard bind', function (): void {
+    ProcessFaker::fake();
+
+    expect(artisanServer($this->ledger, $this->workDir)->servedUrl())->toBe('http://127.0.0.1:8000');
+
+    // 0.0.0.0 says "listen on everything"; it is not somewhere a browser or
+    // a generated link can go, so APP_URL gets the name it also answers on.
+    $wildcard = artisanServer($this->ledger, $this->workDir, new ArtisanServeConfig(host: '0.0.0.0', port: 8080));
+    expect($wildcard->servedUrl())->toBe('http://localhost:8080')
+        ->and($wildcard->url())->toBe('http://0.0.0.0:8080');
+
+    $default = artisanServer($this->ledger, $this->workDir, new ArtisanServeConfig(host: 'localhost', port: 80));
+    expect($default->servedUrl())->toBe('http://localhost');
+});
+
+test('a url reaches artisan serve only on the port it binds, over http', function (string $url, bool $reaches): void {
+    ProcessFaker::fake();
+
+    $server = artisanServer($this->ledger, $this->workDir, new ArtisanServeConfig(port: 8000));
+
+    expect($server->serves($url))->toBe($reaches);
+})->with([
+    'the served url' => ['http://127.0.0.1:8000', true],
+    'another local name on the same port' => ['http://project.test:8000', true],
+    'the herd url the project normally uses' => ['https://project.test', false],
+    'https on the bound port' => ['https://127.0.0.1:8000', false],
+    'a port nothing listens on' => ['http://127.0.0.1:8001', false],
+    'a url with no scheme to advertise' => ['127.0.0.1:8000', false],
+]);
+
 test('identity, with no optional capabilities', function (): void {
     ProcessFaker::fake();
     $server = artisanServer($this->ledger, $this->workDir);

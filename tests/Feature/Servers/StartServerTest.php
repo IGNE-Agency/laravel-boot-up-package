@@ -16,6 +16,7 @@ use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
+use Igne\LaravelBootUp\Servers\ApplicationUrlGuard;
 use Igne\LaravelBootUp\Servers\PortGuard;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Igne\LaravelBootUp\Services\PortProbe;
@@ -48,13 +49,24 @@ function startServerStep(object $test): StartServer
         logDirectory: $test->workDir.'/logs',
     );
 
-    return new StartServer($test->store, new PortGuard(
-        probe: new PortProbe($runner),
-        envFile: new EnvFile($test->workDir.'/.env', $test->workDir.'/.env.example'),
-        envRestore: envRestorePoint($test->workDir),
-        serverConfig: new DevServerConfig,
-        setupConfig: new SetupConfig,
-    ));
+    $envFile = new EnvFile($test->workDir.'/.env', $test->workDir.'/.env.example');
+
+    return new StartServer(
+        $test->store,
+        new PortGuard(
+            probe: new PortProbe($runner),
+            envFile: $envFile,
+            envRestore: envRestorePoint($test->workDir),
+            serverConfig: new DevServerConfig,
+            setupConfig: new SetupConfig,
+        ),
+        new ApplicationUrlGuard(
+            envFile: $envFile,
+            envRestore: envRestorePoint($test->workDir),
+            config: new DevServerConfig,
+            laravelConfig: app('config'),
+        ),
+    );
 }
 
 /**

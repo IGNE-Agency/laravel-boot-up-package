@@ -502,6 +502,33 @@ test('url prefers the .env, falls back to app.url, then to localhost', function 
     expect(sailServer($this->workDir)->url())->toBe('http://localhost');
 });
 
+test('the served url follows APP_PORT, not APP_URL', function (): void {
+    ProcessFaker::fake();
+
+    expect(sailServer($this->workDir)->servedUrl())->toBe('http://localhost');
+
+    file_put_contents($this->basePath.'/.env', "APP_URL=https://project.test\nAPP_PORT=8080\n");
+    expect(sailServer($this->workDir)->servedUrl())->toBe('http://localhost:8080');
+});
+
+test('a url reaches sail only on the published port, over http', function (string $url, bool $reaches): void {
+    ProcessFaker::fake();
+
+    file_put_contents($this->basePath.'/.env', "APP_PORT=8080\n");
+
+    expect(sailServer($this->workDir)->serves($url))->toBe($reaches);
+})->with([
+    // The hostname is free: anything resolving to this machine lands on the
+    // published port, which is why a .test domain on it is left alone.
+    'the plain served url' => ['http://localhost:8080', true],
+    'another local hostname on the same port' => ['http://project.test:8080', true],
+    'the herd url the project normally uses' => ['https://project.test', false],
+    'https on the published port' => ['https://localhost:8080', false],
+    'a port nothing publishes' => ['http://localhost', false],
+    'a url with no scheme to advertise' => ['localhost:8080', false],
+    'not a url at all' => ['nonsense', false],
+]);
+
 test('has residual state only when sail is installed and configured', function (): void {
     ProcessFaker::fake();
     $server = sailServer($this->workDir);

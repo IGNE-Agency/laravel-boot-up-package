@@ -135,6 +135,12 @@ driver into extra behaviour:
   to move it to a free port. A port the container listens on itself takes a
   `fix` sentence instead. Return `[]` whenever the list cannot be worked out
   cheaply: an unknown list means "do not check", never "nothing to check".
+- `AdvertisesUrl` — `servedUrl()` is the URL the server actually answers on and
+  `serves()` says whether the URL in `APP_URL` reaches it. A project keeps the
+  address of whichever server it usually runs under, and that address goes on
+  answering from that server while yours serves, so the boot points `APP_URL` at
+  `servedUrl()` for the session and the teardown puts the project's own back. Be
+  generous in `serves()`: every URL you reject is one the boot rewrites.
 - `RewritesCommands` — `commandRewrites()` reroutes project commands through the
   server (like Sail's `./vendor/bin/sail` prefix).
 - `ProvidesDevProcess` — `devProcess()` gives the command that runs as the
