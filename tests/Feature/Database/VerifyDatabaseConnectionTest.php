@@ -11,6 +11,7 @@ use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\BootOptions;
 use Igne\LaravelBootUp\Data\CommandRewrites;
 use Igne\LaravelBootUp\Database\DatabaseFailureDetector;
+use Igne\LaravelBootUp\Database\DatabaseProbe;
 use Igne\LaravelBootUp\Database\Steps\VerifyDatabaseConnection;
 use Igne\LaravelBootUp\Exceptions\DatabaseException;
 use Igne\LaravelBootUp\Process\ProcessLedger;
@@ -38,7 +39,7 @@ beforeEach(function (): void {
             logDirectory: $this->dir.'/logs',
         ),
         new CommandRewriter,
-        config(),
+        new DatabaseProbe(app('db'), config()),
         new Poller,
         new DatabaseConfig(readyTimeoutSeconds: $readyTimeout),
         new DatabaseFailureDetector,
@@ -164,7 +165,7 @@ function resettingSailServer(bool $existedBeforeBoot = true): ProvidesDatabase&R
     };
 }
 
-const SAIL_MIGRATE_STATUS = './vendor/bin/sail artisan migrate:status';
+const SAIL_DB_PING = './vendor/bin/sail artisan app:db-ping';
 
 afterEach(function (): void {
     if (is_dir($this->dir)) {
@@ -198,15 +199,31 @@ test('an unreachable host connection throws with the driver in the message', fun
     ($this->step)()->handle(new BootContext(new BootOptions), fn ($passed) => $passed);
 })->throws(DatabaseException::class, 'mysql');
 
-test('sail verifies through the container with a rewritten migrate:status', function (): void {
-    Process::fake(['*' => Process::result(output: 'Migration name  Batch / Status')]);
+test('sail verifies through the container with a rewritten db-ping', function (): void {
+    Process::fake(['*' => Process::result(output: 'Database connection established [mysql].')]);
 
     $context = new BootContext(new BootOptions, $this->sailServer);
 
     $result = ($this->step)()->handle($context, fn ($passed) => $passed);
 
     expect($result)->toBe($context);
-    Process::assertRan(fn ($process): bool => implode(' ', $process->command) === './vendor/bin/sail artisan migrate:status');
+    Process::assertRan(fn ($process): bool => implode(' ', $process->command) === SAIL_DB_PING);
+    Prompt::assertStrippedOutputContains('verified');
+});
+
+test('a connected database with no migrations table verifies', function (): void {
+    // The state every freshly created volume is in. The check asks the
+    // database for a connection and nothing about schema, so the absence
+    // of a migrations table is none of its business — probing with
+    // migrate:status is what used to fail every first boot here.
+    Process::fake(['*' => Process::result(output: 'Database connection established [mysql].')]);
+
+    $context = new BootContext(new BootOptions, $this->sailServer);
+
+    $result = ($this->step)()->handle($context, fn ($passed) => $passed);
+
+    expect($result)->toBe($context);
+    Process::assertNotRan(fn ($process): bool => str_contains(implode(' ', $process->command), 'migrate'));
     Prompt::assertStrippedOutputContains('verified');
 });
 
@@ -224,7 +241,7 @@ test('sail retries until the database becomes ready', function (): void {
     Process::fake(['*' => Process::sequence()
         ->push(Process::result(exitCode: 1, errorOutput: 'SQLSTATE[HY000] [2002] Connection refused'))
         ->push(Process::result(exitCode: 1, errorOutput: 'SQLSTATE[HY000] [2002] Connection refused'))
-        ->push(Process::result(output: 'Migration name  Batch / Status')),
+        ->push(Process::result(output: 'Database connection established [mysql].')),
     ]);
 
     $context = new BootContext(new BootOptions, $this->sailServer);
@@ -232,7 +249,7 @@ test('sail retries until the database becomes ready', function (): void {
     $result = ($this->step)(readyTimeout: 5)->handle($context, fn ($passed) => $passed);
 
     expect($result)->toBe($context);
-    Process::assertRanTimes(fn ($process): bool => implode(' ', $process->command) === SAIL_MIGRATE_STATUS, 3);
+    Process::assertRanTimes(fn ($process): bool => implode(' ', $process->command) === SAIL_DB_PING, 3);
     Prompt::assertStrippedOutputContains('verified');
 });
 
@@ -258,14 +275,14 @@ test('rejected credentials fail fast instead of waiting out the timeout', functi
     expect(fn () => ($this->step)(readyTimeout: 60)->handle($context, fn ($passed) => $passed))
         ->toThrow(DatabaseException::class, 'rejected the DB_USERNAME / DB_PASSWORD');
 
-    Process::assertRanTimes(fn ($process): bool => implode(' ', $process->command) === SAIL_MIGRATE_STATUS, 1);
+    Process::assertRanTimes(fn ($process): bool => implode(' ', $process->command) === SAIL_DB_PING, 1);
 });
 
 test('a stale volume earns a recovery offer, and accepting it recreates and re-verifies', function (): void {
     Prompt::fake(['y', Key::ENTER]);
     Process::fake(['*' => Process::sequence()
         ->push(Process::result(exitCode: 1, errorOutput: "SQLSTATE[HY000] [1045] Access denied for user 'sail'"))
-        ->push(Process::result(output: 'Migration name  Batch / Status')),
+        ->push(Process::result(output: 'Database connection established [mysql].')),
     ]);
 
     $server = resettingSailServer();
@@ -332,4 +349,50 @@ test('storage created by this very boot gets no recovery offer', function (): vo
         ->toThrow(DatabaseException::class, 'rejected the DB_USERNAME / DB_PASSWORD');
 
     expect($server->resets)->toBe(0);
+});
+
+test('an unknown database fails fast and names the database', function (): void {
+    // DB_DATABASE naming something the volume never created: waiting cannot
+    // conjure a database, so the poll settles on the first attempt despite
+    // the generous timeout.
+    config()->set('database.connections.mysql', [
+        'driver' => 'mysql',
+        'host' => 'mysql',
+        'port' => '3306',
+        'database' => 'igne-dashboard',
+        'username' => 'sail',
+        'password' => 'password',
+    ]);
+    config()->set('database.default', 'mysql');
+
+    Process::fake(['*' => Process::result(
+        exitCode: 1,
+        errorOutput: "SQLSTATE[HY000] [1049] Unknown database 'igne-dashboard'",
+    )]);
+
+    $context = new BootContext(new BootOptions, $this->sailServer);
+
+    expect(fn () => ($this->step)(readyTimeout: 60)->handle($context, fn ($passed) => $passed))
+        ->toThrow(DatabaseException::class, 'has no database named [igne-dashboard]');
+
+    Process::assertRanTimes(fn ($process): bool => implode(' ', $process->command) === SAIL_DB_PING, 1);
+});
+
+test('a stale volume missing the database earns the same recovery offer', function (): void {
+    // The database name is baked into the volume exactly like the
+    // credentials are, so recreating it is the one thing that can fix this.
+    Prompt::fake(['y', Key::ENTER]);
+    Process::fake(['*' => Process::sequence()
+        ->push(Process::result(exitCode: 1, errorOutput: "SQLSTATE[HY000] [1049] Unknown database 'igne-dashboard'"))
+        ->push(Process::result(output: 'Database connection established [mysql].')),
+    ]);
+
+    $server = resettingSailServer();
+    $context = new BootContext(new BootOptions, $server);
+
+    $result = ($this->step)()->handle($context, fn ($passed) => $passed);
+
+    expect($result)->toBe($context)
+        ->and($server->resets)->toBe(1);
+    Prompt::assertStrippedOutputContains('verified');
 });

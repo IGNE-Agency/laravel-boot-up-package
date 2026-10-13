@@ -27,6 +27,7 @@ use Igne\LaravelBootUp\Config\SchedulerConfig;
 use Igne\LaravelBootUp\Config\SetupConfig;
 use Igne\LaravelBootUp\Config\ShutdownConfig;
 use Igne\LaravelBootUp\Config\ToolsConfig;
+use Igne\LaravelBootUp\Console\DbPingCommand;
 use Igne\LaravelBootUp\Console\DeployCommand;
 use Igne\LaravelBootUp\Console\DeployScriptCommand;
 use Igne\LaravelBootUp\Console\DevCommand;
@@ -297,6 +298,7 @@ final class BootUpServiceProvider extends ServiceProvider
             DownCommand::class,
             StatusCommand::class,
             OpenBrowserCommand::class,
+            DbPingCommand::class,
         ]);
     }
 }

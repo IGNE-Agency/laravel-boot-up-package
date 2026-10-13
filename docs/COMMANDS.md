@@ -109,6 +109,24 @@ and its directory is created with a `.gitignore` of its own — Laravel's
 subdirectory of it would otherwise be offered up by `git status`. Nothing is
 ever printed but key names.
 
+### The database
+
+Before anything migrates, the boot proves the database accepts connections — and
+only that. Nothing about schema, because an empty database is the normal state
+of one a container has just created. When the database lives somewhere the host
+cannot reach, the check runs inside the server instead
+(`./vendor/bin/sail artisan app:db-ping`); `app:db-ping` is hidden because it is
+`app:up`'s own machinery.
+
+A container initializing itself refuses connections for a while, so the check
+waits — up to `database.ready_timeout_seconds`. Two answers end the wait early,
+because no amount of waiting improves them: rejected credentials, and a database
+the server does not have. Under Sail both were baked into the volume when it was
+created and no `.env` edit can reach them, so if that volume predates this boot
+you are offered the one thing that would fix it — recreating it from the current
+`.env`, which destroys its data and therefore defaults to No and ignores
+`--yes`.
+
 ### The browser
 
 The URL is announced as soon as the server is serving it, but the browser opens

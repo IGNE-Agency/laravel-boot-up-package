@@ -24,4 +24,22 @@ final class PatternDetector
     {
         return Str::contains($haystack, $patterns, ignoreCase: true);
     }
+
+    /**
+     * The same question for messages a literal needle cannot pin down —
+     * where the distinguishing part sits around an interpolated value, and
+     * a substring loose enough to span it would match the wrong errors too.
+     *
+     * @param  list<string>  $expressions  full regular expressions, delimiters included
+     */
+    public static function matchesAnyExpression(string $haystack, array $expressions): bool
+    {
+        foreach ($expressions as $expression) {
+            if (preg_match($expression, $haystack) === 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
