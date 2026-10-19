@@ -33,6 +33,14 @@ final class RunPendingMigrations implements DescribesProgress, Step
 {
     use RunsThroughServer;
 
+    /**
+     * `migrate:status` reports a database with no migrations table as an
+     * error rather than as a list — the state a database the boot just
+     * created is in. Spelled out rather than left to the "nothing matched"
+     * branch: there, everything is pending.
+     */
+    private const string NO_MIGRATION_TABLE = 'Migration table not found';
+
     public function __construct(
         private readonly DatabaseConfig $config,
         private readonly PendingMigrations $pendingMigrations,
@@ -112,7 +120,11 @@ final class RunPendingMigrations implements DescribesProgress, Step
     {
         $status = $this->runSilentlyThroughServer($context, CommandLine::make('php artisan migrate:status --pending'));
 
-        $output = trim($status->output());
+        $output = trim($status->output()."\n".$status->errorOutput());
+
+        if (str_contains($output, self::NO_MIGRATION_TABLE)) {
+            return $this->migrate($context);
+        }
 
         if ($output === '' || str_contains($output, 'No pending migrations')) {
             terminal()->success('Database is up to date.');
@@ -120,6 +132,11 @@ final class RunPendingMigrations implements DescribesProgress, Step
             return false;
         }
 
+        return $this->migrate($context);
+    }
+
+    private function migrate(BootContext $context): bool
+    {
         terminal()->info('Running pending migrations...');
 
         $this->runThroughServer($context, CommandLine::make('php artisan migrate --force'));

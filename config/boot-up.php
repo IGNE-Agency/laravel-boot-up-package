@@ -58,6 +58,15 @@ return [
         // boot-up offers to move it in your .env. Turn off if the probe ever
         // disagrees with what your machine actually allows.
         'check_ports' => env('BOOT_UP_SERVER_CHECK_PORTS', true),
+
+        // Keep APP_URL pointing at the server that is serving. A project
+        // normally served by Herd keeps its .test hostname in APP_URL, and
+        // that hostname goes on answering from Herd's own PHP while Sail
+        // serves the real application on localhost — so the boot corrects
+        // APP_URL for the session and the teardown puts yours back. Turn off
+        // if something in front of the server owns the address instead
+        // (a `herd proxy` onto the containers, for example).
+        'reconcile_app_url' => env('BOOT_UP_SERVER_RECONCILE_APP_URL', true),
     ],
 
     'herd' => [
@@ -96,6 +105,14 @@ return [
             // How long a cold Docker daemon may take to come up.
             'start_timeout_seconds' => (int) env('BOOT_UP_SAIL_DOCKER_START_TIMEOUT', 60),
         ],
+
+        'database' => [
+            // Before the first `sail up` creates the database volume, ask
+            // which credentials to bake into it — the container reads them
+            // from .env once, at creation, and they are permanent for the
+            // volume's lifetime.
+            'prompt_credentials' => env('BOOT_UP_SAIL_DB_PROMPT', true),
+        ],
     ],
 
     /*
@@ -126,6 +143,10 @@ return [
         // `mysql` host after `sail:install`) and offer to fix them for the
         // server that drives this run.
         'reconcile_credentials' => env('BOOT_UP_DB_RECONCILE', true),
+        // How long the database may take to accept connections once the
+        // server is up — containers initialize their database on first boot.
+        // Rejected credentials fail immediately; 0 means a single attempt.
+        'ready_timeout_seconds' => (int) env('BOOT_UP_DB_READY_TIMEOUT', 60),
         'migrations' => [
             'auto' => env('BOOT_UP_MIGRATIONS_AUTO', true),
         ],

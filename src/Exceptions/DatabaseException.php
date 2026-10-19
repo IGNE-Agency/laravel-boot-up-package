@@ -14,6 +14,22 @@ final class DatabaseException extends BootUpException
         );
     }
 
+    public static function accessDenied(string $server, string $reason): self
+    {
+        return new self(
+            "The [{$server}] database server rejected the DB_USERNAME / DB_PASSWORD in your .env: {$reason}"
+        );
+    }
+
+    public static function unknownDatabase(string $server, string $database, string $reason): self
+    {
+        return new self(
+            "The [{$server}] database server has no database named [{$database}]: {$reason} ".
+            'Check DB_DATABASE in your .env — a server that provisions its own database bakes the name in '.
+            'when its storage is created, and later .env changes never reach it.'
+        );
+    }
+
     public static function creationFailed(string $database, string $reason): self
     {
         return new self("Could not create the database [{$database}]: {$reason}");

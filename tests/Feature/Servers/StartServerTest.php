@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\DevServerConfig;
 use Igne\LaravelBootUp\Config\SetupConfig;
+use Igne\LaravelBootUp\Contracts\PreparesToStart;
 use Igne\LaravelBootUp\Contracts\ReservesPorts;
 use Igne\LaravelBootUp\Contracts\Server;
 use Igne\LaravelBootUp\Data\ActiveServerRecord;
@@ -15,6 +16,7 @@ use Igne\LaravelBootUp\Exceptions\ServerException;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\ActiveServerStore;
+use Igne\LaravelBootUp\Servers\ApplicationUrlGuard;
 use Igne\LaravelBootUp\Servers\PortGuard;
 use Igne\LaravelBootUp\Servers\Steps\StartServer;
 use Igne\LaravelBootUp\Services\PortProbe;
@@ -47,13 +49,24 @@ function startServerStep(object $test): StartServer
         logDirectory: $test->workDir.'/logs',
     );
 
-    return new StartServer($test->store, new PortGuard(
-        probe: new PortProbe($runner),
-        envFile: new EnvFile($test->workDir.'/.env', $test->workDir.'/.env.example'),
-        envRestore: envRestorePoint($test->workDir),
-        serverConfig: new DevServerConfig,
-        setupConfig: new SetupConfig,
-    ));
+    $envFile = new EnvFile($test->workDir.'/.env', $test->workDir.'/.env.example');
+
+    return new StartServer(
+        $test->store,
+        new PortGuard(
+            probe: new PortProbe($runner),
+            envFile: $envFile,
+            envRestore: envRestorePoint($test->workDir),
+            serverConfig: new DevServerConfig,
+            setupConfig: new SetupConfig,
+        ),
+        new ApplicationUrlGuard(
+            envFile: $envFile,
+            envRestore: envRestorePoint($test->workDir),
+            config: new DevServerConfig,
+            laravelConfig: app('config'),
+        ),
+    );
 }
 
 /**
@@ -180,4 +193,97 @@ test('a running server is never asked about its own ports', function (): void {
 
     expect($server->asked)->toBe(0)
         ->and($server->starts)->toBe(1);
+});
+
+/**
+ * A driver double that records the order of its lifecycle calls — proving
+ * prepare() runs before the port check, which runs before start().
+ */
+function preparingServerDouble(bool $running, bool $failPrepare = false): Server
+{
+    return new class($running, $failPrepare) implements PreparesToStart, ReservesPorts, Server
+    {
+        /** @var list<string> */
+        public array $events = [];
+
+        public function __construct(
+            private readonly bool $running,
+            private readonly bool $failPrepare,
+        ) {}
+
+        public function prepare(BootContext $context): void
+        {
+            $this->events[] = 'prepare';
+
+            if ($this->failPrepare) {
+                throw new RuntimeException('scaffold failed');
+            }
+        }
+
+        public function reservedPorts(): array
+        {
+            $this->events[] = 'ports';
+
+            return [];
+        }
+
+        public function key(): string
+        {
+            return 'double';
+        }
+
+        public function label(): string
+        {
+            return 'Double Server';
+        }
+
+        public function isRunning(): bool
+        {
+            return $this->running;
+        }
+
+        public function start(BootContext $context): void
+        {
+            $this->events[] = 'start';
+        }
+
+        public function stop(): void {}
+
+        public function url(): string
+        {
+            return 'http://localhost';
+        }
+    };
+}
+
+test('a server that prepares does so before its ports are checked', function (): void {
+    // The guard can only probe ports a compose file declares, so a server
+    // that scaffolds its own config must have done that first.
+    $server = preparingServerDouble(running: false);
+    $context = new BootContext(new BootOptions, $server);
+
+    startServerStep($this)->handle($context, fn (BootContext $passed): BootContext => $passed);
+
+    expect($server->events)->toBe(['prepare', 'ports', 'start']);
+});
+
+test('a running server is never asked to prepare', function (): void {
+    $server = preparingServerDouble(running: true);
+    $context = new BootContext(new BootOptions, $server);
+
+    startServerStep($this)->handle($context, fn (BootContext $passed): BootContext => $passed);
+
+    expect($server->events)->toBe(['start']);
+});
+
+test('a failing prepare stops the boot before anything is persisted', function (): void {
+    $server = preparingServerDouble(running: false, failPrepare: true);
+    $context = new BootContext(new BootOptions, $server);
+
+    expect(fn () => startServerStep($this)->handle($context, fn (BootContext $passed): BootContext => $passed))
+        ->toThrow(RuntimeException::class, 'scaffold failed');
+
+    expect($server->events)->toBe(['prepare'])
+        ->and($this->store->current())->toBeNull()
+        ->and(is_file($this->workDir.'/active-server.json'))->toBeFalse();
 });

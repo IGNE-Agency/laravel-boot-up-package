@@ -235,6 +235,21 @@ test('sail checks pending migrations in the container and migrates through sail'
     Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === './vendor/bin/sail artisan migrate --force');
 });
 
+test('a database with no migrations table migrates everything', function (): void {
+    // A database the boot just created has no migrations table, which
+    // migrate:status reports as an error on stderr rather than as a list.
+    Process::fake([
+        '*migrate:status*' => Process::result(exitCode: 1, errorOutput: "  ERROR  Migration table not found.\n"),
+        '*' => Process::result(),
+    ]);
+
+    $context = new BootContext(new BootOptions, $this->sailServer);
+
+    ($this->step)()->handle($context, fn ($passed) => $passed);
+
+    Process::assertRan(fn ($process): bool => runMigrationsCommandOf($process) === './vendor/bin/sail artisan migrate --force');
+});
+
 test('sail with no pending migrations skips the migrate', function (): void {
     Process::fake([
         '*migrate:status*' => Process::result(output: "INFO  No pending migrations.\n"),

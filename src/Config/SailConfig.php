@@ -15,6 +15,7 @@ final readonly class SailConfig
         public bool $manageAlias = true,
         public int $readyTimeoutSeconds = 120,
         public int $dockerStartTimeoutSeconds = 60,
+        public bool $promptDatabaseCredentials = true,
     ) {}
 
     public static function fromRepository(Repository $config): self
@@ -23,6 +24,7 @@ final readonly class SailConfig
             manageAlias: (bool) $config->get('boot-up.sail.manage_alias', true),
             readyTimeoutSeconds: self::intAtLeast($config, 'boot-up.sail.ready_timeout_seconds', 120, 1),
             dockerStartTimeoutSeconds: self::intAtLeast($config, 'boot-up.sail.docker.start_timeout_seconds', 60, 1),
+            promptDatabaseCredentials: (bool) $config->get('boot-up.sail.database.prompt_credentials', true),
         );
     }
 }

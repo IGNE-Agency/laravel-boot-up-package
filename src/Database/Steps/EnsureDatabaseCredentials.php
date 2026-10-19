@@ -165,13 +165,19 @@ final class EnsureDatabaseCredentials implements Step
      * Write the answers to .env and refresh the loaded connection config so
      * later steps in this same process see fresh values.
      *
-     * Recorded for the teardown to undo: credentials pointed at a container
-     * are only correct while that container runs, so leaving them behind
-     * would break the next run against a local database.
+     * Written permanently, not recorded for the teardown: Sail bakes these
+     * values into its database volume, so restoring the old ones is exactly
+     * what desyncs .env from the database. Switching servers later is
+     * handled by reconcileWithServer() in the other direction. Stale records
+     * from boots that still treated DB_* as session-scoped are dropped for
+     * the same reason.
      */
     private function applyAnswers(DatabaseCredentials $answers, string $connection): void
     {
-        $this->envRestore->around(fn () => $this->envFile->setMany($answers->toEnvMap()));
+        $map = $answers->toEnvMap();
+
+        $this->envFile->setMany($map);
+        $this->envRestore->forgetKeys(array_keys($map));
 
         foreach ($answers->toConnectionFields() as $field => $value) {
             $this->laravelConfig->set("database.connections.{$connection}.{$field}", $value);

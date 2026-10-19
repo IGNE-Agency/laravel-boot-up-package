@@ -144,6 +144,40 @@ test('forget drops the record without touching the .env', function (): void {
         ->and(is_file($this->statePath))->toBeFalse();
 });
 
+test('forgetKeys drops only the named keys — the rest still restore', function (): void {
+    $this->restore->around(sailInstallWould($this->envFile));
+
+    // The database credentials became the project's own (a volume was
+    // created with them); REDIS_HOST is still the session's.
+    $this->restore->forgetKeys(['DB_HOST', 'DB_USERNAME', 'DB_PASSWORD']);
+    $this->restore->restore();
+
+    expect($this->envFile->get('DB_HOST'))->toBe('mysql')
+        ->and($this->envFile->get('DB_USERNAME'))->toBe('sail')
+        ->and($this->envFile->get('DB_PASSWORD'))->toBe('password')
+        ->and($this->envFile->get('REDIS_HOST'))->toBeNull();
+});
+
+test('forgetKeys clears the record file when nothing remains', function (): void {
+    $this->restore->around(fn () => $this->envFile->set('DB_HOST', 'mysql'));
+
+    $this->restore->forgetKeys(['DB_HOST']);
+
+    expect(is_file($this->statePath))->toBeFalse();
+});
+
+test('forgetKeys is a no-op on an empty or unrelated record', function (): void {
+    $this->restore->forgetKeys(['DB_HOST']);
+
+    expect(is_file($this->statePath))->toBeFalse();
+
+    $this->restore->around(fn () => $this->envFile->set('APP_NAME', 'Renamed'));
+    $this->restore->forgetKeys(['DB_HOST']);
+    $this->restore->restore();
+
+    expect($this->envFile->get('APP_NAME'))->toBe('Dashboard');
+});
+
 test('a corrupt record is quarantined rather than obeyed', function (): void {
     file_put_contents($this->statePath, '{"DB_USERNAME": "root"}');
 

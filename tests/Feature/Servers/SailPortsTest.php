@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessRunner;
 use Igne\LaravelBootUp\Servers\Sail\Sail;
+use Igne\LaravelBootUp\Servers\Sail\SailCompose;
 use Igne\LaravelBootUp\Servers\Sail\SailPorts;
 use Igne\LaravelBootUp\Tests\Feature\Servers\Fixtures\ProcessFaker;
 use Illuminate\Process\Factory;
@@ -31,7 +32,7 @@ function sailPorts(string $workDir): SailPorts
         logDirectory: $workDir.'/logs',
     );
 
-    return new SailPorts($runner, new Sail($runner));
+    return new SailPorts(new SailCompose($runner, new Sail($runner)));
 }
 
 /**

@@ -97,6 +97,30 @@ session is kept — it says which:
  Left DB_PASSWORD alone in .env — changed by hand since the boot wrote it.
 ```
 
+One value is reconciled rather than moved: `APP_URL`. A project that normally
+runs under Herd keeps its `.test` hostname there, and that hostname goes on
+answering while Sail serves — from Herd's own PHP, reading the `.env` this boot
+pointed at containers, so the page fails on a database host only Docker
+resolves. The application the boot started is meanwhile on a port nothing
+advertises. So when the URL in `.env` does not reach the server that is serving,
+the boot says so and points it at the one that does:
+
+```text
+ APP_URL is https://project.test, which does not reach Laravel Sail — the browser this boot opens, and every link the application generates, would go somewhere else.
+ APP_URL set to http://localhost:8080 for this session; the teardown puts yours back.
+```
+
+A URL reaches the server when it is `http` on the port that server listens on —
+`APP_PORT` under Sail (80 by default), `artisan.port` under the artisan driver.
+The hostname is yours to pick, so `http://project.test:8080` is left alone, and
+only the port and the scheme settle it: nothing in either stack terminates TLS,
+so an `https` address belongs to something else. Herd is not part of this at all
+— it serves the hostname it linked, which is already the one in your `.env`.
+
+Turn the whole thing off with `server.reconcile_app_url`. That is what a setup
+wants when something in front of the server owns the address — a `herd proxy`
+onto `APP_PORT`, for instance, where the `.test` URL really is the right one.
+
 `APP_KEY` and `.env` itself are not part of this: a key generated for a project
 that had none, and a `.env` created from `.env.example`, belong to the project
 from then on.
@@ -108,6 +132,24 @@ and its directory is created with a `.gitignore` of its own — Laravel's
 `storage/framework/.gitignore` lists filenames rather than a wildcard, so a new
 subdirectory of it would otherwise be offered up by `git status`. Nothing is
 ever printed but key names.
+
+### The database
+
+Before anything migrates, the boot proves the database accepts connections — and
+only that. Nothing about schema, because an empty database is the normal state
+of one a container has just created. When the database lives somewhere the host
+cannot reach, the check runs inside the server instead
+(`./vendor/bin/sail artisan app:db-ping`); `app:db-ping` is hidden because it is
+`app:up`'s own machinery.
+
+A container initializing itself refuses connections for a while, so the check
+waits — up to `database.ready_timeout_seconds`. Two answers end the wait early,
+because no amount of waiting improves them: rejected credentials, and a database
+the server does not have. Under Sail both were baked into the volume when it was
+created and no `.env` edit can reach them, so if that volume predates this boot
+you are offered the one thing that would fix it — recreating it from the current
+`.env`, which destroys its data and therefore defaults to No and ignores
+`--yes`.
 
 ### The browser
 

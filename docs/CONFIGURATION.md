@@ -25,12 +25,13 @@ Which development server `app:up` starts, and `php artisan dev` then runs
 against. Driver-specific settings live in their own sections: [Herd](#herd),
 [Artisan](#artisan), [Sail](#sail).
 
-| Key                  | Env var                      | Default | Description                                                                                                                                                                                                                                                                                                |
-| -------------------- | ---------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `server.default`     | `BOOT_UP_SERVER`             | `null`  | `herd`, `sail` or `artisan`. `null` makes `app:up` prompt on first run; `dev` then reuses what it chose.                                                                                                                                                                                                   |
-| `server.prompt`      | `BOOT_UP_SERVER_PROMPT`      | `true`  | Whether to prompt for a server when none is configured.                                                                                                                                                                                                                                                    |
-| `server.drivers`     | —                            | `[]`    | Extension point: add your own [`Contracts\Server`](EXTENDING.md#custom-servers) implementations. `herd`, `sail` and `artisan` are always available; an entry reusing one of those keys replaces that driver. A class that is not a `Server` is rejected when it is selected.                               |
-| `server.check_ports` | `BOOT_UP_SERVER_CHECK_PORTS` | `true`  | Prove the host ports a driver publishes are free before starting it, so a clash is a sentence naming the port and what holds it instead of a raw Docker error and half-created containers. Host-side forwards (Sail's `FORWARD_*`) are offered a free port in your `.env`; see [Ports](COMMANDS.md#ports). |
+| Key                        | Env var                            | Default | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------------- | ---------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `server.default`           | `BOOT_UP_SERVER`                   | `null`  | `herd`, `sail` or `artisan`. `null` makes `app:up` prompt on first run; `dev` then reuses what it chose.                                                                                                                                                                                                                                                                                                                                                       |
+| `server.prompt`            | `BOOT_UP_SERVER_PROMPT`            | `true`  | Whether to prompt for a server when none is configured.                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `server.drivers`           | —                                  | `[]`    | Extension point: add your own [`Contracts\Server`](EXTENDING.md#custom-servers) implementations. `herd`, `sail` and `artisan` are always available; an entry reusing one of those keys replaces that driver. A class that is not a `Server` is rejected when it is selected.                                                                                                                                                                                   |
+| `server.check_ports`       | `BOOT_UP_SERVER_CHECK_PORTS`       | `true`  | Prove the host ports a driver publishes are free before starting it, so a clash is a sentence naming the port and what holds it instead of a raw Docker error and half-created containers. Host-side forwards (Sail's `FORWARD_*`) are offered a free port in your `.env`; see [Ports](COMMANDS.md#ports).                                                                                                                                                     |
+| `server.reconcile_app_url` | `BOOT_UP_SERVER_RECONCILE_APP_URL` | `true`  | Point `APP_URL` at the server that is actually serving, for the session only — a project's Herd `.test` hostname keeps answering from Herd's own PHP while Sail or `php artisan serve` serves the real application on a port nothing advertises. Turn off when something in front of the server owns the address (a `herd proxy` onto the containers); see [What the boot changes in your .env](COMMANDS.md#what-the-boot-changes-in-your-env-and-gives-back). |
 
 ## Herd
 
@@ -52,11 +53,12 @@ Settings for the `php artisan serve` driver.
 
 ## Sail
 
-| Key                                 | Env var                             | Default | Description                                                       |
-| ----------------------------------- | ----------------------------------- | ------- | ----------------------------------------------------------------- |
-| `sail.manage_alias`                 | `BOOT_UP_SAIL_MANAGE_ALIAS`         | `true`  | Offer (once) to add the `sail` alias to your shell profile.       |
-| `sail.ready_timeout_seconds`        | `BOOT_UP_SAIL_READY_TIMEOUT`        | `120`   | How long `sail up` may take before its containers report running. |
-| `sail.docker.start_timeout_seconds` | `BOOT_UP_SAIL_DOCKER_START_TIMEOUT` | `60`    | How long a cold Docker daemon may take to come up.                |
+| Key                                 | Env var                             | Default | Description                                                                                                                                                      |
+| ----------------------------------- | ----------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sail.manage_alias`                 | `BOOT_UP_SAIL_MANAGE_ALIAS`         | `true`  | Offer (once) to add the `sail` alias to your shell profile.                                                                                                      |
+| `sail.ready_timeout_seconds`        | `BOOT_UP_SAIL_READY_TIMEOUT`        | `120`   | How long `sail up` may take before its containers report running.                                                                                                |
+| `sail.docker.start_timeout_seconds` | `BOOT_UP_SAIL_DOCKER_START_TIMEOUT` | `60`    | How long a cold Docker daemon may take to come up.                                                                                                               |
+| `sail.database.prompt_credentials`  | `BOOT_UP_SAIL_DB_PROMPT`            | `true`  | Ask which credentials to bake into a database volume `sail up` is about to create — read from `.env` once, at creation, and permanent for the volume's lifetime. |
 
 ## Tools
 
@@ -71,12 +73,13 @@ Settings for the `php artisan serve` driver.
 
 ## Database
 
-| Key                                   | Env var                   | Default | Description                                                |
-| ------------------------------------- | ------------------------- | ------- | ---------------------------------------------------------- |
-| `database.create`                     | `BOOT_UP_DB_CREATE`       | `true`  | Create the database when it doesn't exist.                 |
-| `database.prompt_missing_credentials` | `BOOT_UP_DB_PROMPT`       | `true`  | Prompt for missing `DB_*` values and write them to `.env`. |
-| `database.reconcile_credentials`      | `BOOT_UP_DB_RECONCILE`    | `true`  | Offer to fix `DB_*` values another server left behind.     |
-| `database.migrations.auto`            | `BOOT_UP_MIGRATIONS_AUTO` | `true`  | Run pending migrations during boot.                        |
+| Key                                   | Env var                    | Default | Description                                                                                                                                    |
+| ------------------------------------- | -------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `database.create`                     | `BOOT_UP_DB_CREATE`        | `true`  | Create the database when it doesn't exist.                                                                                                     |
+| `database.prompt_missing_credentials` | `BOOT_UP_DB_PROMPT`        | `true`  | Prompt for missing `DB_*` values and write them to `.env`.                                                                                     |
+| `database.reconcile_credentials`      | `BOOT_UP_DB_RECONCILE`     | `true`  | Offer to fix `DB_*` values another server left behind.                                                                                         |
+| `database.ready_timeout_seconds`      | `BOOT_UP_DB_READY_TIMEOUT` | `60`    | How long the database may take to accept connections once the server is up. Rejected credentials fail immediately; `0` means a single attempt. |
+| `database.migrations.auto`            | `BOOT_UP_MIGRATIONS_AUTO`  | `true`  | Run pending migrations during boot.                                                                                                            |
 
 ## Frontend
 

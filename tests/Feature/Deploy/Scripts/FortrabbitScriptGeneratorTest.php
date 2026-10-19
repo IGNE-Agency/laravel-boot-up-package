@@ -46,6 +46,7 @@ pnpm install --frozen-lockfile || pnpm install
 pnpm run build
 
 # ─── Post deploy commands ──────────────────────────────────────
+mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views
 php artisan migrate --force
 php artisan optimize
 php artisan storage:link
@@ -68,8 +69,10 @@ test('renders bound commands for all four phases in the canonical order', functi
         ->toContain('php artisan model:typer')
         ->toContain('php artisan cache:warm');
 
-    // before-deploy runs before migrations; after-deploy runs after finalize.
-    expect(strpos($script, 'pennant:purge'))->toBeLessThan(strpos($script, 'migrate --force'))
+    // the storage directories come first; before-deploy runs before migrations;
+    // after-deploy runs after finalize.
+    expect(strpos($script, 'mkdir -p storage/framework'))->toBeLessThan(strpos($script, 'pennant:purge'))
+        ->and(strpos($script, 'pennant:purge'))->toBeLessThan(strpos($script, 'migrate --force'))
         ->and(strpos($script, 'cache:warm'))->toBeGreaterThan(strpos($script, 'storage:link'));
 });
 
@@ -106,6 +109,8 @@ test('development drops no-dev and optimize; toggles drop their lines', function
     ]);
 
     expect($script)->toContain('composer install --prefer-dist')
+        // the storage directories are unconditional: every other post-deploy line is gone here.
+        ->and($script)->toContain('mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views')
         ->and($script)->not->toContain('--no-dev')
         ->and($script)->not->toContain('artisan optimize')
         ->and($script)->not->toContain('migrate --force')

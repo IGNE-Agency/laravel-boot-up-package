@@ -42,12 +42,24 @@ final class FortrabbitScriptGenerator implements ScriptGenerator
             )
             ->blank()
             ->heading('─── Build commands ────────────────────────────────────────────')
-            ->line($snippets->composerInstall(self::COMPOSER_FLAGS))
-            ->when($plan->frontend, fn (Lines $script) => $script
-                ->lines($plan->packageManager->buildScriptLines(ensureInstalled: true)))
+            ->lines($this->buildCommands($snippets))
             ->blank()
             ->heading('─── Post deploy commands ──────────────────────────────────────')
             ->lines($this->postDeployCommands($snippets));
+    }
+
+    private function buildCommands(DeployScriptSnippets $snippets): Lines
+    {
+        $plan = $snippets->plan;
+
+        return Lines::make()
+            // Fortrabbit rebuilds the tree from git on every push, so the
+            // gitignored storage directories must exist again before optimize,
+            // sessions or compiled views touch them.
+            ->line('mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views')
+            ->line($snippets->composerInstall(self::COMPOSER_FLAGS))
+            ->when($plan->frontend, fn (Lines $script) => $script
+                ->lines($plan->packageManager->buildScriptLines(ensureInstalled: true)));
     }
 
     private function postDeployCommands(DeployScriptSnippets $snippets): Lines

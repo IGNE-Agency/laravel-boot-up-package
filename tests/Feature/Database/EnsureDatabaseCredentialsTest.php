@@ -250,7 +250,10 @@ test('a loopback host under sail is reconciled to the container hostname', funct
         ->and($this->envFile->get('DB_USERNAME'))->toBe('sail');
 });
 
-test('reconciled credentials are recorded so the teardown can put them back', function (): void {
+test('reconciled credentials are permanent — the teardown leaves them alone', function (): void {
+    // Sail bakes DB_* into its database volume, so restoring the old values
+    // at teardown is exactly what desyncs .env from the volume. Switching
+    // servers later is handled by reconciling in the other direction.
     Prompt::fake([Key::ENTER]);
     file_put_contents($this->dir.'/.env', ($this->completeEnv)('127.0.0.1', 'root'));
 
@@ -258,11 +261,33 @@ test('reconciled credentials are recorded so the teardown can put them back', fu
 
     expect($this->envFile->get('DB_HOST'))->toBe('mysql');
 
-    // Credentials pointed at a container are only right while it runs.
     envRestorePoint($this->dir)->restore();
 
-    expect($this->envFile->get('DB_HOST'))->toBe('127.0.0.1')
-        ->and($this->envFile->get('DB_USERNAME'))->toBe('root');
+    expect($this->envFile->get('DB_HOST'))->toBe('mysql')
+        ->and($this->envFile->get('DB_USERNAME'))->toBe('sail');
+});
+
+test('applying credentials drops stale DB_* records left by older boots', function (): void {
+    // The trap: an old boot recorded DB_HOST/DB_USERNAME as session-scoped,
+    // its teardown never ran, and the user hand-reverted the .env. When this
+    // boot reconciles to the same values the record says the old boot wrote,
+    // a teardown would mistake them for that boot's own writing and revert
+    // them — unless applying the answers drops the stale record.
+    file_put_contents($this->dir.'/.env', ($this->completeEnv)('127.0.0.1', 'root'));
+    envRestorePoint($this->dir)->around(function (): void {
+        $this->envFile->set('DB_HOST', 'mysql');
+        $this->envFile->set('DB_USERNAME', 'sail');
+    });
+    $this->envFile->set('DB_HOST', '127.0.0.1');
+    $this->envFile->set('DB_USERNAME', 'root');
+
+    Prompt::fake([Key::ENTER]);
+    ($this->step)()->handle(new BootContext(new BootOptions, $this->sailServer), fn ($passed) => $passed);
+
+    envRestorePoint($this->dir)->restore();
+
+    expect($this->envFile->get('DB_HOST'))->toBe('mysql')
+        ->and($this->envFile->get('DB_USERNAME'))->toBe('sail');
 });
 
 test('the pgsql driver reconciles to the pgsql container hostname under sail', function (): void {

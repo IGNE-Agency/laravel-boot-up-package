@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Servers\Artisan;
 
+use Igne\LaravelBootUp\Concerns\ServesHttpOnPort;
 use Igne\LaravelBootUp\Config\ArtisanServeConfig;
+use Igne\LaravelBootUp\Contracts\AdvertisesUrl;
 use Igne\LaravelBootUp\Contracts\ProvidesDevProcess;
 use Igne\LaravelBootUp\Contracts\ReservesPorts;
 use Igne\LaravelBootUp\Contracts\Server;
@@ -21,9 +23,14 @@ use Igne\LaravelBootUp\Process\ProcessReaper;
  * starts it from the registry like any other. So there is nothing to do here
  * beyond saying which command runs it.
  */
-final class ArtisanServer implements ProvidesDevProcess, ReservesPorts, Server
+final class ArtisanServer implements AdvertisesUrl, ProvidesDevProcess, ReservesPorts, Server
 {
+    use ServesHttpOnPort;
+
     private const string LABEL = 'artisan-serve';
+
+    /** Bind addresses that mean "every interface" rather than an address to visit. */
+    private const array WILDCARD_HOSTS = ['0.0.0.0', '::', '[::]'];
 
     public function __construct(
         private readonly ProcessReaper $reaper,
@@ -100,5 +107,30 @@ final class ArtisanServer implements ProvidesDevProcess, ReservesPorts, Server
     public function url(): string
     {
         return "http://{$this->config->host}:{$this->config->port}";
+    }
+
+    /**
+     * What the application should advertise. Almost url(), except for a
+     * wildcard bind: `0.0.0.0` is an instruction to listen on everything,
+     * not an address a browser or a generated link can go to, so the
+     * loopback name it also answers on stands in for it.
+     */
+    public function servedUrl(): string
+    {
+        $host = \in_array($this->config->host, self::WILDCARD_HOSTS, true)
+            ? 'localhost'
+            : $this->config->host;
+
+        return $this->httpUrlOn($host, $this->config->port);
+    }
+
+    /**
+     * `serve` speaks plain HTTP on the one port it binds, and binds it on
+     * the loopback by default — so the hostname stays the project's own
+     * business and only the port and the scheme are checked.
+     */
+    public function serves(string $url): bool
+    {
+        return $this->urlReachesPort($url, $this->config->port);
     }
 }
