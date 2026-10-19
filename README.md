@@ -24,21 +24,20 @@ php artisan app:up   # once, after a clone — and it keeps going into dev
 php artisan dev      # every day
 ```
 
-`app:up` installs the tools you're missing, creates your `.env`, sets up the
-database, installs dependencies, runs migrations, builds assets, and serves the
-app via **Herd**, **Sail**, or **`php artisan serve`**. Then it runs
-`php artisan dev` for you, opens the app in your browser once it can actually
-render it, and when you quit that terminal it stops everything it started — the
-whole session in one command.
+`app:up` installs the tools you're missing, creates your `.env`, enables the
+project's git hooks, sets up the database, installs dependencies, runs
+migrations, builds assets, and serves the app via **Herd**, **Sail**, or
+**`php artisan serve`**. Then it runs `php artisan dev` for you, opens the app
+in your browser once it can actually render it, and when you quit that terminal
+it stops everything it started — the whole session in one command.
 
 `dev` is Laravel's own dev command: each process gets its own searchable tab,
 and boot-up only decides which processes this project needs. It starts in
-milliseconds, and says to run `app:up` if the project is not ready. Run on
-its own it leaves the server up when you quit; `app:down` stops everything
-boot-up started — and nothing it didn't.
+milliseconds, and says to run `app:up` if the project is not ready. Run on its
+own it leaves the server up when you quit; `app:down` stops everything boot-up
+started — and nothing it didn't.
 
-Your own processes join `dev` exactly as they would in any Laravel
-application:
+Your own processes join `dev` exactly as they would in any Laravel application:
 
 ```php
 use Illuminate\Foundation\DevCommands;
@@ -46,9 +45,9 @@ use Illuminate\Foundation\DevCommands;
 DevCommands::register('stripe listen --forward-to '.config('app.url'))->orange();
 ```
 
-boot-up only decides which of the built-in processes your project actually
-needs — no queue worker on a `sync` connection, no log tail without Pail, no
-`vite` without a `dev` script, and every command rewritten to run inside Sail's
+boot-up only decides which of the built-in processes your project actually needs
+— no queue worker on a `sync` connection, no log tail without Pail, no `vite`
+without a `dev` script, and every command rewritten to run inside Sail's
 containers when that is where the project lives. See
 [Dev processes](docs/EXTENDING.md#dev-processes).
 
@@ -63,7 +62,7 @@ containers when that is where the project lives. See
 | `app:deploy`             | Install, run project commands and migrate — without booting a server. |
 | `generate:deploy-script` | Export a paste-ready deployment script (Forge, fortrabbit).           |
 | `generate:pipeline`      | Generate a CI/CD pipeline (GitHub, Bitbucket) plus shared scripts.    |
-| `generate:git-hooks`     | Install a tracked pre-commit hook running the pipeline's Pint check.  |
+| `generate:git-hooks`     | Install a tracked Pint pre-commit hook that says how to fix failures. |
 
 Every flag is documented in [docs/COMMANDS.md](docs/COMMANDS.md) — and
 `php artisan list` / `php artisan app:up --help` are always authoritative.
@@ -71,13 +70,15 @@ Every flag is documented in [docs/COMMANDS.md](docs/COMMANDS.md) — and
 ## Documentation
 
 - Commands and options: [docs/COMMANDS.md](docs/COMMANDS.md)
-- Configuration (publish with `php artisan vendor:publish --tag=boot-up-config`):
+- Configuration (publish with
+  `php artisan vendor:publish --tag=boot-up-config`):
   [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
 - Deployment scripts: [docs/DEPLOYMENTS.md](docs/DEPLOYMENTS.md)
 - CI/CD pipelines: [docs/PIPELINES.md](docs/PIPELINES.md)
 - Extending the package (dev processes, servers, steps, tools, platforms,
   providers): [docs/EXTENDING.md](docs/EXTENDING.md)
-- Project commands around deploys: [docs/CUSTOM_COMMANDS.md](docs/CUSTOM_COMMANDS.md)
+- Project commands around deploys:
+  [docs/CUSTOM_COMMANDS.md](docs/CUSTOM_COMMANDS.md)
 
 ## Testing
 

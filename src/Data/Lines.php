@@ -130,6 +130,19 @@ final class Lines
     }
 
     /**
+     * Append `echo "{text}"` per argument, escaped for a double-quoted shell
+     * string so backticks and dollars print as written.
+     */
+    public function echo(string ...$texts): self
+    {
+        foreach ($texts as $text) {
+            $this->line('echo "'.str_replace(['\\', '"', '$', '`'], ['\\\\', '\\"', '\\$', '\\`'], $text).'"');
+        }
+
+        return $this;
+    }
+
+    /**
      * Append the comment only when the condition holds.
      */
     public function commentIf(bool $condition, string $comment): self

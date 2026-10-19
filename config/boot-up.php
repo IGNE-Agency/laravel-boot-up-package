@@ -11,6 +11,7 @@ use Igne\LaravelBootUp\Deploy\Steps\CacheFrameworkFiles;
 use Igne\LaravelBootUp\Deploy\Steps\FinalizeApplication;
 use Igne\LaravelBootUp\Deploy\Steps\InstallComposerDependencies;
 use Igne\LaravelBootUp\Deploy\Steps\RunDeployTasks;
+use Igne\LaravelBootUp\Environment\Steps\EnableGitHooks;
 use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
 use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
 use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
@@ -266,6 +267,7 @@ return [
             EnsureEnvFile::class,
             EnsureLocalEnvironment::class,
             GenerateAppKey::class,
+            EnableGitHooks::class,
             EnsureToolsReady::class,
             StartServer::class,
             InstallComposerDependencies::class,

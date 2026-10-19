@@ -16,6 +16,12 @@ Set up the application, start its development server, and run it. Prints the
 plan first, asks to continue, then works through it with a progress bar and a
 section divider per stage. Ctrl+C tears down everything it started so far.
 
+Part of that setup is enabling the project's tracked git hooks: git never runs
+hooks from a repository by itself, so `app:up` points `core.hooksPath` at
+`.githooks/` for every clone that has one. Hooks git already runs from elsewhere
+— Husky's directory, a global hooks path, or hooks installed into `.git/hooks` —
+are left alone with a warning naming the command to switch.
+
 When the boot is done it hands the terminal to `php artisan dev` — the same
 terminal UI, the same tabs — and stays behind it. Quit that terminal and it runs
 `app:down` for you, so the server and everything else the boot started is
@@ -291,8 +297,20 @@ php artisan generate:pipeline
 Install a tracked pre-commit hook that runs the pipeline's Pint check locally
 before each commit (requires `laravel/pint`). The hook lives in `.githooks/` and
 is shared by pointing `git config core.hooksPath` at it — commit `.githooks/` so
-your whole team gets it.
+your whole team gets it. The command enables it for you; [`app:up`](#appup)
+enables it on every other clone.
 
 ```bash
 php artisan generate:git-hooks
 ```
+
+| Option    | Description                                                  |
+| --------- | ------------------------------------------------------------ |
+| `--force` | Overwrite an existing `.githooks/pre-commit` without asking. |
+
+Declining the overwrite keeps the existing hook and still enables it. Unlike
+`app:up`, this command replaces a `core.hooksPath` that points elsewhere — you
+asked for it — and says which hooks git no longer runs.
+
+See [Commit-time checks](PIPELINES.md#commit-time-checks) for what the hook
+checks and what it prints when it blocks a commit.

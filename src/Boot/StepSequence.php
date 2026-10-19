@@ -13,6 +13,7 @@ use Igne\LaravelBootUp\Data\StepDescriptor;
 use Igne\LaravelBootUp\Data\StepEntry;
 use Igne\LaravelBootUp\Deploy\Steps\InstallComposerDependencies;
 use Igne\LaravelBootUp\Enums\BootStage;
+use Igne\LaravelBootUp\Environment\Steps\EnableGitHooks;
 use Igne\LaravelBootUp\Environment\Steps\EnsureEnvFile;
 use Igne\LaravelBootUp\Environment\Steps\EnsureLocalEnvironment;
 use Igne\LaravelBootUp\Environment\Steps\GenerateAppKey;
@@ -170,6 +171,7 @@ final readonly class StepSequence
             $this->includes(EnsureEnvFile::class) ? '.env file' : null,
             $this->includes(EnsureLocalEnvironment::class) ? 'local environment' : null,
             $this->includes(GenerateAppKey::class) ? 'application key' : null,
+            $this->includes(EnableGitHooks::class) ? 'git hooks' : null,
         ])->filter()->implode(', ');
 
         return "Prepare the project ({$parts})";

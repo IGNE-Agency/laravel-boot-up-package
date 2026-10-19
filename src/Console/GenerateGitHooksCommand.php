@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Console;
 
-use Igne\LaravelBootUp\Data\CommandLine;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
 use Igne\LaravelBootUp\Pipelines\GitHooks;
-use Igne\LaravelBootUp\Process\ProcessRunner;
+use Igne\LaravelBootUp\Pipelines\GitHooksPath;
 use Igne\LaravelBootUp\Services\GeneratedFilePublisher;
 
 final class GenerateGitHooksCommand extends BootUpCommand
@@ -17,11 +16,11 @@ final class GenerateGitHooksCommand extends BootUpCommand
 
     protected $description = 'Install git hooks that run the pipeline\'s checks locally before a commit';
 
-    public function handle(ComposerJson $composerJson, ProcessRunner $processes, GeneratedFilePublisher $publisher): int
+    public function handle(ComposerJson $composerJson, GitHooksPath $hooksPath, GeneratedFilePublisher $publisher): int
     {
         $this->announce('Installing git hooks...');
 
-        if (! $this->insideGitWorkTree($processes)) {
+        if (! $hooksPath->insideWorkTree()) {
             terminal()->error('Not a git repository — run this from the root of a git working tree.');
 
             return self::FAILURE;
@@ -35,34 +34,47 @@ final class GenerateGitHooksCommand extends BootUpCommand
             return $this->skip('Install laravel/pint to enable the pre-commit lint hook — nothing to install yet.');
         }
 
-        if (! $publisher->publish([$hook], (bool) $this->option('force'))) {
-            return self::SUCCESS;
-        }
+        // A declined overwrite keeps the hook that is already there — still
+        // the project's hook, so it is enabled all the same.
+        $publisher->publish([$hook], (bool) $this->option('force'));
 
-        $this->pointGitAtHooksPath($processes);
+        $this->pointGitAtHooksPath($hooksPath);
 
         $directory = GitHooks::DIRECTORY;
-        terminal()->note("Commit {$directory}/ so your team shares the hook.");
+        terminal()->note([
+            "Commit {$directory}/ so your team shares the hook.",
+            "php artisan app:up enables it on every other clone (or: git config core.hooksPath {$directory}).",
+        ]);
 
         return $this->done('Git hooks installed.');
     }
 
-    private function insideGitWorkTree(ProcessRunner $processes): bool
+    /**
+     * Asked for explicitly, so unlike app:up this replaces whatever git ran
+     * before — and says so.
+     */
+    private function pointGitAtHooksPath(GitHooksPath $hooksPath): void
     {
-        return $processes->runSilently(
-            CommandLine::make(['git', 'rev-parse', '--is-inside-work-tree'])
-                ->inDirectory($this->laravel->basePath()),
-        )->successful();
-    }
-
-    private function pointGitAtHooksPath(ProcessRunner $processes): void
-    {
-        $processes->runSilently(
-            CommandLine::make(['git', 'config', 'core.hooksPath', GitHooks::DIRECTORY])
-                ->inDirectory($this->laravel->basePath()),
-        );
-
         $directory = GitHooks::DIRECTORY;
+
+        if ($hooksPath->enabled()) {
+            terminal()->success("git config core.hooksPath already points at {$directory}.");
+
+            return;
+        }
+
+        $replaced = $hooksPath->otherHooks();
+
+        if (! $hooksPath->enable()) {
+            terminal()->warning("Could not point git at {$directory} — run: git config core.hooksPath {$directory}");
+
+            return;
+        }
+
         terminal()->success("Pointed git config core.hooksPath at {$directory}.");
+
+        if ($replaced !== null) {
+            terminal()->warning("Git no longer runs {$replaced}.");
+        }
     }
 }
