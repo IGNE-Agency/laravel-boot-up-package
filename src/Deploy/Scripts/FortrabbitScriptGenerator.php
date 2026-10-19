@@ -19,6 +19,8 @@ final class FortrabbitScriptGenerator implements ScriptGenerator
 {
     private const string COMPOSER_FLAGS = '--prefer-dist --no-interaction --no-ansi --no-progress';
 
+    private const string STORAGE_DIRECTORIES = 'mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views';
+
     public function key(): string
     {
         return 'fortrabbit';
@@ -54,9 +56,10 @@ final class FortrabbitScriptGenerator implements ScriptGenerator
 
         return Lines::make()
             // Fortrabbit rebuilds the tree from git on every push, so the
-            // gitignored storage directories must exist again before optimize,
-            // sessions or compiled views touch them.
-            ->line('mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views')
+            // gitignored storage directories are missing until recreated: here
+            // for the build (Composer's package:discover boots the app), and
+            // again in post deploy for the live release.
+            ->line(self::STORAGE_DIRECTORIES)
             ->line($snippets->composerInstall(self::COMPOSER_FLAGS))
             ->when($plan->frontend, fn (Lines $script) => $script
                 ->lines($plan->packageManager->buildScriptLines(ensureInstalled: true)));
@@ -67,6 +70,8 @@ final class FortrabbitScriptGenerator implements ScriptGenerator
         $plan = $snippets->plan;
 
         return Lines::make()
+            // optimize, sessions and compiled views all write here.
+            ->line(self::STORAGE_DIRECTORIES)
             ->lines($snippets->deployTasks($plan->beforeDeploy))
             ->lines($snippets->deployTasks($plan->beforeMigrations))
             ->lineIf($plan->migrate, $snippets->artisan('migrate --force'))
