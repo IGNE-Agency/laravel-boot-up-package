@@ -40,6 +40,7 @@ test('renders build and post-deploy sections for production with pnpm', function
 # Deployment settings for the production environment.
 
 # ─── Build commands ────────────────────────────────────────────
+mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views
 composer install --no-dev --prefer-dist --no-interaction --no-ansi --no-progress
 npm i -g pnpm
 pnpm install --frozen-lockfile || pnpm install
@@ -69,9 +70,11 @@ test('renders bound commands for all four phases in the canonical order', functi
         ->toContain('php artisan model:typer')
         ->toContain('php artisan cache:warm');
 
-    // the storage directories come first; before-deploy runs before migrations;
-    // after-deploy runs after finalize.
-    expect(strpos($script, 'mkdir -p storage/framework'))->toBeLessThan(strpos($script, 'pennant:purge'))
+    // the storage directories open the post-deploy section; before-deploy runs
+    // before migrations; after-deploy runs after finalize.
+    $postDeploy = substr($script, strpos($script, 'Post deploy commands'));
+
+    expect(strpos($postDeploy, 'mkdir -p storage/framework'))->toBeLessThan(strpos($postDeploy, 'pennant:purge'))
         ->and(strpos($script, 'pennant:purge'))->toBeLessThan(strpos($script, 'migrate --force'))
         ->and(strpos($script, 'cache:warm'))->toBeGreaterThan(strpos($script, 'storage:link'));
 });
@@ -109,8 +112,9 @@ test('development drops no-dev and optimize; toggles drop their lines', function
     ]);
 
     expect($script)->toContain('composer install --prefer-dist')
-        // the storage directories are unconditional: every other post-deploy line is gone here.
-        ->and($script)->toContain('mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views')
+        // the storage directories are unconditional: every other post-deploy line
+        // is gone here, yet both sections still recreate them.
+        ->and(substr_count($script, 'mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views'))->toBe(2)
         ->and($script)->not->toContain('--no-dev')
         ->and($script)->not->toContain('artisan optimize')
         ->and($script)->not->toContain('migrate --force')

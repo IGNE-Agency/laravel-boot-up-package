@@ -39,12 +39,17 @@ script.
 `git push` to deploy and configure two command lists per environment in the
 dashboard instead of one script.
 
-- **Build commands** — dependency installation and the frontend build (your
+- **Build commands** — recreating the gitignored `storage/framework`
+  directories, then dependency installation and the frontend build (your
   configured package manager is installed via `npm i -g` when it isn't npm).
-- **Post deploy commands** — recreating the gitignored `storage/framework`
-  directories (fortrabbit rebuilds the tree from git on every push, so `cache`,
-  `sessions` and `views` are missing on a fresh release), then migrations,
-  optimization, finalize commands and the service restarts.
+- **Post deploy commands** — recreating the `storage/framework` directories
+  again, then migrations, optimization, finalize commands and the service
+  restarts.
+
+fortrabbit rebuilds the tree from git on every push, so `cache`, `sessions` and
+`views` are missing on a fresh release. Both lists start with an idempotent
+`mkdir -p` so the build (Composer's `package:discover` boots the app) and the
+live release each find them in place.
 
 `generate:deploy-script fortrabbit {environment}` outputs both lists, ready to
 paste into the matching dashboard fields.
