@@ -61,6 +61,9 @@ final class CiScripts
     /**
      * A --no-scripts install is enough for Pint — no app boot required,
      * which is why lint does not source bootstrap.sh.
+     *
+     * A failure ends with the fix rather than just Pint's report, and on
+     * GitHub Actions also as an annotation on the run's summary.
      */
     public function lint(PipelinePlan $plan): ?GeneratedFile
     {
@@ -75,9 +78,31 @@ final class CiScripts
             ->lineWithBreak('echo "==> Installing Composer dependencies (no app scripts)"')
             ->line('composer install --no-interaction --prefer-dist --no-progress --no-scripts')
             ->lineWithBreak('echo "==> Checking code style"')
-            ->line('vendor/bin/pint --test');
+            ->line('if ! vendor/bin/pint --test; then')
+            ->indent(2, function (Lines $script): void {
+                $script->line('if [ -n "${GITHUB_ACTIONS:-}" ]; then')
+                    ->indent(2, fn (Lines $script) => $script
+                        ->echo('::error title=Code style::Pint found code style issues. Run vendor/bin/pint locally, commit the formatted files and push again.'))
+                    ->line('fi');
+
+                $this->styleIssues()->appendTo($script);
+
+                $script->line('exit 1');
+            })
+            ->line('fi');
 
         return $this->script('lint.sh', $script);
+    }
+
+    private function styleIssues(): FailureMessage
+    {
+        return FailureMessage::make()
+            ->paragraph(
+                'Pint found code style issues in the files listed above. To fix them, run',
+                'Pint locally and commit the formatted files:',
+            )
+            ->commands('vendor/bin/pint')
+            ->paragraph('The pre-commit hook catches this before you push: php artisan generate:git-hooks');
     }
 
     public function build(PipelinePlan $plan): GeneratedFile

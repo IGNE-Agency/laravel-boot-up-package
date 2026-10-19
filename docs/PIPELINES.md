@@ -68,8 +68,8 @@ webhook).
 No deploy-hook host yet? Pass `none` (or pick it at the prompt) to generate a
 **checks-only pipeline**: lint, build and test still run on pull requests and on
 pushes to the mapped branches, but the deploy steps, `DEPLOY_HOOK` secrets and
-`deploy-hook.sh` are omitted. Rerun `generate:pipeline` with a host later to add the
-deploys.
+`deploy-hook.sh` are omitted. Rerun `generate:pipeline` with a host later to add
+the deploys.
 
 ## Secrets & next steps
 
@@ -88,16 +88,56 @@ After generating, the command prints, in order:
 
 ## Commit-time checks
 
-`php artisan generate:git-hooks` installs a tracked pre-commit hook that runs the
-pipeline's Pint check locally before each commit (requires `laravel/pint`). The
-hook lives in `.githooks/` and is shared by pointing `git config core.hooksPath`
-at it — commit `.githooks/` so the whole team gets it.
+`php artisan generate:git-hooks` installs a tracked pre-commit hook that runs
+the pipeline's Pint check locally before each commit (requires `laravel/pint`).
+The hook lives in `.githooks/` and is shared by pointing
+`git config core.hooksPath` at it — commit `.githooks/` so the whole team gets
+it. Git never enables hooks from a repository by itself; `php artisan app:up`
+does it on every clone.
+
+The hook checks what CI will check, and only that:
+
+- **The staged contents, not the working tree.** A file with unstaged edits is
+  checked as it will be committed, so a hook that passes is a lint job that
+  passes.
+- **Pint's own file selection.** Pint runs on a copy of the staged files without
+  explicit paths — exactly how the lint job runs it — so its default excludes
+  (`_ide_helper*.php`, Blade views) and the staged `pint.json` apply.
+
+When it blocks a commit it says how to fix it, with commands ready to paste:
+
+```text
+==> Commit aborted: Pint found code style issues in the staged changes.
+
+    The CI lint job runs the same check (vendor/bin/pint --test). To fix it:
+
+    1. Let Pint format the files:
+
+      vendor/bin/pint \
+        app/Http/Controllers/UserController.php
+
+    2. Stage the formatted files:
+
+      git add \
+        app/Http/Controllers/UserController.php
+
+    3. Commit again.
+```
+
+It also warns when a file to fix has unstaged changes that `git add` would sweep
+in, explains a file Pint cannot parse, and gives directions instead of "command
+not found" when PHP or Pint is missing — looking for Herd's and Homebrew's PHP
+itself first, because GUI git clients run hooks without your shell profile. The
+hook needs Pint 1.15 or newer.
+
+The lint job prints the same fix when it fails, and on GitHub Actions adds it as
+an annotation on the run's summary.
 
 ## Extending the pipeline
 
 Two config surfaces let you extend a generated pipeline without replacing the
-generator. `generate:pipeline` regenerates its files from this config every run, so
-reruns are **idempotent** — nothing is ever duplicated, and files it does not
+generator. `generate:pipeline` regenerates its files from this config every run,
+so reruns are **idempotent** — nothing is ever duplicated, and files it does not
 manage are never touched.
 
 ### Inject steps

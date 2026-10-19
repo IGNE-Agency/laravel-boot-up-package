@@ -198,6 +198,16 @@ test('lint.sh is a self-contained pint check', function (): void {
         ->and($script->contents)->not->toContain('bootstrap.sh');
 });
 
+test('a failing lint.sh says how to fix it, annotating only on GitHub Actions', function (): void {
+    $contents = (new CiScripts)->lint(ciScriptsPlan())->contents;
+
+    expect($contents)->toContain("if ! vendor/bin/pint --test; then\n")
+        ->and($contents)->toContain("  if [ -n \"\${GITHUB_ACTIONS:-}\" ]; then\n    echo \"::error title=Code style::")
+        ->and($contents)->toContain('echo "      vendor/bin/pint"')
+        ->and($contents)->toContain('php artisan generate:git-hooks')
+        ->and($contents)->toContain("  exit 1\nfi\n");
+});
+
 test('a project without pint gets no lint script', function (): void {
     expect((new CiScripts)->lint(ciScriptsPlan(['pint' => false])))->toBeNull();
 });

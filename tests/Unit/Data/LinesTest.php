@@ -251,3 +251,10 @@ test('an injected separator blank keeps the kind array aligned with the lines', 
         Lines::KIND_COMMAND,
     ]);
 });
+
+test('echo renders one echo per text, escaped for double quotes', function (): void {
+    expect(Lines::make()->echo('Run `pint` on "$files"', 'a \\ b')->toArray())->toBe([
+        'echo "Run \\`pint\\` on \\"\\$files\\""',
+        'echo "a \\\\ b"',
+    ]);
+});

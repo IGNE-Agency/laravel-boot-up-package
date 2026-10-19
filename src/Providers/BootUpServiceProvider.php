@@ -46,6 +46,7 @@ use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Frontend\ViteHotFile;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
+use Igne\LaravelBootUp\Pipelines\GitHooksPath;
 use Igne\LaravelBootUp\Pipelines\PipelineExtensionValidator;
 use Igne\LaravelBootUp\Process\ProcessLedger;
 use Igne\LaravelBootUp\Process\ProcessReaper;
@@ -263,6 +264,11 @@ final class BootUpServiceProvider extends ServiceProvider
 
         $this->app->singleton(PipelineExtensionValidator::class, fn (Application $app) => new PipelineExtensionValidator(
             $app->basePath(),
+        ));
+
+        $this->app->singleton(GitHooksPath::class, fn (Application $app) => new GitHooksPath(
+            processes: $app->make(ProcessRunner::class),
+            basePath: $app->basePath(),
         ));
 
         $this->app->singleton(LocalEnvironment::class, fn (Application $app) => new LocalEnvironment(

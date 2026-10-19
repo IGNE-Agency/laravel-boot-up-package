@@ -159,7 +159,7 @@ and then hands over to `php artisan dev`.
 | `setup.browser.wait_timeout_seconds` | `BOOT_UP_BROWSER_WAIT_TIMEOUT`     | `60`     | How long to wait for that. After it the browser opens anyway; `0` opens immediately, without waiting. |
 | `setup.browser.poll_interval_ms`     | `BOOT_UP_BROWSER_POLL_INTERVAL_MS` | `500`    | How often the wait looks. Minimum 50.                                                                 |
 | `setup.auto_accept`                  | `BOOT_UP_SETUP_AUTO_ACCEPT`        | `false`  | Skip the "What app:up will do — continue?" prompt. `--yes` does the same per run.                     |
-| `setup.steps`                        | —                                  | 17 steps | The full boot pipeline, in order — see [Step pipelines](#step-pipelines).                             |
+| `setup.steps`                        | —                                  | 18 steps | The full boot pipeline, in order — see [Step pipelines](#step-pipelines).                             |
 
 `app:up` is the only command that runs these. `php artisan dev` never boots: it
 checks that the boot has happened and says to run `app:up` if it has not.
@@ -229,6 +229,12 @@ steps you don't want, or insert your own
 [`Contracts\Step`](EXTENDING.md#custom-pipeline-steps) classes anywhere.
 
 Steps do the sequential work that has to finish before the application can run:
-the `.env`, the tools, the server, the database, migrations, the asset build.
-The long-running processes are not steps — they start after the pipeline, from
-Laravel's registry.
+the `.env`, the git hooks, the tools, the server, the database, migrations, the
+asset build. The long-running processes are not steps — they start after the
+pipeline, from Laravel's registry.
+
+A published config keeps the step list it was published with, so steps added in
+a later release do not appear in it by themselves. `EnableGitHooks` is one: add
+`\Igne\LaravelBootUp\Environment\Steps\EnableGitHooks::class` after
+`GenerateAppKey::class` to have `app:up` enable the project's
+[git hooks](PIPELINES.md#commit-time-checks).

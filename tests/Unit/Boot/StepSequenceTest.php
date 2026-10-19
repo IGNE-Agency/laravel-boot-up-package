@@ -27,9 +27,9 @@ test('assigns every default step to its stage, in order', function (): void {
 
     $stages = array_map(fn ($step) => $step->stage, $plan->steps);
 
-    expect($plan->count())->toBe(17)
+    expect($plan->count())->toBe(18)
         ->and($stages)->toBe([
-            BootStage::Prepare, BootStage::Prepare, BootStage::Prepare,
+            BootStage::Prepare, BootStage::Prepare, BootStage::Prepare, BootStage::Prepare,
             BootStage::Tools,
             BootStage::Server, BootStage::Install, BootStage::Install,
             BootStage::Database, BootStage::Database, BootStage::Database,
@@ -43,7 +43,7 @@ test('the default pipeline summarizes into ten readable lines', function (): voi
     $plan = StepSequence::for(defaultBootSteps(), new BootOptions, 'Herd');
 
     expect($plan->summary())->toBe([
-        'Prepare the project (.env file, local environment, application key)',
+        'Prepare the project (.env file, local environment, application key, git hooks)',
         'Check required tools are installed',
         'Start the Herd development server',
         'Install Composer and frontend dependencies',
