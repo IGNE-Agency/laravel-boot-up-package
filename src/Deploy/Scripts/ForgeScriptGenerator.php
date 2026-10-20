@@ -56,7 +56,7 @@ final class ForgeScriptGenerator implements ScriptGenerator
             ->lineWithBreak($snippets->composerInstall(self::COMPOSER_FLAGS))
             ->linesWithBreak($this->artisanBlock($snippets))
             ->when($plan->frontend, fn (Lines $script) => $script
-                ->linesWithBreak($plan->packageManager->buildScriptLines(ensureInstalled: false)))
+                ->linesWithBreak($plan->packageManager->buildScriptLines($plan->packageManagerVersion)))
             ->lineWithBreak('$ACTIVATE_RELEASE()')
             // afterDeploy runs post-swap: the symlink now points at this release.
             ->when($plan->afterDeploy !== [], fn (Lines $script) => $script
@@ -97,7 +97,7 @@ final class ForgeScriptGenerator implements ScriptGenerator
             ->lineWithBreak($snippets->composerInstall(self::COMPOSER_FLAGS))
             ->linesWithBreak($this->artisanBlock($snippets))
             ->when($plan->frontend, fn (Lines $script) => $script
-                ->linesWithBreak($plan->packageManager->buildScriptLines(ensureInstalled: false)))
+                ->linesWithBreak($plan->packageManager->buildScriptLines($plan->packageManagerVersion)))
             ->when($plan->afterDeploy !== [], fn (Lines $script) => $script
                 ->linesWithBreak($snippets->deployTasks($plan->afterDeploy)))
             ->linesWithBreak($this->restarts($snippets))

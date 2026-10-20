@@ -51,4 +51,19 @@ final class Homebrew
 
         $this->processes->run(CommandLine::make(['brew', 'upgrade', $formula])->withTimeout(null));
     }
+
+    /**
+     * Whether Homebrew manages this formula — false without brew at all,
+     * which is never installed just to answer the question.
+     */
+    public function hasFormula(string $formula): bool
+    {
+        return $this->processes->isCommandAvailable('brew')
+            && $this->processes->runSilently(CommandLine::make(['brew', 'list', '--formula', $formula]))->successful();
+    }
+
+    public function uninstall(string $formula): void
+    {
+        $this->processes->run(CommandLine::make(['brew', 'uninstall', $formula])->withTimeout(null));
+    }
 }

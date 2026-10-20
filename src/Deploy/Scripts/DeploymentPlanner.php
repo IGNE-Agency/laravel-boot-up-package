@@ -15,6 +15,7 @@ use Igne\LaravelBootUp\Data\DeploymentPlan;
 use Igne\LaravelBootUp\Enums\AssetMode;
 use Igne\LaravelBootUp\Enums\BuiltInProcess;
 use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
+use Igne\LaravelBootUp\Frontend\PackageJson;
 use Igne\LaravelBootUp\Frontend\PackageManagerSelector;
 use Igne\LaravelBootUp\Pipelines\ComposerJson;
 use Illuminate\Contracts\Container\Container;
@@ -35,13 +36,16 @@ final class DeploymentPlanner
         private readonly HorizonPresence $horizon,
         private readonly ComposerJson $composerJson,
         private readonly PackageManagerSelector $packageManagers,
+        private readonly PackageJson $packageJson,
     ) {}
 
-    public function plan(DeploymentEnvironment $environment, bool $zeroDowntime = true): DeploymentPlan
+    public function plan(DeploymentEnvironment $environment, bool $zeroDowntime = true, bool $inTerminal = false): DeploymentPlan
     {
         $projectCommands = $this->container->bound(ProvidesDeployTasks::class)
             ? $this->container->make(ProvidesDeployTasks::class)
             : null;
+
+        $packageManager = $this->packageManagers->selected();
 
         return new DeploymentPlan(
             environment: $environment,
@@ -50,11 +54,13 @@ final class DeploymentPlanner
             beforeMigrations: $projectCommands?->beforeMigrations() ?? [],
             afterMigrations: $projectCommands?->afterMigrations() ?? [],
             frontend: $this->frontend->assets !== AssetMode::Skip,
-            packageManager: $this->packageManagers->selected(),
+            packageManager: $packageManager,
             restarts: $this->restarts(),
             zeroDowntime: $zeroDowntime,
             beforeDeploy: $projectCommands?->beforeDeploy() ?? [],
             afterDeploy: $projectCommands?->afterDeploy() ?? [],
+            packageManagerVersion: $this->packageJson->pinnedVersion($packageManager),
+            inTerminal: $inTerminal,
         );
     }
 

@@ -42,6 +42,7 @@ function planner(
     file_put_contents($dir.'/composer.json', json_encode(['require' => array_fill_keys($requires, '*')]));
 
     $composerJson = new ComposerJson($dir.'/composer.json');
+    $packageJson = new PackageJson($dir.'/package.json');
     $frontend ??= new FrontendConfig(packageManager: PackageManager::Npm);
 
     return new DeploymentPlanner(
@@ -53,7 +54,8 @@ function planner(
         reverb: $reverb ?? new ReverbConfig,
         horizon: new HorizonPresence($horizon ?? new HorizonConfig, $composerJson),
         composerJson: $composerJson,
-        packageManagers: new PackageManagerSelector($frontend, new PackageJson($dir.'/package.json')),
+        packageManagers: new PackageManagerSelector($frontend, $packageJson),
+        packageJson: $packageJson,
     );
 }
 
@@ -112,4 +114,25 @@ test('the frontend flag follows the asset mode, not a string', function (): void
 
     expect(planner($this->dir, frontend: $skip)->plan(DeploymentEnvironment::Production)->frontend)->toBeFalse()
         ->and(planner($this->dir)->plan(DeploymentEnvironment::Production)->frontend)->toBeTrue();
+});
+
+test('the plan carries the version package.json pins for the selected manager', function (): void {
+    file_put_contents($this->dir.'/package.json', json_encode(['packageManager' => 'yarn@4.10.3+sha512.abc']));
+
+    $yarn = new FrontendConfig(packageManager: PackageManager::Yarn);
+    $pnpm = new FrontendConfig(packageManager: PackageManager::Pnpm);
+
+    expect(planner($this->dir, frontend: $yarn)->plan(DeploymentEnvironment::Production)->packageManagerVersion)->toBe('4.10.3')
+        // The pin names yarn, so it says nothing about the pnpm a project selected instead.
+        ->and(planner($this->dir, frontend: $pnpm)->plan(DeploymentEnvironment::Production)->packageManagerVersion)->toBeNull();
+});
+
+test('the plan passes the deploy-file and zero-downtime choices through', function (): void {
+    $default = planner($this->dir)->plan(DeploymentEnvironment::Production);
+    $terminal = planner($this->dir)->plan(DeploymentEnvironment::Production, zeroDowntime: false, inTerminal: true);
+
+    expect($default->inTerminal)->toBeFalse()
+        ->and($default->zeroDowntime)->toBeTrue()
+        ->and($terminal->inTerminal)->toBeTrue()
+        ->and($terminal->zeroDowntime)->toBeFalse();
 });

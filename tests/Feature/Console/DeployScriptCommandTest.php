@@ -4,7 +4,14 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Contracts\ProvidesDeployTasks;
 use Igne\LaravelBootUp\Data\DeployTask;
+use Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\DeployFileScriptGenerator;
 use Igne\LaravelBootUp\Tests\Feature\Console\Fixtures\StaticScriptGenerator;
+use Illuminate\Support\Facades\File;
+
+afterEach(function (): void {
+    File::deleteDirectory(base_path('.fortrabbit'));
+    File::deleteDirectory(base_path(dirname(DeployFileScriptGenerator::PATH)));
+});
 
 test('exports a forge production script from the package config', function (): void {
     config()->set('boot-up.frontend.package_manager', 'pnpm');
@@ -12,17 +19,65 @@ test('exports a forge production script from the package config', function (): v
     $this->artisan('generate:deploy-script', ['platform' => 'forge', 'environment' => 'production'])
         ->expectsOutputToContain('$CREATE_RELEASE()')
         ->expectsOutputToContain('$FORGE_COMPOSER install --no-dev --no-interaction --prefer-dist --optimize-autoloader')
-        ->expectsOutputToContain('pnpm install --frozen-lockfile || pnpm install')
+        ->expectsOutputToContain('npx --yes corepack pnpm install --frozen-lockfile || npx --yes corepack pnpm install')
         ->expectsOutputToContain('$RESTART_QUEUES()')
         ->assertSuccessful();
 });
 
-test('exports a fortrabbit script with both dashboard sections', function (): void {
+test('writes the fortrabbit deploy file by default', function (): void {
     $this->artisan('generate:deploy-script', ['platform' => 'fortrabbit', 'environment' => 'staging'])
+        ->expectsOutputToContain('Deploy file written to .fortrabbit/deploy.yml')
+        ->assertSuccessful();
+
+    expect((string) file_get_contents(base_path('.fortrabbit/deploy.yml')))
+        ->toContain('# Fortrabbit deploy file (staging)')
+        ->toContain('apiVersion: 1.0')
+        ->toContain('    - php artisan migrate --force')
+        // The file is meant to be committed: no catch-all .gitignore beside it.
+        ->and(is_file(base_path('.fortrabbit/.gitignore')))->toBeFalse();
+});
+
+test('prints the fortrabbit dashboard sections with --in-terminal', function (): void {
+    $this->artisan('generate:deploy-script', ['platform' => 'fortrabbit', 'environment' => 'staging', '--in-terminal' => true])
         ->expectsOutputToContain('# ─── Build commands ────────────────────────────────────────────')
         ->expectsOutputToContain('# ─── Post deploy commands ──────────────────────────────────────')
         ->expectsOutputToContain('php artisan migrate --force')
         ->assertSuccessful();
+
+    expect(is_dir(base_path('.fortrabbit')))->toBeFalse();
+});
+
+test('an existing deploy file is kept unless the overwrite is confirmed', function (): void {
+    File::ensureDirectoryExists(base_path('.fortrabbit'));
+    file_put_contents(base_path('.fortrabbit/deploy.yml'), "apiVersion: 1.0\n# hand-tuned\n");
+
+    $this->artisan('generate:deploy-script', ['platform' => 'fortrabbit', 'environment' => 'production'])
+        ->expectsConfirmation('.fortrabbit/deploy.yml already exists. Overwrite it?', 'no')
+        ->assertSuccessful();
+
+    expect((string) file_get_contents(base_path('.fortrabbit/deploy.yml')))->toBe("apiVersion: 1.0\n# hand-tuned\n");
+});
+
+test('--force replaces an existing deploy file without asking', function (): void {
+    File::ensureDirectoryExists(base_path('.fortrabbit'));
+    file_put_contents(base_path('.fortrabbit/deploy.yml'), "apiVersion: 1.0\n# hand-tuned\n");
+
+    $this->artisan('generate:deploy-script', ['platform' => 'fortrabbit', 'environment' => 'production', '--force' => true])
+        ->assertSuccessful();
+
+    expect((string) file_get_contents(base_path('.fortrabbit/deploy.yml')))->toContain('# Fortrabbit deploy file (production)');
+});
+
+test('--output takes precedence over the deploy file', function (): void {
+    $file = sys_get_temp_dir().'/boot-up-deploy-file-'.bin2hex(random_bytes(4)).'.yml';
+
+    $this->artisan('generate:deploy-script', ['platform' => 'fortrabbit', 'environment' => 'production', '--output' => $file])
+        ->assertSuccessful();
+
+    expect((string) file_get_contents($file))->toContain('apiVersion: 1.0')
+        ->and(is_dir(base_path('.fortrabbit')))->toBeFalse();
+
+    @unlink($file);
 });
 
 test('embeds the project\'s bound commands into the exported script', function (): void {
@@ -115,8 +170,9 @@ test('prompts for platform and environment when omitted', function (): void {
     $this->artisan('generate:deploy-script')
         ->expectsQuestion('Which platform should the deployment script target?', 'fortrabbit')
         ->expectsQuestion('Which environment is this script for?', 'staging')
-        ->expectsOutputToContain('# Fortrabbit deployment commands (staging)')
         ->assertSuccessful();
+
+    expect((string) file_get_contents(base_path('.fortrabbit/deploy.yml')))->toContain('# Fortrabbit deploy file (staging)');
 });
 
 test('rejects an unknown platform', function (): void {
@@ -129,5 +185,26 @@ test('a custom generator registered in config is selectable', function (): void 
 
     $this->artisan('generate:deploy-script', ['platform' => 'static', 'environment' => 'production'])
         ->expectsOutputToContain('static-script for production')
+        ->assertSuccessful();
+});
+
+test('any generator with a deploy file gets it written, or printed with --in-terminal', function (): void {
+    config()->set('boot-up.deploy.script_generators', ['static-file' => DeployFileScriptGenerator::class]);
+
+    $this->artisan('generate:deploy-script', ['platform' => 'static-file', 'environment' => 'production'])
+        ->expectsOutputToContain('Deploy file written to '.DeployFileScriptGenerator::PATH)
+        ->assertSuccessful();
+
+    expect((string) file_get_contents(base_path(DeployFileScriptGenerator::PATH)))->toBe("static-deploy-file for production\n");
+
+    $this->artisan('generate:deploy-script', ['platform' => 'static-file', 'environment' => 'production', '--in-terminal' => true])
+        ->expectsOutputToContain('static-terminal for production')
+        ->assertSuccessful();
+});
+
+test('a platform without a deploy file always prints', function (): void {
+    $this->artisan('generate:deploy-script', ['platform' => 'forge', 'environment' => 'production'])
+        ->expectsOutputToContain('$CREATE_RELEASE()')
+        ->doesntExpectOutputToContain('Deploy file written')
         ->assertSuccessful();
 });

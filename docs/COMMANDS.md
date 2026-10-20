@@ -261,8 +261,9 @@ php artisan app:deploy
 ## `generate:deploy-script`
 
 Export a deployment script for a hosting platform, based on this package's
-config and tuned per environment. Details per platform:
-[DEPLOYMENTS.md](DEPLOYMENTS.md).
+config and tuned per environment. A platform that reads a committed deploy file
+(fortrabbit's `.fortrabbit/deploy.yml`) gets that file written; others get the
+script printed. Details per platform: [DEPLOYMENTS.md](DEPLOYMENTS.md).
 
 ```bash
 php artisan generate:deploy-script
@@ -273,7 +274,9 @@ php artisan generate:deploy-script
 | `platform`        | The hosting platform: `forge`, `fortrabbit`, or any generator registered in `boot-up.deploy.script_generators`. Prompts when omitted. |
 | `environment`     | The target environment: `development`, `staging` or `production`. Prompts when omitted.                                               |
 | `--classic`       | Forge only — generate for classic (non-zero-downtime) sites.                                                                          |
-| `--output=`       | Write the script to a file instead of printing it.                                                                                    |
+| `--in-terminal`   | Print paste-ready commands instead of writing the platform's deploy file. Platforms without a deploy file always print.               |
+| `--force`         | Overwrite an existing deploy file without asking.                                                                                     |
+| `--output=`       | Write the script to this file instead of printing it or writing the platform's deploy file.                                           |
 
 ## `generate:pipeline`
 

@@ -47,21 +47,66 @@ test('update commands', function (): void {
     expect(PackageManager::Npm->updateCommand())->toBe(['npm', 'update'])
         ->and(PackageManager::Pnpm->updateCommand())->toBe(['pnpm', 'update'])
         ->and(PackageManager::Bun->updateCommand())->toBe(['bun', 'update'])
-        ->and(PackageManager::Yarn->updateCommand())->toBe(['yarn', 'update']);
+        // Yarn 2+ has no `update`; `up -R` stays within the manifest's ranges.
+        ->and(PackageManager::Yarn->updateCommand())->toBe(['yarn', 'up', '-R', '**']);
 });
 
-test('buildScriptLines renders the shared frontend block', function (): void {
-    expect(PackageManager::Bun->buildScriptLines(ensureInstalled: true)->toArray())->toBe([
-        'npm i -g bun',
-        'bun install --frozen-lockfile || bun install',
-        'bun run build',
+test('yarn and pnpm come from Corepack, bun and npm do not', function (): void {
+    expect(PackageManager::Yarn->usesCorepack())->toBeTrue()
+        ->and(PackageManager::Pnpm->usesCorepack())->toBeTrue()
+        ->and(PackageManager::Bun->usesCorepack())->toBeFalse()
+        ->and(PackageManager::Npm->usesCorepack())->toBeFalse();
+});
+
+test('generated scripts invoke every manager without a global install', function (PackageManager $manager, string $binary): void {
+    expect($manager->scriptBinary())->toBe($binary);
+})->with([
+    'npm' => [PackageManager::Npm, 'npm'],
+    'yarn' => [PackageManager::Yarn, 'npx --yes corepack yarn'],
+    'pnpm' => [PackageManager::Pnpm, 'npx --yes corepack pnpm'],
+    'bun' => [PackageManager::Bun, 'npx --yes bun'],
+]);
+
+test('ciInstallLine is lockfile-strict with a plain-install fallback', function (PackageManager $manager, string $line): void {
+    expect($manager->ciInstallLine())->toBe($line);
+})->with([
+    'npm' => [PackageManager::Npm, 'npm ci || npm install'],
+    'yarn' => [PackageManager::Yarn, 'yarn install --immutable || yarn install'],
+    'pnpm' => [PackageManager::Pnpm, 'pnpm install --frozen-lockfile || pnpm install'],
+    'bun' => [PackageManager::Bun, 'bun install --frozen-lockfile || bun install'],
+]);
+
+test('ciInstallLine uses the given binary on both sides of the fallback', function (): void {
+    expect(PackageManager::Yarn->ciInstallLine('npx --yes corepack yarn'))
+        ->toBe('npx --yes corepack yarn install --immutable || npx --yes corepack yarn install');
+});
+
+test('buildScriptLines installs and builds through the install-free invocation', function (): void {
+    expect(PackageManager::Bun->buildScriptLines()->toArray())->toBe([
+        'npx --yes bun install --frozen-lockfile || npx --yes bun install',
+        'npx --yes bun run build',
     ])
-        ->and(PackageManager::Npm->buildScriptLines(ensureInstalled: true)->toArray())->toBe([
+        ->and(PackageManager::Npm->buildScriptLines()->toArray())->toBe([
             'npm ci || npm install',
             'npm run build',
         ])
-        ->and(PackageManager::Bun->buildScriptLines(ensureInstalled: false)->toArray())->toBe([
-            'bun install --frozen-lockfile || bun install',
-            'bun run build',
+        ->and(PackageManager::Yarn->buildScriptLines('4.10.3')->toArray())->toBe([
+            'npx --yes corepack yarn install --immutable || npx --yes corepack yarn install',
+            'npx --yes corepack yarn run build',
         ]);
+});
+
+test('no manager is ever installed globally by a generated script', function (PackageManager $manager): void {
+    expect(implode("\n", $manager->buildScriptLines('1.0.0')->toArray()))->not->toContain(' -g ');
+})->with(PackageManager::cases());
+
+test('an unpinned yarn warns that Corepack would fall back to Yarn 1', function (): void {
+    expect(PackageManager::Yarn->buildScriptLines()->toArray())->toBe([
+        '#! package.json pins no Yarn version ("packageManager"), so Corepack runs Yarn 1 here —',
+        '#! run `npx corepack use yarn@4` locally and commit package.json.',
+        'npx --yes corepack yarn install --immutable || npx --yes corepack yarn install',
+        'npx --yes corepack yarn run build',
+    ])
+        // Only Yarn has the 1.x-versus-2+ split; an unpinned pnpm gets Corepack's default.
+        ->and(implode("\n", PackageManager::Pnpm->buildScriptLines()->toArray()))->not->toContain('#!');
 });

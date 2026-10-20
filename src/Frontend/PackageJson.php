@@ -43,6 +43,22 @@ final class PackageJson
     }
 
     /**
+     * The version the "packageManager" field pins for this manager —
+     * "yarn@4.10.3+sha512.…" gives "4.10.3" — or null when the field is
+     * absent or names another manager.
+     */
+    public function pinnedVersion(PackageManager $manager): ?string
+    {
+        $pin = $this->read()['packageManager'] ?? null;
+
+        if (! \is_string($pin) || preg_match('/^'.preg_quote($manager->value, '/').'@([^+\s]+)/', $pin, $matches) !== 1) {
+            return null;
+        }
+
+        return $matches[1];
+    }
+
+    /**
      * The package manager demanded by an engines sentinel such as
      * "please-use-bun", or null when the project does not pin one.
      */

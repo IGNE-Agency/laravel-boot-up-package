@@ -23,7 +23,9 @@ providers run byte-identical sequences and every stage reproduces locally
   a `COMPOSER_AUTH` secret — offered automatically for Nova projects, or forced
   on/off for any project with `boot-up.pipeline.composer_auth`. The package
   manager is **detected from the committed lockfile at run time**, so switching
-  from npm to pnpm never requires regenerating.
+  from npm to pnpm never requires regenerating. Yarn and pnpm are enabled
+  through Corepack, so the version `package.json` pins runs — not the Yarn 1 a
+  GitHub runner preinstalls; bun is installed with `npm i -g` when missing.
 - `lint.sh` / `build.sh` / `test.sh` — three parallel status checks: Pint (only
   when installed), frontend build + an `artisan optimize` round-trip (mirrors
   what the deploy scripts run, so un-cacheable config or routes fail CI instead

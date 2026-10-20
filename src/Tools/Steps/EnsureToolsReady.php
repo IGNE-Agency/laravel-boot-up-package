@@ -15,6 +15,7 @@ use Igne\LaravelBootUp\Data\BootContext;
 use Igne\LaravelBootUp\Data\ToolOutcome;
 use Igne\LaravelBootUp\Data\VersionConstraint;
 use Igne\LaravelBootUp\Enums\BootStage;
+use Igne\LaravelBootUp\Enums\PackageManager;
 use Igne\LaravelBootUp\Enums\Tool;
 use Igne\LaravelBootUp\Enums\ToolStatus;
 use Igne\LaravelBootUp\Frontend\PackageJson;
@@ -114,8 +115,23 @@ final class EnsureToolsReady implements Step
 
         return $this->manager->ensure(
             $this->registry->installerFor($manager->tool()->value),
-            VersionConstraint::wildcard(),
+            $this->packageManagerConstraint($manager),
         );
+    }
+
+    /**
+     * A global Yarn 1 refuses a project pinned to Yarn 2+ outright, so for
+     * such a project an installed Yarn 1 counts as outdated and the update
+     * path replaces it. Any other manager only needs to be present.
+     */
+    private function packageManagerConstraint(PackageManager $manager): VersionConstraint
+    {
+        $pinned = $this->packageJson->pinnedVersion($manager);
+        $yarnBerry = VersionConstraint::of('>=2');
+
+        return $manager === PackageManager::Yarn && $pinned !== null && $yarnBerry->isSatisfiedBy($pinned)
+            ? $yarnBerry
+            : VersionConstraint::wildcard();
     }
 
     /**

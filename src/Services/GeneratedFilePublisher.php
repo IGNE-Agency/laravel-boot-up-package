@@ -59,6 +59,15 @@ final class GeneratedFilePublisher
     {
         $path = "{$this->basePath}/{$file->path}";
 
+        // Generated files are committed: create the directory here, because
+        // one AtomicFile creates gets a catch-all .gitignore meant for
+        // storage state, which would keep the file out of the repository.
+        $directory = \dirname($path);
+
+        if (! is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+
         AtomicFile::write($path, $file->contents);
 
         if ($file->executable) {

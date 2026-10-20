@@ -60,11 +60,19 @@ enum PackageManager: string
     }
 
     /**
+     * Refresh dependencies within the ranges package.json already allows.
+     * Yarn 2+ has no `update`: `up -R` re-resolves every package matching
+     * the pattern without touching the manifest, and '**' also matches
+     * scoped names.
+     *
      * @return list<string>
      */
     public function updateCommand(): array
     {
-        return [$this->value, 'update'];
+        return match ($this) {
+            self::Yarn => ['yarn', 'up', '-R', '**'],
+            default => [$this->value, 'update'],
+        };
     }
 
     /**
@@ -92,31 +100,69 @@ enum PackageManager: string
     }
 
     /**
-     * The lockfile-strict install line for GENERATED deployment scripts,
-     * falling back to a plain install (shell `||` syntax — never executed
-     * locally by this package).
+     * Whether Corepack provides this manager, at the version package.json's
+     * "packageManager" field pins.
      */
-    public function ciInstallLine(): string
+    public function usesCorepack(): bool
     {
         return match ($this) {
-            self::Npm => 'npm ci || npm install',
-            self::Pnpm => 'pnpm install --frozen-lockfile || pnpm install',
-            self::Yarn => 'yarn install --frozen-lockfile || yarn install',
-            self::Bun => 'bun install --frozen-lockfile || bun install',
+            self::Yarn, self::Pnpm => true,
+            self::Bun, self::Npm => false,
         };
     }
 
     /**
-     * The generated-script frontend block: optionally a global install of
-     * this manager (npm is the only one preinstalled in every build
-     * environment), then the lockfile-strict install, then the build.
+     * How a GENERATED deployment script invokes this manager. Only npm ships
+     * with Node, and hosted build environments (fortrabbit) refuse
+     * `npm i -g`, so nothing is installed globally: Corepack runs the
+     * version package.json pins, and bun runs from npm's cache. Corepack
+     * itself goes through npx because Node 25+ no longer bundles it — where
+     * Node still does, npx uses that copy.
      */
-    public function buildScriptLines(bool $ensureInstalled): Lines
+    public function scriptBinary(): string
     {
+        return match (true) {
+            $this === self::Npm => 'npm',
+            $this->usesCorepack() => "npx --yes corepack {$this->value}",
+            default => "npx --yes {$this->value}",
+        };
+    }
+
+    /**
+     * The lockfile-strict install line for GENERATED scripts, falling back
+     * to a plain install (shell `||` syntax — never executed locally by
+     * this package). Yarn means Yarn 2+, whose strict flag is --immutable.
+     */
+    public function ciInstallLine(?string $binary = null): string
+    {
+        $binary ??= $this->value;
+
+        $strictInstall = match ($this) {
+            self::Npm => 'ci',
+            self::Yarn => 'install --immutable',
+            self::Pnpm, self::Bun => 'install --frozen-lockfile',
+        };
+
+        return "{$binary} {$strictInstall} || {$binary} install";
+    }
+
+    /**
+     * The generated-script frontend block: the lockfile-strict install, then
+     * the build, both without a global install. Without a pinned version
+     * Corepack falls back to Yarn 1, which cannot read a Yarn 2+ lockfile —
+     * the block warns instead of letting the deploy fail obscurely.
+     */
+    public function buildScriptLines(?string $pinnedVersion = null): Lines
+    {
+        $binary = $this->scriptBinary();
+
         return Lines::make()
-            ->lineIf($ensureInstalled && $this !== self::Npm, "npm i -g {$this->value}")
-            ->line($this->ciInstallLine())
-            ->line("{$this->value} run build");
+            ->when($this === self::Yarn && $pinnedVersion === null, fn (Lines $script) => $script->warning(
+                'package.json pins no Yarn version ("packageManager"), so Corepack runs Yarn 1 here —',
+                'run `npx corepack use yarn@4` locally and commit package.json.',
+            ))
+            ->line($this->ciInstallLine($binary))
+            ->line("{$binary} run build");
     }
 
     public function tool(): Tool

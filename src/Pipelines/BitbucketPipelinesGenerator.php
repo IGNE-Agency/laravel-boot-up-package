@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Igne\LaravelBootUp\Pipelines;
 
+use Igne\LaravelBootUp\Concerns\QuotesYamlScalars;
 use Igne\LaravelBootUp\Concerns\SharesStandardPipelineShape;
 use Igne\LaravelBootUp\Contracts\PipelineGenerator;
 use Igne\LaravelBootUp\Data\CiJob;
@@ -11,7 +12,6 @@ use Igne\LaravelBootUp\Data\GeneratedFile;
 use Igne\LaravelBootUp\Data\Lines;
 use Igne\LaravelBootUp\Data\PipelinePlan;
 use Igne\LaravelBootUp\Data\PipelineSecret;
-use Illuminate\Support\Str;
 
 /**
  * Renders a Bitbucket Pipelines file: lint, build and test run as parallel
@@ -22,6 +22,7 @@ use Illuminate\Support\Str;
  */
 final class BitbucketPipelinesGenerator implements PipelineGenerator
 {
+    use QuotesYamlScalars;
     use SharesStandardPipelineShape;
 
     public function __construct(private readonly CiScripts $scripts) {}
@@ -184,7 +185,7 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
                 ->line('script:')
                 ->indent(2, function (Lines $yaml) use ($plan, $job): void {
                     $this->extraScript($yaml, $plan, $job->key, 'before');
-                    $yaml->line($this->scalarLine("bash scripts/ci/{$job->key}.sh"));
+                    $yaml->line($this->yamlListItem("bash scripts/ci/{$job->key}.sh"));
                     $this->extraScript($yaml, $plan, $job->key, 'after');
                 }));
     }
@@ -215,7 +216,7 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
                 ->line('script:')
                 ->indent(2, function (Lines $yaml) use ($plan, $environment): void {
                     $this->extraScript($yaml, $plan, 'deploy', 'before');
-                    $yaml->line($this->scalarLine("bash scripts/ci/deploy-hook.sh {$environment} \"\${DEPLOY_HOOK:-}\""));
+                    $yaml->line($this->yamlListItem("bash scripts/ci/deploy-hook.sh {$environment} \"\${DEPLOY_HOOK:-}\""));
                     $this->extraScript($yaml, $plan, 'deploy', 'after');
                 }));
     }
@@ -230,31 +231,7 @@ final class BitbucketPipelinesGenerator implements PipelineGenerator
     {
         foreach ($plan->extensions->stepsFor($this->key(), $job, $position) as $step) {
             $yaml->comment($step->name)
-                ->line($this->scalarLine($step->run));
+                ->line($this->yamlListItem($step->run));
         }
-    }
-
-    /**
-     * Single-quotes a command when it would not survive as a YAML plain
-     * scalar. Normally a no-op: the script invocations avoid leading #,
-     * quotes, flow indicators and ": " on purpose.
-     */
-    private function scalarLine(string $value): string
-    {
-        $scalar = $this->scalar($value);
-
-        return "- {$scalar}";
-    }
-
-    private function scalar(string $command): string
-    {
-        $unsafeFirst = $command === '' || str_contains('#&*!|>%@`"\'{}[],', $command[0]);
-        $unsafeStart = Str::startsWith($command, ['- ', '? ', ': ']);
-
-        if (! $unsafeFirst && ! $unsafeStart && ! str_contains($command, ': ') && ! str_ends_with($command, ':')) {
-            return $command;
-        }
-
-        return "'".str_replace("'", "''", $command)."'";
     }
 }

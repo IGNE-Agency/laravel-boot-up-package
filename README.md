@@ -53,16 +53,16 @@ containers when that is where the project lives. See
 
 ## Commands
 
-| Command                  | What it does                                                          |
-| ------------------------ | --------------------------------------------------------------------- |
-| `app:up`                 | Set up the application, run it, and stop it again when you quit.      |
-| `dev`                    | Run the dev processes this project needs.                             |
-| `app:down`               | Stop tracked processes and the server `app:up` started.               |
-| `app:status`             | Show the active server and tracked processes.                         |
-| `app:deploy`             | Install, run project commands and migrate — without booting a server. |
-| `generate:deploy-script` | Export a paste-ready deployment script (Forge, fortrabbit).           |
-| `generate:pipeline`      | Generate a CI/CD pipeline (GitHub, Bitbucket) plus shared scripts.    |
-| `generate:git-hooks`     | Install a tracked Pint pre-commit hook that says how to fix failures. |
+| Command                  | What it does                                                             |
+| ------------------------ | ------------------------------------------------------------------------ |
+| `app:up`                 | Set up the application, run it, and stop it again when you quit.         |
+| `dev`                    | Run the dev processes this project needs.                                |
+| `app:down`               | Stop tracked processes and the server `app:up` started.                  |
+| `app:status`             | Show the active server and tracked processes.                            |
+| `app:deploy`             | Install, run project commands and migrate — without booting a server.    |
+| `generate:deploy-script` | Export a deployment script or write the deploy file (Forge, fortrabbit). |
+| `generate:pipeline`      | Generate a CI/CD pipeline (GitHub, Bitbucket) plus shared scripts.       |
+| `generate:git-hooks`     | Install a tracked Pint pre-commit hook that says how to fix failures.    |
 
 Every flag is documented in [docs/COMMANDS.md](docs/COMMANDS.md) — and
 `php artisan list` / `php artisan app:up --help` are always authoritative.

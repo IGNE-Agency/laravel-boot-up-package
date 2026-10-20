@@ -15,6 +15,7 @@ use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\AlphaToolSpy;
 use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\BunToolSpy;
 use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\DockerToolSpy;
 use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\EnsureToolsReadySpy;
+use Igne\LaravelBootUp\Tests\Feature\Tools\Fixtures\YarnToolSpy;
 use Igne\LaravelBootUp\Tools\Steps\EnsureToolsReady;
 use Laravel\Prompts\Prompt;
 
@@ -73,6 +74,7 @@ function bindToolsConfig(array $required, array $installers): void
 
 beforeEach(function (): void {
     EnsureToolsReadySpy::$ensured = [];
+    YarnToolSpy::$updatedFor = null;
     Prompt::fake();
 });
 
@@ -204,3 +206,39 @@ test('the package manager is skipped when the server wraps its binary', function
 
     expect(EnsureToolsReadySpy::$ensured)->toBe([]);
 });
+
+/**
+ * A yarn project — selected through its lockfile — whose package.json holds
+ * the given fields.
+ */
+function bindYarnProject(array $packageJson): void
+{
+    $dir = sys_get_temp_dir().'/boot-up-tools-yarn-'.bin2hex(random_bytes(4));
+    mkdir($dir, 0755, true);
+    file_put_contents($dir.'/package.json', json_encode($packageJson));
+    touch($dir.'/yarn.lock');
+
+    app()->instance(PackageJson::class, new PackageJson($dir.'/package.json'));
+}
+
+test('a project pinned to Yarn 2+ treats an installed Yarn 1 as outdated', function (): void {
+    bindToolsConfig(required: [], installers: ['yarn' => YarnToolSpy::class]);
+    bindYarnProject(['packageManager' => 'yarn@4.10.3']);
+
+    app(EnsureToolsReady::class)->handle(new BootContext(new BootOptions, ensureToolsServer([])), fn ($passed) => $passed);
+
+    expect(YarnToolSpy::$updatedFor)->toBe('>=2');
+});
+
+test('a yarn project without a Yarn 2+ pin only needs yarn to be present', function (array $packageJson): void {
+    bindToolsConfig(required: [], installers: ['yarn' => YarnToolSpy::class]);
+    bindYarnProject($packageJson);
+
+    app(EnsureToolsReady::class)->handle(new BootContext(new BootOptions, ensureToolsServer([])), fn ($passed) => $passed);
+
+    expect(EnsureToolsReadySpy::$ensured)->toBe(['yarn'])
+        ->and(YarnToolSpy::$updatedFor)->toBeNull();
+})->with([
+    'no pin' => [['name' => 'app']],
+    'a Yarn 1 pin' => [['packageManager' => 'yarn@1.22.22']],
+]);

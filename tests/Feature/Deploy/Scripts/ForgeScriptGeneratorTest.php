@@ -64,17 +64,27 @@ $RESTART_QUEUES()
 SCRIPT);
 });
 
-test('each package manager gets its lockfile-strict install line', function (PackageManager $manager, string $line): void {
-    $script = forgeScript(['packageManager' => $manager]);
+test('each package manager gets its lockfile-strict install line, without a global install', function (PackageManager $manager, string $install, string $build): void {
+    // Forge provisions Node and npm only: the other managers run through
+    // Corepack or npx instead of a binary the server may not have.
+    $script = forgeScript(['packageManager' => $manager, 'packageManagerVersion' => '1.0.0']);
 
-    expect($script)->toContain($line)
-        ->and($script)->toContain("{$manager->value} run build");
+    expect($script)->toContain($install)
+        ->and($script)->toContain($build)
+        ->and($script)->not->toContain(' -g ');
 })->with([
-    'npm' => [PackageManager::Npm, 'npm ci || npm install'],
-    'pnpm' => [PackageManager::Pnpm, 'pnpm install --frozen-lockfile || pnpm install'],
-    'yarn' => [PackageManager::Yarn, 'yarn install --frozen-lockfile || yarn install'],
-    'bun' => [PackageManager::Bun, 'bun install --frozen-lockfile || bun install'],
+    'npm' => [PackageManager::Npm, 'npm ci || npm install', 'npm run build'],
+    'pnpm' => [PackageManager::Pnpm, 'npx --yes corepack pnpm install --frozen-lockfile || npx --yes corepack pnpm install', 'npx --yes corepack pnpm run build'],
+    'yarn' => [PackageManager::Yarn, 'npx --yes corepack yarn install --immutable || npx --yes corepack yarn install', 'npx --yes corepack yarn run build'],
+    'bun' => [PackageManager::Bun, 'npx --yes bun install --frozen-lockfile || npx --yes bun install', 'npx --yes bun run build'],
 ]);
+
+test('an unpinned yarn is flagged in the script', function (): void {
+    expect(forgeScript(['packageManager' => PackageManager::Yarn]))
+        ->toContain('#! package.json pins no Yarn version ("packageManager"), so Corepack runs Yarn 1 here —')
+        ->and(forgeScript(['packageManager' => PackageManager::Yarn, 'packageManagerVersion' => '4.10.3']))
+        ->not->toContain('#! package.json pins no Yarn version');
+});
 
 test('development keeps dev dependencies and skips framework caching', function (): void {
     $script = forgeScript([
@@ -112,7 +122,7 @@ test('after-migration project commands render after migrate with composer and pa
     $migratePosition = strpos($script, 'migrate --force');
 
     expect(strpos($script, '$FORGE_COMPOSER dump-autoload --optimize'))->toBeGreaterThan($migratePosition)
-        ->and($script)->toContain('pnpm run zodgen');
+        ->and($script)->toContain('npx --yes corepack pnpm run zodgen');
 });
 
 test('the classic variant uses git pull and the fpm reload block instead of macros', function (): void {

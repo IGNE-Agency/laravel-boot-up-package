@@ -272,7 +272,17 @@ final class CiScripts
             ->lineWithBreak('PM="$(detect_package_manager)"')
             ->line('export PM')
             ->lineWithBreak('echo "==> Installing Node dependencies with ${PM}"')
-            ->line('command -v "$PM" >/dev/null 2>&1 || npm i -g "$PM"')
+            ->comment('Corepack runs the version package.json pins — replacing, say, the Yarn 1')
+            ->comment('a GitHub runner preinstalls; other managers are installed when missing.')
+            ->line('case "$PM" in')
+            ->indent(2, fn (Lines $script) => $script
+                ->line($this->corepackManagers().')')
+                ->indent(2, fn (Lines $script) => $script
+                    ->line('command -v corepack >/dev/null 2>&1 || npm i -g corepack')
+                    ->line('corepack enable "$PM"')
+                    ->line(';;'))
+                ->line('*) command -v "$PM" >/dev/null 2>&1 || npm i -g "$PM" ;;'))
+            ->line('esac')
             ->lineWithBreak('case "$PM" in')
             ->indent(2, fn (Lines $script) => $script->each(
                 PackageManager::cases(),
@@ -282,11 +292,23 @@ final class CiScripts
             ->line('esac');
     }
 
+    /**
+     * The shell case pattern matching every manager Corepack provides.
+     */
+    private function corepackManagers(): string
+    {
+        return collect(PackageManager::cases())
+            ->filter(fn (PackageManager $manager): bool => $manager->usesCorepack())
+            ->map(fn (PackageManager $manager): string => $manager->value)
+            ->implode('|');
+    }
+
     private function projectCommand(DeployTask $command, PipelinePlan $plan): Lines
     {
         // With a frontend, package-manager commands use the runtime-detected
-        // $PM; without one, no $PM exists — fall back to the configured manager.
-        $packageManager = $plan->deployment->frontend ? '"$PM"' : $plan->deployment->packageManager->value;
+        // $PM; without one, no $PM was set up — fall back to the configured
+        // manager's install-free invocation.
+        $packageManager = $plan->deployment->frontend ? '"$PM"' : $plan->deployment->packageManager->scriptBinary();
 
         // Descriptions render as echo so they show up in the CI log output.
         $escaped = str_replace(['\\', '"'], ['\\\\', '\"'], (string) $command->description);

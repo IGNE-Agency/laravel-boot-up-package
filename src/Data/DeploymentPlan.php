@@ -21,6 +21,8 @@ final readonly class DeploymentPlan
      * @param  list<DeployTask>  $beforeDeploy  earliest custom hook, before optimize/migrations
      * @param  list<DeployTask>  $afterDeploy  latest custom hook, after the release is finalized/live
      * @param  list<BuiltInProcess>  $restarts  long-running services to restart, in the order they run
+     * @param  string|null  $packageManagerVersion  the version package.json's "packageManager" field pins for $packageManager
+     * @param  bool  $inTerminal  render paste-ready commands for the terminal instead of the platform's deploy file; platforms without a deploy file ignore it
      */
     public function __construct(
         public DeploymentEnvironment $environment,
@@ -34,5 +36,7 @@ final readonly class DeploymentPlan
         public bool $zeroDowntime = true,
         public array $beforeDeploy = [],
         public array $afterDeploy = [],
+        public ?string $packageManagerVersion = null,
+        public bool $inTerminal = false,
     ) {}
 }

@@ -166,6 +166,18 @@ install Node via nvm).
 It becomes selectable in `generate:deploy-script` alongside Forge and
 fortrabbit.
 
+If the platform reads its settings from a file committed to the repository, also
+implement `Igne\LaravelBootUp\Contracts\WritesDeployFile`: `deployFilePath()`
+returns that file's repository-relative path. `generate:deploy-script` then
+writes `generate()`'s output there by default (asking before it overwrites, or
+not with `--force`). With `--in-terminal` it prints instead — `generate()`
+receives a plan whose `inTerminal` is `true`, so render paste-ready commands for
+that case.
+
+Build package-manager lines with `$plan->packageManager->scriptBinary()` (or
+`buildScriptLines()`) rather than the bare binary: it needs no global install,
+and Corepack runs the version `package.json` pins.
+
 ## Custom git providers
 
 1. Implement `Igne\LaravelBootUp\Contracts\PipelineGenerator` — `files()`

@@ -258,3 +258,21 @@ test('echo renders one echo per text, escaped for double quotes', function (): v
         'echo "a \\\\ b"',
     ]);
 });
+
+test('mapCommands maps command lines only and keeps every kind', function (): void {
+    $mapped = Lines::make()
+        ->comment('note')
+        ->line('a')
+        ->warning('careful')
+        ->lineWithBreak('b')
+        ->mapCommands(fn (string $command): string => "- {$command}");
+
+    expect($mapped->toArray())->toBe(['# note', '- a', '#! careful', '', '- b'])
+        ->and($mapped->toStyledArray(fn (string $kind): string => $kind))->toBe([
+            Lines::KIND_COMMENT,
+            Lines::KIND_COMMAND,
+            Lines::KIND_WARNING,
+            '',
+            Lines::KIND_COMMAND,
+        ]);
+});

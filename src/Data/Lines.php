@@ -238,6 +238,27 @@ final class Lines
     }
 
     /**
+     * A copy with every command line passed through $map, as rendered
+     * (indent included); comments, headings, warnings and blank lines keep
+     * their text and kind. For re-shaping a command list — e.g. into YAML
+     * list items — without losing its annotations.
+     *
+     * @param  Closure(string): string  $map
+     */
+    public function mapCommands(Closure $map): self
+    {
+        $mapped = new self;
+
+        foreach ($this->lines as $index => $line) {
+            $kind = $this->kinds[$index];
+
+            $mapped->appendLine($kind === self::KIND_COMMAND && $line !== '' ? $map($line) : $line, $kind);
+        }
+
+        return $mapped;
+    }
+
+    /**
      * The lines so far, indentation applied and any pending separator
      * dropped — for `...` spreads and mixing with list<string> helpers.
      *

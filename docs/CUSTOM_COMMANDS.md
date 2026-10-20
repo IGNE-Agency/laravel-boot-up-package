@@ -61,14 +61,20 @@ means no project commands, no error.
 
 ## Command types
 
-| Named constructor                                      | Runs as                                              |
-| ------------------------------------------------------ | ---------------------------------------------------- |
+| Named constructor                                  | Runs as                                              |
+| -------------------------------------------------- | ---------------------------------------------------- |
 | `DeployTask::artisan('scout:sync')`                | `php artisan scout:sync`                             |
 | `DeployTask::composer('dump-autoload --optimize')` | `composer dump-autoload --optimize`                  |
 | `DeployTask::packageManager('run build')`          | `bun run build` (or your configured package manager) |
 
 The optional second argument is a human-readable message printed before the
 command runs.
+
+In a script from `generate:deploy-script`, a package-manager command runs
+through an invocation that needs no global install, such as
+`npx --yes bun run build` or `npx --yes corepack yarn run build`, because hosted
+build environments refuse global installs (see
+[DEPLOYMENTS.md](DEPLOYMENTS.md#package-managers-in-generated-scripts)).
 
 ## Execution rules
 
@@ -107,8 +113,8 @@ entirely? The whole pipeline is published config — implement
 
 ## In exported deployment scripts
 
-`php artisan generate:deploy-script` embeds your project commands into the generated
-Forge / Fortrabbit scripts (and the CI `test.sh`) in the four-phase order above,
-with each description rendered as a `#` comment above its command. On a Forge
-zero-downtime site, `afterDeploy()` commands run inside `$ACTIVATE_RELEASE()` —
-after the symlink swap, once the new release is serving.
+`php artisan generate:deploy-script` embeds your project commands into the
+generated Forge / Fortrabbit scripts (and the CI `test.sh`) in the four-phase
+order above, with each description rendered as a `#` comment above its command.
+On a Forge zero-downtime site, `afterDeploy()` commands run inside
+`$ACTIVATE_RELEASE()` — after the symlink swap, once the new release is serving.

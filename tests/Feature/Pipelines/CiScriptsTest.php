@@ -140,11 +140,19 @@ PM="$(detect_package_manager)"
 export PM
 
 echo "==> Installing Node dependencies with ${PM}"
-command -v "$PM" >/dev/null 2>&1 || npm i -g "$PM"
+# Corepack runs the version package.json pins — replacing, say, the Yarn 1
+# a GitHub runner preinstalls; other managers are installed when missing.
+case "$PM" in
+  yarn|pnpm)
+    command -v corepack >/dev/null 2>&1 || npm i -g corepack
+    corepack enable "$PM"
+    ;;
+  *) command -v "$PM" >/dev/null 2>&1 || npm i -g "$PM" ;;
+esac
 
 case "$PM" in
   bun) bun install --frozen-lockfile || bun install ;;
-  yarn) yarn install --frozen-lockfile || yarn install ;;
+  yarn) yarn install --immutable || yarn install ;;
   npm) npm ci || npm install ;;
   pnpm) pnpm install --frozen-lockfile || pnpm install ;;
 esac
@@ -290,9 +298,11 @@ test('package-manager project commands use the runtime $PM with a frontend and t
     $scripts = new CiScripts;
     $command = ['beforeMigrations' => [DeployTask::packageManager('run generate')]];
 
+    // Without a frontend bootstrap.sh never set the manager up, so the command
+    // runs through its install-free invocation instead of a bare binary.
     expect($scripts->test(ciScriptsPlan([], $command))->contents)->toContain('"$PM" run generate')
         ->and($scripts->test(ciScriptsPlan([], [...$command, 'frontend' => false, 'packageManager' => PackageManager::Pnpm]))->contents)
-        ->toContain('pnpm run generate');
+        ->toContain('npx --yes corepack pnpm run generate');
 });
 
 test('the plan renders its branches as prose', function (): void {

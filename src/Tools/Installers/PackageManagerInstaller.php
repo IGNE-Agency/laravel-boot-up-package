@@ -42,7 +42,8 @@ final class PackageManagerInstaller extends ToolInstaller
 
     /**
      * npm rides along with Node, so both install and update mean
-     * "npm install -g npm"; bun, yarn and pnpm are plain brew formulae.
+     * "npm install -g npm"; yarn comes from Corepack; bun and pnpm are plain
+     * brew formulae.
      */
     private function installOrUpdate(bool $update): void
     {
@@ -52,8 +53,34 @@ final class PackageManagerInstaller extends ToolInstaller
             return;
         }
 
+        if ($this->tool === Tool::Yarn) {
+            $this->enableYarnThroughCorepack();
+
+            return;
+        }
+
         $update
             ? $this->homebrew->upgrade($this->tool->binary())
             : $this->homebrew->install($this->tool->binary());
+    }
+
+    /**
+     * Corepack's yarn shim runs whichever version a project's package.json
+     * pins, and Yarn 1 for a project that pins none — so it replaces
+     * Homebrew's Yarn 1, which shadows the shim and refuses Yarn 2+ projects
+     * outright. Node 25+ no longer bundles Corepack, hence the npm fallback.
+     */
+    private function enableYarnThroughCorepack(): void
+    {
+        if (! $this->processes->isCommandAvailable('corepack')) {
+            $this->processes->run(CommandLine::make(['npm', 'install', '-g', 'corepack'])->withTimeout(null));
+        }
+
+        if ($this->homebrew->hasFormula('yarn')) {
+            terminal()->info("Removing Homebrew's Yarn 1 — Corepack provides yarn from now on...");
+            $this->homebrew->uninstall('yarn');
+        }
+
+        $this->processes->run(CommandLine::make(['corepack', 'enable', 'yarn']));
     }
 }

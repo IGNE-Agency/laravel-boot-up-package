@@ -7,11 +7,14 @@ namespace Igne\LaravelBootUp\Console;
 use Igne\LaravelBootUp\Concerns\ResolvesGenerators;
 use Igne\LaravelBootUp\Config\DeployConfig;
 use Igne\LaravelBootUp\Contracts\ScriptGenerator;
+use Igne\LaravelBootUp\Contracts\WritesDeployFile;
+use Igne\LaravelBootUp\Data\GeneratedFile;
 use Igne\LaravelBootUp\Data\Lines;
 use Igne\LaravelBootUp\Deploy\Scripts\DeploymentPlanner;
 use Igne\LaravelBootUp\Deploy\Scripts\ForgeScriptGenerator;
 use Igne\LaravelBootUp\Deploy\Scripts\FortrabbitScriptGenerator;
 use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
+use Igne\LaravelBootUp\Services\GeneratedFilePublisher;
 
 final class DeployScriptCommand extends BootUpCommand
 {
@@ -26,11 +29,13 @@ final class DeployScriptCommand extends BootUpCommand
         {platform? : The hosting platform (fortrabbit, forge, or any generator registered in boot-up.deploy.script_generators)}
         {environment? : The target environment (development, staging, production)}
         {--classic : Forge only — generate for classic (non-zero-downtime) sites}
-        {--output= : Write the script to a file instead of printing it}';
+        {--in-terminal : Print paste-ready commands instead of writing the platform\'s deploy file (platforms without a deploy file always print)}
+        {--force : Overwrite an existing deploy file without asking}
+        {--output= : Write the script to this file instead of printing it or writing the platform\'s deploy file}';
 
-    protected $description = 'Export a deployment script for a hosting platform, based on this package\'s config';
+    protected $description = 'Export a deployment script, or write the platform\'s deploy file, based on this package\'s config';
 
-    public function handle(DeploymentPlanner $planner): int
+    public function handle(DeploymentPlanner $planner, GeneratedFilePublisher $publisher): int
     {
         $platform = $this->choose('platform', 'Which platform should the deployment script target?', $this->platformOptions());
 
@@ -41,10 +46,13 @@ final class DeployScriptCommand extends BootUpCommand
             $this->choose('environment', 'Which environment is this script for?', $this->environmentOptions(), DeploymentEnvironment::Production->value),
         );
 
-        $script = $generator->generate($planner->plan(
+        $plan = $planner->plan(
             environment: $environment,
             zeroDowntime: ! $this->option('classic'),
-        ));
+            inTerminal: (bool) $this->option('in-terminal'),
+        );
+
+        $script = $generator->generate($plan);
 
         $output = $this->option('output');
 
@@ -55,9 +63,31 @@ final class DeployScriptCommand extends BootUpCommand
             return $this->done("Deployment script written to {$output}.");
         }
 
+        if (! $plan->inTerminal && $generator instanceof WritesDeployFile) {
+            return $this->writeDeployFile($generator, $script, $publisher);
+        }
+
         $this->printScript($script);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The platform reads its settings from a committed file, so that file is
+     * the default output — an existing one is only replaced after the
+     * publisher's overwrite confirmation (or --force).
+     */
+    private function writeDeployFile(WritesDeployFile $generator, Lines $script, GeneratedFilePublisher $publisher): int
+    {
+        $this->announce('Generating the deploy file...');
+
+        $path = $generator->deployFilePath();
+
+        if (! $publisher->publish([new GeneratedFile($path, $script->render())], (bool) $this->option('force'))) {
+            return self::SUCCESS;
+        }
+
+        return $this->done("Deploy file written to {$path} — commit it so the platform picks it up.");
     }
 
     /**

@@ -55,6 +55,6 @@ final readonly class DeployScriptSnippets
     {
         return Lines::make()->each($tasks, fn (Lines $script, DeployTask $task) => $script
             ->commentIf($task->description !== null, (string) $task->description)
-            ->line($task->shellLine($this->artisan, $this->composer, $this->plan->packageManager->value)));
+            ->line($task->shellLine($this->artisan, $this->composer, $this->plan->packageManager->scriptBinary())));
     }
 }

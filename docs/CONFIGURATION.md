@@ -98,6 +98,14 @@ The package manager is selected by the strongest signal available, in order:
    `pnpm-lock.yaml`), announced with a dim note.
 4. `bun`, the default.
 
+`yarn` means Yarn 2 and newer, run through
+[Corepack](https://yarnpkg.com/corepack) at the version `package.json`'s
+`packageManager` field pins (`npx corepack use yarn@4` writes it). On the host,
+a missing Yarn is set up with `corepack enable yarn`; for a project pinned to
+Yarn 2+, a Homebrew Yarn 1 counts as outdated and, with `tools.auto_update`, is
+replaced the same way. `--update` runs `yarn up -R '**'`, which refreshes
+dependencies within the ranges `package.json` allows.
+
 ## Queue & workers
 
 These all run as dev processes: `php artisan dev` gives each one a tab in
