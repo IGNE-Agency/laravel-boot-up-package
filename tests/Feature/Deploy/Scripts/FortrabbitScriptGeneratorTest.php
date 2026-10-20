@@ -2,11 +2,13 @@
 
 declare(strict_types=1);
 
+use Igne\LaravelBootUp\Config\FortrabbitConfig;
 use Igne\LaravelBootUp\Data\DeploymentPlan;
 use Igne\LaravelBootUp\Data\DeployTask;
 use Igne\LaravelBootUp\Deploy\Scripts\FortrabbitScriptGenerator;
 use Igne\LaravelBootUp\Enums\BuiltInProcess;
 use Igne\LaravelBootUp\Enums\DeploymentEnvironment;
+use Igne\LaravelBootUp\Enums\FortrabbitDeployStrategy;
 use Igne\LaravelBootUp\Enums\PackageManager;
 use Symfony\Component\Yaml\Yaml;
 
@@ -26,9 +28,9 @@ function fortrabbitPlan(array $overrides = []): DeploymentPlan
     return new DeploymentPlan(...array_merge($defaults, $overrides));
 }
 
-function fortrabbitScript(array $overrides = []): string
+function fortrabbitScript(array $overrides = [], FortrabbitConfig $config = new FortrabbitConfig): string
 {
-    return (new FortrabbitScriptGenerator)->generate(fortrabbitPlan($overrides))->render();
+    return (new FortrabbitScriptGenerator($config))->generate(fortrabbitPlan($overrides))->render();
 }
 
 test('renders the deploy file for production with a pinned yarn', function (): void {
@@ -89,7 +91,7 @@ test('the deploy file is valid YAML in the shape fortrabbit reads', function ():
 });
 
 test('the deploy file belongs in .fortrabbit/deploy.yml', function (): void {
-    expect((new FortrabbitScriptGenerator)->deployFilePath())->toBe('.fortrabbit/deploy.yml');
+    expect((new FortrabbitScriptGenerator(new FortrabbitConfig))->deployFilePath())->toBe('.fortrabbit/deploy.yml');
 });
 
 test('in the terminal it renders paste-ready dashboard sections', function (): void {
@@ -114,7 +116,86 @@ php artisan optimize
 php artisan storage:link
 php artisan queue:restart
 
+# ─── Cached directories ────────────────────────────────────────
+vendor
+node_modules
+.pnpm-store
+
+# ─── Deployment strategy ───────────────────────────────────────
+replace
+
+# ─── Exclude patterns ──────────────────────────────────────────
+/storage
+/node_modules
+
 SCRIPT);
+});
+
+test('the project overrides every deployment setting in the deploy file', function (): void {
+    $script = fortrabbitScript(config: new FortrabbitConfig(
+        cachedDirectories: ['vendor'],
+        strategy: FortrabbitDeployStrategy::Merge,
+        excludePatterns: ['/storage', '/public/uploads'],
+        replacePatterns: ['/public/build'],
+        gitSourceDirectory: 'app',
+    ));
+
+    expect($script)->toContain(implode("\n", [
+        '  cachedDirectories:',
+        '    - vendor',
+        'distribution:',
+        '  gitSourceDirectory: app',
+        '  strategy: merge',
+        '  excludePatterns:',
+        '    - /storage',
+        '    - /public/uploads',
+        '  replacePatterns:',
+        '    - /public/build',
+        '',
+    ]))
+        ->and(Yaml::parse($script)['distribution'])->toBe([
+            'gitSourceDirectory' => 'app',
+            'strategy' => 'merge',
+            'excludePatterns' => ['/storage', '/public/uploads'],
+            'replacePatterns' => ['/public/build'],
+        ]);
+});
+
+test('an emptied list is written as [] instead of falling back to the platform default', function (): void {
+    $script = fortrabbitScript(config: new FortrabbitConfig(cachedDirectories: [], excludePatterns: []));
+
+    expect($script)->toContain("  cachedDirectories: []\n")
+        ->toContain("  excludePatterns: []\n")
+        ->and(Yaml::parse($script)['build']['cachedDirectories'])->toBe([])
+        ->and(Yaml::parse($script)['distribution']['excludePatterns'])->toBe([]);
+});
+
+test('unset optional settings are left out of the deploy file', function (): void {
+    $distribution = Yaml::parse(fortrabbitScript())['distribution'];
+
+    expect($distribution)->not->toHaveKey('gitSourceDirectory')
+        ->and($distribution)->not->toHaveKey('replacePatterns');
+});
+
+test('the terminal sections carry the project overrides too', function (): void {
+    $script = fortrabbitScript(['inTerminal' => true], new FortrabbitConfig(
+        cachedDirectories: [],
+        strategy: FortrabbitDeployStrategy::Merge,
+        replacePatterns: ['/public/build'],
+        gitSourceDirectory: 'app',
+    ));
+
+    expect($script)->toContain(implode("\n", [
+        '# ─── Cached directories ────────────────────────────────────────',
+        '# (none — leave the field empty)',
+        '',
+        '# ─── Git source directory ──────────────────────────────────────',
+        'app',
+        '',
+        '# ─── Deployment strategy ───────────────────────────────────────',
+        'merge',
+    ]))
+        ->toContain("# ─── Replace patterns ──────────────────────────────────────────\n/public/build\n");
 });
 
 test('renders bound commands for all four phases in the canonical order', function (): void {

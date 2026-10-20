@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 use Igne\LaravelBootUp\Config\ArtisanServeConfig;
 use Igne\LaravelBootUp\Config\DeployConfig;
+use Igne\LaravelBootUp\Config\FortrabbitConfig;
 use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Config\HerdConfig;
 use Igne\LaravelBootUp\Config\SailConfig;
 use Igne\LaravelBootUp\Config\SetupConfig;
 use Igne\LaravelBootUp\Config\ToolsConfig;
 use Igne\LaravelBootUp\Enums\AssetMode;
+use Igne\LaravelBootUp\Enums\FortrabbitDeployStrategy;
 use Igne\LaravelBootUp\Exceptions\ConfigException;
 use Illuminate\Config\Repository;
 
@@ -119,4 +121,56 @@ test('a real constraint passes through untouched', function (): void {
     $config = new Repository(['boot-up' => ['tools' => ['required' => ['php' => '^8.3']]]]);
 
     expect(ToolsConfig::fromRepository($config)->required)->toBe(['php' => '^8.3']);
+});
+
+function fortrabbitConfigWith(array $settings): Repository
+{
+    return new Repository(['boot-up' => ['deploy' => ['fortrabbit' => $settings]]]);
+}
+
+test('the fortrabbit deployment settings are read from the project config', function (): void {
+    $config = FortrabbitConfig::fromRepository(fortrabbitConfigWith([
+        'cached_directories' => ['vendor'],
+        'strategy' => 'merge',
+        'exclude_patterns' => ['/storage', '/public/uploads'],
+        'replace_patterns' => ['/public/build'],
+        'git_source_directory' => 'app',
+    ]));
+
+    expect($config)->toEqual(new FortrabbitConfig(
+        cachedDirectories: ['vendor'],
+        strategy: FortrabbitDeployStrategy::Merge,
+        excludePatterns: ['/storage', '/public/uploads'],
+        replacePatterns: ['/public/build'],
+        gitSourceDirectory: 'app',
+    ));
+});
+
+test('fortrabbit replace patterns without the merge strategy are rejected, as fortrabbit would reject the file', function (): void {
+    expect(fn () => FortrabbitConfig::fromRepository(fortrabbitConfigWith(['replace_patterns' => ['/public/build']])))
+        ->toThrow(ConfigException::class, 'boot-up.deploy.fortrabbit.replace_patterns');
+});
+
+test('an unknown fortrabbit strategy is rejected, naming the legal values', function (): void {
+    expect(fn () => FortrabbitConfig::fromRepository(fortrabbitConfigWith(['strategy' => 'sync'])))
+        ->toThrow(ConfigException::class, 'legal values are: replace, merge');
+});
+
+test('a fortrabbit list that is not a list of strings is rejected, naming the entry', function (array $settings, string $key): void {
+    expect(fn () => FortrabbitConfig::fromRepository(fortrabbitConfigWith($settings)))
+        ->toThrow(ConfigException::class, $key);
+})->with([
+    'not a list' => [['cached_directories' => 'vendor'], 'boot-up.deploy.fortrabbit.cached_directories'],
+    'a non-string entry' => [['exclude_patterns' => ['/storage', 7]], 'boot-up.deploy.fortrabbit.exclude_patterns.1'],
+    'an empty entry' => [['exclude_patterns' => [' ']], 'boot-up.deploy.fortrabbit.exclude_patterns.0'],
+]);
+
+test('an empty fortrabbit list is a choice, not a fallback to the defaults', function (): void {
+    expect(FortrabbitConfig::fromRepository(fortrabbitConfigWith(['cached_directories' => []]))->cachedDirectories)->toBe([]);
+});
+
+test('a fortrabbit git source directory must be a string; empty means the repository root', function (): void {
+    expect(fn () => FortrabbitConfig::fromRepository(fortrabbitConfigWith(['git_source_directory' => ['app']])))
+        ->toThrow(ConfigException::class, 'boot-up.deploy.fortrabbit.git_source_directory')
+        ->and(FortrabbitConfig::fromRepository(fortrabbitConfigWith(['git_source_directory' => '']))->gitSourceDirectory)->toBeNull();
 });

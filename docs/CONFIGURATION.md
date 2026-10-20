@@ -180,13 +180,22 @@ checks that the boot has happened and says to run `app:up` if it has not.
 
 ## Deploy
 
-| Key                            | Env var                      | Default            | Description                                                                                                           |
-| ------------------------------ | ---------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| `deploy.cache_framework_files` | `BOOT_UP_CACHE`              | `false`            | Run the framework cache commands locally. Off by default: `config:cache` breaks `env()` lookups in local development. |
-| `deploy.finalize`              | —                            | `['storage:link']` | Artisan commands run at the end of every boot/deploy.                                                                 |
-| `deploy.script_generators`     | —                            | `[]`               | Extension point: map a platform key to a [`Contracts\ScriptGenerator`](EXTENDING.md#custom-deployment-platforms).     |
-| `deploy.auto_accept`           | `BOOT_UP_DEPLOY_AUTO_ACCEPT` | `false`            | Skip the confirmation prompt for `app:deploy` — independent of `setup.auto_accept`.                                   |
-| `deploy.steps`                 | —                            | 10 steps           | The deploy-only pipeline subset: no server, no dev processes, no browser — see [Step pipelines](#step-pipelines).     |
+| Key                                      | Env var                      | Default                                     | Description                                                                                                           |
+| ---------------------------------------- | ---------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `deploy.cache_framework_files`           | `BOOT_UP_CACHE`              | `false`                                     | Run the framework cache commands locally. Off by default: `config:cache` breaks `env()` lookups in local development. |
+| `deploy.finalize`                        | —                            | `['storage:link']`                          | Artisan commands run at the end of every boot/deploy.                                                                 |
+| `deploy.script_generators`               | —                            | `[]`                                        | Extension point: map a platform key to a [`Contracts\ScriptGenerator`](EXTENDING.md#custom-deployment-platforms).     |
+| `deploy.auto_accept`                     | `BOOT_UP_DEPLOY_AUTO_ACCEPT` | `false`                                     | Skip the confirmation prompt for `app:deploy` — independent of `setup.auto_accept`.                                   |
+| `deploy.steps`                           | —                            | 10 steps                                    | The deploy-only pipeline subset: no server, no dev processes, no browser — see [Step pipelines](#step-pipelines).     |
+| `deploy.fortrabbit.cached_directories`   | —                            | `['vendor', 'node_modules', '.pnpm-store']` | fortrabbit: directories carried between deployments.                                                                  |
+| `deploy.fortrabbit.strategy`             | —                            | `'replace'`                                 | fortrabbit: `replace` or `merge`.                                                                                     |
+| `deploy.fortrabbit.exclude_patterns`     | —                            | `['/storage', '/node_modules']`             | fortrabbit: paths a deploy leaves untouched. Keep `/storage`, or a replace deploy wipes persistent files.             |
+| `deploy.fortrabbit.replace_patterns`     | —                            | `[]`                                        | fortrabbit: paths deleted before a merge deploy; rejected unless `strategy` is `merge`.                               |
+| `deploy.fortrabbit.git_source_directory` | —                            | `null`                                      | fortrabbit: the repository subdirectory to deploy; `null` deploys the root.                                           |
+
+The `deploy.fortrabbit` keys feed `.fortrabbit/deploy.yml` and the
+`--in-terminal` dashboard sections — see
+[DEPLOYMENTS.md](DEPLOYMENTS.md#the-deploy-file-default).
 
 ## Pipeline
 

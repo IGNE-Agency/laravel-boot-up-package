@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Igne\LaravelBootUp\Deploy\Scripts;
 
 use Igne\LaravelBootUp\Concerns\QuotesYamlScalars;
+use Igne\LaravelBootUp\Config\FortrabbitConfig;
 use Igne\LaravelBootUp\Contracts\ScriptGenerator;
 use Igne\LaravelBootUp\Contracts\WritesDeployFile;
 use Igne\LaravelBootUp\Data\DeploymentPlan;
@@ -12,12 +13,13 @@ use Igne\LaravelBootUp\Data\Lines;
 use Igne\LaravelBootUp\Enums\BuiltInProcess;
 
 /**
- * Renders fortrabbit's two command lists per environment: "Build commands"
+ * Renders fortrabbit's two command lists per environment — "Build commands"
  * (run after git receives the push, before the release — Composer
  * preinstalled, Node available) and "Post deploy commands" (run
- * sequentially after the release is live). By default they go into the
- * committed .fortrabbit/deploy.yml; in the terminal they are laid out for
- * pasting into the dashboard.
+ * sequentially after the release is live) — plus the deployment settings
+ * the project configures under boot-up.deploy.fortrabbit. By default they
+ * go into the committed .fortrabbit/deploy.yml; in the terminal they are
+ * laid out for pasting into the dashboard.
  */
 final class FortrabbitScriptGenerator implements ScriptGenerator, WritesDeployFile
 {
@@ -27,17 +29,9 @@ final class FortrabbitScriptGenerator implements ScriptGenerator, WritesDeployFi
 
     private const string STORAGE_DIRECTORIES = 'mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views';
 
-    /**
-     * A deploy file replaces the dashboard settings wholesale and an omitted
-     * key falls back to fortrabbit's default rather than the dashboard's
-     * value, so the file restates what the Laravel template configures there.
-     * Without the /storage exclude, a replace deploy wipes persistent storage.
-     */
-    private const array CACHED_DIRECTORIES = ['vendor', 'node_modules', '.pnpm-store'];
+    private const int HEADING_WIDTH = 63;
 
-    private const string DISTRIBUTION_STRATEGY = 'replace';
-
-    private const array EXCLUDE_PATTERNS = ['/storage', '/node_modules'];
+    public function __construct(private readonly FortrabbitConfig $config) {}
 
     public function key(): string
     {
@@ -73,11 +67,48 @@ final class FortrabbitScriptGenerator implements ScriptGenerator, WritesDeployFi
                 "Deployment settings for the {$environment} environment.",
             )
             ->blank()
-            ->heading('─── Build commands ────────────────────────────────────────────')
+            ->heading($this->heading('Build commands'))
             ->lines($this->buildCommands($snippets))
             ->blank()
-            ->heading('─── Post deploy commands ──────────────────────────────────────')
-            ->lines($this->postDeployCommands($snippets));
+            ->heading($this->heading('Post deploy commands'))
+            ->lines($this->postDeployCommands($snippets))
+            ->blank()
+            ->heading($this->heading('Cached directories'))
+            ->lines($this->dashboardList($this->config->cachedDirectories))
+            ->when($this->config->gitSourceDirectory !== null, fn (Lines $script) => $script
+                ->blank()
+                ->heading($this->heading('Git source directory'))
+                ->line((string) $this->config->gitSourceDirectory))
+            ->blank()
+            ->heading($this->heading('Deployment strategy'))
+            ->line($this->config->strategy->value)
+            ->blank()
+            ->heading($this->heading('Exclude patterns'))
+            ->lines($this->dashboardList($this->config->excludePatterns))
+            ->when($this->config->replacePatterns !== [], fn (Lines $script) => $script
+                ->blank()
+                ->heading($this->heading('Replace patterns'))
+                ->lines($this->config->replacePatterns));
+    }
+
+    /**
+     * A dashboard section title, ruled out to a common width.
+     */
+    private function heading(string $title): string
+    {
+        $prefix = "─── {$title} ";
+
+        return $prefix.str_repeat('─', max(3, self::HEADING_WIDTH - mb_strlen($prefix)));
+    }
+
+    /**
+     * @param  list<string>  $values
+     */
+    private function dashboardList(array $values): Lines
+    {
+        return $values === []
+            ? Lines::make()->comment('(none — leave the field empty)')
+            : Lines::make()->lines($values);
     }
 
     private function deployFile(DeployScriptSnippets $snippets): Lines
@@ -95,24 +126,45 @@ final class FortrabbitScriptGenerator implements ScriptGenerator, WritesDeployFi
             ->line('build:')
             ->indent(2, fn (Lines $yaml) => $yaml
                 ->line('buildCommands:')
-                ->indent(2, fn (Lines $yaml) => $yaml->lines($this->yamlList($this->buildCommands($snippets))))
+                ->indent(2, fn (Lines $yaml) => $yaml->lines($this->yamlCommands($this->buildCommands($snippets))))
                 ->line('postDeployCommands:')
-                ->indent(2, fn (Lines $yaml) => $yaml->lines($this->yamlList($this->postDeployCommands($snippets))))
-                ->line('cachedDirectories:')
-                ->indent(2, fn (Lines $yaml) => $yaml->lines($this->yamlList(Lines::make()->lines(self::CACHED_DIRECTORIES)))))
+                ->indent(2, fn (Lines $yaml) => $yaml->lines($this->yamlCommands($this->postDeployCommands($snippets))))
+                ->lines($this->yamlSetting('cachedDirectories', $this->config->cachedDirectories)))
             ->line('distribution:')
             ->indent(2, fn (Lines $yaml) => $yaml
-                ->line('strategy: '.self::DISTRIBUTION_STRATEGY)
-                ->line('excludePatterns:')
-                ->indent(2, fn (Lines $yaml) => $yaml->lines($this->yamlList(Lines::make()->lines(self::EXCLUDE_PATTERNS)))));
+                ->when($this->config->gitSourceDirectory !== null, fn (Lines $yaml) => $yaml
+                    ->line('gitSourceDirectory: '.$this->yamlScalar((string) $this->config->gitSourceDirectory)))
+                ->line('strategy: '.$this->config->strategy->value)
+                ->lines($this->yamlSetting('excludePatterns', $this->config->excludePatterns))
+                ->when($this->config->replacePatterns !== [], fn (Lines $yaml) => $yaml
+                    ->lines($this->yamlSetting('replacePatterns', $this->config->replacePatterns))));
     }
 
     /**
      * The commands as YAML list items; comments and warnings stay comments.
      */
-    private function yamlList(Lines $commands): Lines
+    private function yamlCommands(Lines $commands): Lines
     {
         return $commands->mapCommands($this->yamlListItem(...));
+    }
+
+    /**
+     * A list-valued key. An empty list is written out as [] rather than
+     * dropped: the file states every setting, so nothing silently falls back
+     * to fortrabbit's default.
+     *
+     * @param  list<string>  $values
+     */
+    private function yamlSetting(string $key, array $values): Lines
+    {
+        if ($values === []) {
+            return Lines::make()->line("{$key}: []");
+        }
+
+        return Lines::make()
+            ->line("{$key}:")
+            ->indent(2, fn (Lines $yaml) => $yaml->each($values, fn (Lines $yaml, string $value) => $yaml
+                ->line($this->yamlListItem($value))));
     }
 
     private function buildCommands(DeployScriptSnippets $snippets): Lines

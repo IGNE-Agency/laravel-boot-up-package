@@ -38,6 +38,51 @@ trait ValidatesConfig
     }
 
     /**
+     * A list of non-empty strings, such as paths or patterns.
+     *
+     * @param  list<string>  $default
+     * @return list<string>
+     */
+    private static function stringListFrom(Repository $config, string $key, array $default): array
+    {
+        $values = $config->get($key, $default);
+
+        if (! \is_array($values)) {
+            throw ConfigException::invalidType($key, get_debug_type($values), 'a list of strings');
+        }
+
+        foreach ($values as $index => $value) {
+            if (! \is_string($value)) {
+                throw ConfigException::invalidType("{$key}.{$index}", get_debug_type($value));
+            }
+
+            if (trim($value) === '') {
+                throw ConfigException::invalidValue("{$key}.{$index}", $value, 'a non-empty string');
+            }
+        }
+
+        return array_values($values);
+    }
+
+    /**
+     * A string that may be left unset: null and '' both mean "not set".
+     */
+    private static function optionalStringFrom(Repository $config, string $key): ?string
+    {
+        $value = $config->get($key);
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (! \is_string($value)) {
+            throw ConfigException::invalidType($key, get_debug_type($value));
+        }
+
+        return $value;
+    }
+
+    /**
      * @param  class-string  $contract
      * @return list<string>
      */

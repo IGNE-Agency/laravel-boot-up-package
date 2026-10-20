@@ -312,12 +312,24 @@ return [
     | boot/deploy. Extension point for generate:deploy-script:
     | 'script_generators' maps 'platform' => class implementing
     | Igne\LaravelBootUp\Contracts\ScriptGenerator (wins over built-ins).
+    |
+    | 'fortrabbit' holds the settings .fortrabbit/deploy.yml carries besides
+    | the command lists. The file replaces the dashboard's settings wholesale,
+    | so these restate fortrabbit's Laravel template — keep '/storage'
+    | excluded, or a replace deploy wipes persistent storage.
     */
     'deploy' => [
         // config:cache breaks env() lookups in local development — off by default.
         'cache_framework_files' => env('BOOT_UP_CACHE', false),
         'finalize' => ['storage:link'],
         'script_generators' => [],
+        'fortrabbit' => [
+            'cached_directories' => ['vendor', 'node_modules', '.pnpm-store'],
+            'strategy' => 'replace', // replace | merge
+            'exclude_patterns' => ['/storage', '/node_modules'],
+            'replace_patterns' => [], // deleted before a merge deploy — merge only
+            'git_source_directory' => null, // null deploys the repository root
+        ],
         'auto_accept' => env('BOOT_UP_DEPLOY_AUTO_ACCEPT', false),
         'steps' => [
             EnsureEnvFile::class,

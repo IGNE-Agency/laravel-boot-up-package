@@ -64,25 +64,30 @@ Commit it to the branch the environment deploys.
 
 Once that file is on the deployed branch it replaces **all** of the dashboard's
 deployment settings, and a key it leaves out falls back to fortrabbit's default,
-not to the dashboard value. So the file restates what fortrabbit's Laravel
-template configures there:
+not to the dashboard value. So besides the two command lists the file states
+every other deployment setting, taken from your project's config under
+`boot-up.deploy.fortrabbit`. The defaults restate fortrabbit's Laravel template:
 
-| Setting                        | Value                                   | Why                                                       |
-| ------------------------------ | --------------------------------------- | --------------------------------------------------------- |
-| `build.cachedDirectories`      | `vendor`, `node_modules`, `.pnpm-store` | Dependencies carry over between deployments.              |
-| `distribution.strategy`        | `replace`                               | fortrabbit's Laravel default.                             |
-| `distribution.excludePatterns` | `/storage`, `/node_modules`             | Without `/storage`, a deploy would wipe persistent files. |
+| Config key (`deploy.fortrabbit.`) | File key                          | Default                                 | Notes                                                                        |
+| --------------------------------- | --------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------- |
+| `cached_directories`              | `build.cachedDirectories`         | `vendor`, `node_modules`, `.pnpm-store` | Carried over between deployments; `[]` caches nothing.                       |
+| `strategy`                        | `distribution.strategy`           | `replace`                               | `replace` or `merge`.                                                        |
+| `exclude_patterns`                | `distribution.excludePatterns`    | `/storage`, `/node_modules`             | Keep `/storage`: without it a replace deploy wipes persistent files.         |
+| `replace_patterns`                | `distribution.replacePatterns`    | `[]`                                    | Deleted before a merge deploy — only with `strategy` `merge`, else rejected. |
+| `git_source_directory`            | `distribution.gitSourceDirectory` | `null`                                  | The repository subdirectory to deploy; `null` deploys the root.              |
 
-If you have customised any of these in the dashboard, carry the change over into
-the file. `staging` and `production` render identically, so one committed file
-serves both branches; `development` differs (dev dependencies, no `optimize`).
+If you changed any of these in the dashboard, set the same value in config
+before you commit the file. The build and post-deploy commands come from the
+rest of the config and your [`ProvidesDeployTasks` binding](CUSTOM_COMMANDS.md).
+`staging` and `production` render identically, so one committed file serves both
+branches; `development` differs (dev dependencies, no `optimize`).
 
 ### Dashboard commands
 
-`--in-terminal` prints the two lists instead, ready to paste into the dashboard
-fields — for an environment you keep configured in the dashboard. It does not
-touch the deploy file; a deploy file on the branch still overrides whatever is
-pasted.
+`--in-terminal` prints the same content as dashboard sections instead — the two
+command lists, then the settings above — ready to paste into an environment you
+keep configured in the dashboard. It does not touch the deploy file; a deploy
+file on the branch still overrides whatever is pasted.
 
 ## Package managers in generated scripts
 

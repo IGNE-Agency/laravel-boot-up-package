@@ -37,6 +37,18 @@ test('writes the fortrabbit deploy file by default', function (): void {
         ->and(is_file(base_path('.fortrabbit/.gitignore')))->toBeFalse();
 });
 
+test('the deploy file carries the project\'s fortrabbit settings', function (): void {
+    config()->set('boot-up.deploy.fortrabbit.cached_directories', ['vendor']);
+    config()->set('boot-up.deploy.fortrabbit.exclude_patterns', ['/storage', '/public/uploads']);
+
+    $this->artisan('generate:deploy-script', ['platform' => 'fortrabbit', 'environment' => 'production'])
+        ->assertSuccessful();
+
+    expect((string) file_get_contents(base_path('.fortrabbit/deploy.yml')))
+        ->toContain("  cachedDirectories:\n    - vendor\ndistribution:")
+        ->toContain("  excludePatterns:\n    - /storage\n    - /public/uploads\n");
+});
+
 test('prints the fortrabbit dashboard sections with --in-terminal', function (): void {
     $this->artisan('generate:deploy-script', ['platform' => 'fortrabbit', 'environment' => 'staging', '--in-terminal' => true])
         ->expectsOutputToContain('# ─── Build commands ────────────────────────────────────────────')

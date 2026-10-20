@@ -15,6 +15,7 @@ use Igne\LaravelBootUp\Config\DeployConfig;
 use Igne\LaravelBootUp\Config\DevConfig;
 use Igne\LaravelBootUp\Config\DevServerConfig;
 use Igne\LaravelBootUp\Config\EnvironmentConfig;
+use Igne\LaravelBootUp\Config\FortrabbitConfig;
 use Igne\LaravelBootUp\Config\FrontendConfig;
 use Igne\LaravelBootUp\Config\HerdConfig;
 use Igne\LaravelBootUp\Config\HorizonConfig;
@@ -77,6 +78,7 @@ final class BootUpServiceProvider extends ServiceProvider
         DevConfig::class,
         DevServerConfig::class,
         EnvironmentConfig::class,
+        FortrabbitConfig::class,
         FrontendConfig::class,
         HerdConfig::class,
         HorizonConfig::class,
