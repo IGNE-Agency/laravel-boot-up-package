@@ -102,6 +102,17 @@ test('writes a configured extra file verbatim', function (): void {
         ->toBe("name: Nightly\non: schedule\n");
 });
 
+test('configured env overrides land in .env.pipeline with the other defaults untouched', function (): void {
+    config()->set('boot-up.pipeline.env', ['DB_CONNECTION' => 'mysql']);
+
+    $this->artisan('generate:pipeline', ['provider' => 'github', 'host' => 'fortrabbit'])->assertSuccessful();
+
+    expect((string) file_get_contents(base_path('.env.pipeline')))
+        ->toContain("DB_CONNECTION=mysql\n")
+        ->toContain("DB_DATABASE=:memory:\n")
+        ->not->toContain('DB_CONNECTION=sqlite');
+});
+
 test('regenerating the pipeline with extensions is byte-for-byte idempotent', function (): void {
     config()->set('boot-up.pipeline.steps', [[
         'id' => 'notify',

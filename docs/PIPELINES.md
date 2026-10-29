@@ -37,8 +37,9 @@ providers run byte-identical sequences and every stage reproduces locally
 ## Checks
 
 Checks run on every pull request and on pushes to the deploy branches, against
-in-memory SQLite. `.env.pipeline` carries the test configuration — commit it;
-the generated `APP_KEY` is only ever used in CI.
+in-memory SQLite unless `pipeline.env` says otherwise. `.env.pipeline` carries
+the test configuration — commit it; the generated `APP_KEY` is only ever used
+in CI.
 
 The PHP version comes from your `composer.json` `require.php` (setup-php on
 GitHub, the `laravelsail/php{XY}-composer` image on Bitbucket).
@@ -135,7 +136,7 @@ an annotation on the run's summary.
 
 ## Extending the pipeline
 
-Two config surfaces let you extend a generated pipeline without replacing the
+Three config surfaces let you extend a generated pipeline without replacing the
 generator. `generate:pipeline` regenerates its files from this config every run,
 so reruns are **idempotent** — nothing is ever duplicated, and files it does not
 manage are never touched.
@@ -185,6 +186,27 @@ relative to the project root):
     ],
 ],
 ```
+
+### Override the test environment
+
+`boot-up.pipeline.env` changes the generated `.env.pipeline`. Keys the template
+already has are replaced in place, new keys are appended as a block at the end,
+and values are written verbatim — quote them yourself when a value has spaces
+or a `#`:
+
+```php
+'pipeline' => [
+    'env' => [
+        'DB_CONNECTION' => 'mysql',
+        'DB_DATABASE' => 'laravel',
+        'DB_USERNAME' => 'root',
+        'DB_PASSWORD' => '',
+    ],
+],
+```
+
+`APP_KEY` stays with the command: the committed key is kept across
+regenerations and `--regenerate-app-key` mints a new one, so leave it out.
 
 ### Validation
 

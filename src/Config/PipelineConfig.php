@@ -20,6 +20,7 @@ final readonly class PipelineConfig
      * @param  array<string, class-string>  $generators  provider key => PipelineGenerator class; wins over built-ins
      * @param  array<mixed>  $steps  raw extra-step config, validated per run against the chosen provider
      * @param  array<mixed>  $files  raw extra-file config
+     * @param  array<string, scalar|null>  $env  .env.pipeline overrides, merged over the generated template
      */
     public function __construct(
         public array $branchEnvironments = self::DEFAULT_BRANCH_ENVIRONMENTS,
@@ -27,6 +28,7 @@ final readonly class PipelineConfig
         public array $steps = [],
         public array $files = [],
         public ?bool $composerAuth = null,
+        public array $env = [],
     ) {}
 
     public static function fromRepository(Repository $config): self
@@ -42,6 +44,7 @@ final readonly class PipelineConfig
             files: (array) $config->get('boot-up.pipeline.files', []),
             // null = auto-detect (Nova); an explicit bool forces it on/off.
             composerAuth: $composerAuth === null ? null : (bool) $composerAuth,
+            env: (array) $config->get('boot-up.pipeline.env', []),
         );
     }
 

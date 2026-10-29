@@ -57,7 +57,7 @@ final class PipelineCommand extends BootUpCommand
 
         $plan = $this->validatedPlan($planner->plan($host), $config, $generator, $validator);
 
-        $files = $this->generatedFiles($generator, $plan, $envFile, $provider);
+        $files = $this->generatedFiles($generator, $plan, $envFile, $config, $provider);
 
         if (! $publisher->publish($files, (bool) $this->option('force'))) {
             return self::SUCCESS;
@@ -89,11 +89,16 @@ final class PipelineCommand extends BootUpCommand
      *
      * @return list<GeneratedFile>
      */
-    private function generatedFiles(PipelineGenerator $generator, PipelinePlan $plan, PipelineEnvFile $envFile, string $provider): array
-    {
+    private function generatedFiles(
+        PipelineGenerator $generator,
+        PipelinePlan $plan,
+        PipelineEnvFile $envFile,
+        PipelineConfig $config,
+        string $provider,
+    ): array {
         return [
             ...$generator->files($plan),
-            new GeneratedFile($envFile->path(), $envFile->generate($this->appKey($envFile))),
+            new GeneratedFile($envFile->path(), $envFile->generate($this->appKey($envFile), $config->env)),
             ...collect($plan->extensions->filesFor($provider))
                 ->map(fn (PipelineFile $file): GeneratedFile => new GeneratedFile($file->path, $file->contents, $file->executable))
                 ->all(),
