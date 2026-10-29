@@ -67,6 +67,27 @@ containers when that is where the project lives. See
 Every flag is documented in [docs/COMMANDS.md](docs/COMMANDS.md) — and
 `php artisan list` / `php artisan app:up --help` are always authoritative.
 
+## CI test environment
+
+`generate:pipeline` also writes `.env.pipeline`, the environment the pipeline
+copies over `.env` before the checks run. It targets in-memory SQLite out of
+the box; `pipeline.env` in `config/boot-up.php` changes that:
+
+```php
+'pipeline' => [
+    'env' => [
+        'DB_CONNECTION' => 'mysql',
+        'DB_DATABASE' => 'laravel',
+        'DB_USERNAME' => 'root',
+    ],
+],
+```
+
+Keys the template already has (`DB_CONNECTION`, `CACHE_STORE`, ...) are
+replaced in place, new keys are appended, and values are written verbatim.
+`APP_KEY` keeps being preserved across runs, so leave it out. See
+[Override the test environment](docs/PIPELINES.md#override-the-test-environment).
+
 ## Documentation
 
 - Commands and options: [docs/COMMANDS.md](docs/COMMANDS.md)

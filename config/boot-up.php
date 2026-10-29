@@ -382,6 +382,15 @@ return [
             // ],
         ],
 
+        // Overrides for the generated .env.pipeline, the test environment CI
+        // copies over .env. Template keys (DB_CONNECTION, CACHE_STORE, ...)
+        // are replaced in place, new keys are appended, values are written
+        // verbatim. APP_KEY is kept across runs by the command; leave it out.
+        'env' => [
+            // 'DB_CONNECTION' => 'mysql',
+            // 'DB_DATABASE' => 'laravel',
+        ],
+
         // Extra whole files emitted verbatim next to the generated pipeline.
         // Give each a relative 'path' and exactly one of 'contents' (inline)
         // or 'stub' (a file read verbatim, relative to the project root).

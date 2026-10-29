@@ -11,6 +11,7 @@ test('fromRepository reads the boot-up.pipeline schema', function (): void {
             'pipeline' => [
                 'branches' => ['main' => 'production'],
                 'generators' => ['gitlab' => 'App\Pipelines\GitlabGenerator'],
+                'env' => ['DB_CONNECTION' => 'mysql'],
             ],
         ],
     ]);
@@ -18,7 +19,8 @@ test('fromRepository reads the boot-up.pipeline schema', function (): void {
     $pipeline = PipelineConfig::fromRepository($config);
 
     expect($pipeline->branchEnvironments)->toBe(['main' => 'production'])
-        ->and($pipeline->generators)->toBe(['gitlab' => 'App\Pipelines\GitlabGenerator']);
+        ->and($pipeline->generators)->toBe(['gitlab' => 'App\Pipelines\GitlabGenerator'])
+        ->and($pipeline->env)->toBe(['DB_CONNECTION' => 'mysql']);
 });
 
 test('environment names are lowercased so any case in the config resolves the same environment', function (): void {
@@ -48,5 +50,6 @@ test('fromRepository falls back to the documented defaults', function (): void {
         'develop' => 'development',
         'staging' => 'staging',
         'main' => 'production',
-    ])->and($pipeline->generators)->toBe([]);
+    ])->and($pipeline->generators)->toBe([])
+        ->and($pipeline->env)->toBe([]);
 });
